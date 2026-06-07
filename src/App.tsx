@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { useState, ReactElement } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { Menu, Sparkles } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
@@ -12,8 +12,22 @@ import Compras from './pages/Compras'
 import Gastos from './pages/Gastos'
 import Nomina from './pages/Nomina'
 import Contabilidad from './pages/Contabilidad'
+import Configuracion from './pages/Configuracion'
 import Login from './pages/Login'
 import { useAuth } from './lib/auth'
+import { MODULOS } from './lib/permisos'
+
+function Protegido({ modulo, children }: { modulo: string; children: ReactElement }) {
+  const { puede, permisos } = useAuth()
+  if (puede(modulo)) return children
+  const primero = MODULOS.find((m) => permisos.includes(m.key))
+  if (primero && primero.key !== modulo) return <Navigate to={primero.path} replace />
+  return (
+    <div className="card text-center text-slate-500">
+      No tienes acceso a este módulo. Contacta al administrador.
+    </div>
+  )
+}
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -32,13 +46,8 @@ export default function App() {
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra superior (solo móvil/tablet) */}
         <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
-            aria-label="Abrir menú"
-          >
+          <button onClick={() => setMenuOpen(true)} className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100" aria-label="Abrir menú">
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
@@ -50,16 +59,17 @@ export default function App() {
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/citas" element={<Citas />} />
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="/servicios" element={<Servicios />} />
-              <Route path="/empleados" element={<Empleados />} />
-              <Route path="/facturacion" element={<Facturacion />} />
-              <Route path="/compras" element={<Compras />} />
-              <Route path="/gastos" element={<Gastos />} />
-              <Route path="/nomina" element={<Nomina />} />
-              <Route path="/contabilidad" element={<Contabilidad />} />
+              <Route path="/" element={<Protegido modulo="panel"><Dashboard /></Protegido>} />
+              <Route path="/citas" element={<Protegido modulo="citas"><Citas /></Protegido>} />
+              <Route path="/clientes" element={<Protegido modulo="clientes"><Clientes /></Protegido>} />
+              <Route path="/servicios" element={<Protegido modulo="servicios"><Servicios /></Protegido>} />
+              <Route path="/empleados" element={<Protegido modulo="empleados"><Empleados /></Protegido>} />
+              <Route path="/facturacion" element={<Protegido modulo="facturacion"><Facturacion /></Protegido>} />
+              <Route path="/compras" element={<Protegido modulo="compras"><Compras /></Protegido>} />
+              <Route path="/gastos" element={<Protegido modulo="gastos"><Gastos /></Protegido>} />
+              <Route path="/nomina" element={<Protegido modulo="nomina"><Nomina /></Protegido>} />
+              <Route path="/contabilidad" element={<Protegido modulo="contabilidad"><Contabilidad /></Protegido>} />
+              <Route path="/configuracion" element={<Protegido modulo="configuracion"><Configuracion /></Protegido>} />
             </Routes>
           </div>
         </main>

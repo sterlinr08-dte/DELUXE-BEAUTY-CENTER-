@@ -11,30 +11,37 @@ import {
   ShoppingCart,
   Wallet,
   Calculator,
+  Settings,
   X,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 
-const grupos: { titulo: string; links: { to: string; label: string; icon: typeof Users; end?: boolean }[] }[] = [
+type Link = { to: string; label: string; icon: typeof Users; modulo: string; end?: boolean }
+
+const grupos: { titulo: string; links: Link[] }[] = [
   {
     titulo: 'Facturación y contabilidad',
     links: [
-      { to: '/facturacion', label: 'Facturación', icon: Receipt },
-      { to: '/compras', label: 'Compras', icon: ShoppingCart },
-      { to: '/gastos', label: 'Gastos', icon: Wallet },
-      { to: '/nomina', label: 'Pagos a empleados', icon: Users },
-      { to: '/contabilidad', label: 'Contabilidad', icon: Calculator },
+      { to: '/facturacion', label: 'Facturación', icon: Receipt, modulo: 'facturacion' },
+      { to: '/compras', label: 'Compras', icon: ShoppingCart, modulo: 'compras' },
+      { to: '/gastos', label: 'Gastos', icon: Wallet, modulo: 'gastos' },
+      { to: '/nomina', label: 'Pagos a empleados', icon: Users, modulo: 'nomina' },
+      { to: '/contabilidad', label: 'Contabilidad', icon: Calculator, modulo: 'contabilidad' },
     ],
   },
   {
     titulo: 'Operación',
     links: [
-      { to: '/', label: 'Panel', icon: LayoutDashboard, end: true },
-      { to: '/citas', label: 'Citas / Agenda', icon: CalendarDays },
-      { to: '/clientes', label: 'Clientes', icon: Users },
-      { to: '/servicios', label: 'Servicios y precios', icon: Scissors },
-      { to: '/empleados', label: 'Empleados', icon: UserCog },
+      { to: '/', label: 'Panel', icon: LayoutDashboard, modulo: 'panel', end: true },
+      { to: '/citas', label: 'Citas / Agenda', icon: CalendarDays, modulo: 'citas' },
+      { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
+      { to: '/servicios', label: 'Servicios y precios', icon: Scissors, modulo: 'servicios' },
+      { to: '/empleados', label: 'Empleados', icon: UserCog, modulo: 'empleados' },
     ],
+  },
+  {
+    titulo: 'Sistema',
+    links: [{ to: '/configuracion', label: 'Configuración', icon: Settings, modulo: 'configuracion' }],
   },
 ]
 
@@ -44,11 +51,13 @@ interface Props {
 }
 
 export default function Sidebar({ open, onClose }: Props) {
-  const { session, signOut } = useAuth()
+  const { session, perfil, signOut, puede } = useAuth()
+  const visibles = grupos
+    .map((g) => ({ ...g, links: g.links.filter((l) => puede(l.modulo)) }))
+    .filter((g) => g.links.length > 0)
 
   return (
     <>
-      {/* Fondo oscuro al abrir el menú en móvil */}
       {open && <div className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" onClick={onClose} />}
 
       <aside
@@ -66,14 +75,13 @@ export default function Sidebar({ open, onClose }: Props) {
               <p className="text-xs tracking-[0.2em] text-gold-400">BEAUTY CENTER</p>
             </div>
           </div>
-          {/* Botón cerrar (solo móvil) */}
           <button onClick={onClose} className="rounded-lg p-1 text-brand-200 hover:bg-white/10 lg:hidden">
             <X size={22} />
           </button>
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
-          {grupos.map((g) => (
+          {visibles.map((g) => (
             <div key={g.titulo}>
               <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-400">{g.titulo}</p>
               <div className="space-y-1">
@@ -100,7 +108,10 @@ export default function Sidebar({ open, onClose }: Props) {
           ))}
         </nav>
 
-        <div className="space-y-3 border-t border-white/10 px-3 py-4">
+        <div className="space-y-2 border-t border-white/10 px-3 py-4">
+          {perfil?.rol_nombre && (
+            <p className="px-3 text-xs font-semibold text-gold-400">{perfil.rol_nombre}</p>
+          )}
           {session?.user?.email && (
             <p className="truncate px-3 text-xs text-brand-300">{session.user.email}</p>
           )}
