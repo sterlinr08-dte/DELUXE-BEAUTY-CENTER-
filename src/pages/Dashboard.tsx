@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, Users, Scissors, UserCog, TrendingUp, Clock } from 'lucide-react'
+import { CalendarDays, Users, TrendingUp, Clock, HandCoins, PackageX } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones } from '../types'
 import { hora, money, hoyISO, fechaLarga } from '../lib/format'
 import { useNegocio } from '../lib/negocio'
 
+const UMBRAL_STOCK = 5 // stock bajo: igual o menor a este número
+
 interface Stats {
   clientes: number
-  empleados: number
-  servicios: number
   citasHoy: number
-  ingresosHoy: number
+  ventasHoy: number
+  porCobrar: number
+  stockBajo: number
 }
 
 const SELECT = `*,
@@ -21,29 +23,31 @@ const SELECT = `*,
 
 export default function Dashboard() {
   const { negocio } = useNegocio()
-  const [stats, setStats] = useState<Stats>({ clientes: 0, empleados: 0, servicios: 0, citasHoy: 0, ingresosHoy: 0 })
+  const [stats, setStats] = useState<Stats>({ clientes: 0, citasHoy: 0, ventasHoy: 0, porCobrar: 0, stockBajo: 0 })
   const [agenda, setAgenda] = useState<CitaConRelaciones[]>([])
   const [loading, setLoading] = useState(true)
   const hoy = hoyISO()
 
   useEffect(() => {
     ;(async () => {
-      const [cl, em, se, citas] = await Promise.all([
+      const [cl, citas, factHoy, pend, low] = await Promise.all([
         supabase.from('clientes').select('id', { count: 'exact', head: true }),
-        supabase.from('empleados').select('id', { count: 'exact', head: true }).eq('activo', true),
-        supabase.from('servicios').select('id', { count: 'exact', head: true }).eq('activo', true),
         supabase.from('citas').select(SELECT).eq('fecha', hoy).order('hora_inicio'),
+        supabase.from('facturas').select('total,estado').eq('fecha', hoy),
+        supabase.from('facturas').select('total').eq('estado', 'PENDIENTE'),
+        supabase.from('articulos').select('id', { count: 'exact', head: true }).eq('activo', true).lte('stock', UMBRAL_STOCK),
       ])
       const lista = (citas.data as CitaConRelaciones[]) ?? []
-      const ingresos = lista
-        .filter((c) => c.estado === 'COMPLETADA')
-        .reduce((sum, c) => sum + Number(c.precio), 0)
+      const ventasHoy = (factHoy.data ?? [])
+        .filter((f: any) => f.estado === 'PAGADA')
+        .reduce((s: number, f: any) => s + Number(f.total), 0)
+      const porCobrar = (pend.data ?? []).reduce((s: number, f: any) => s + Number(f.total), 0)
       setStats({
         clientes: cl.count ?? 0,
-        empleados: em.count ?? 0,
-        servicios: se.count ?? 0,
         citasHoy: lista.length,
-        ingresosHoy: ingresos,
+        ventasHoy,
+        porCobrar,
+        stockBajo: low.count ?? 0,
       })
       setAgenda(lista)
       setLoading(false)
@@ -51,11 +55,11 @@ export default function Dashboard() {
   }, [hoy])
 
   const tarjetas = [
+    { label: 'Ventas de hoy', valor: money(stats.ventasHoy), icon: TrendingUp, to: '/caja', color: 'text-emerald-600 bg-emerald-50' },
+    { label: 'Por cobrar', valor: money(stats.porCobrar), icon: HandCoins, to: '/caja', color: 'text-amber-600 bg-amber-50' },
     { label: 'Citas hoy', valor: stats.citasHoy, icon: CalendarDays, to: '/citas', color: 'text-brand-600 bg-brand-50' },
-    { label: 'Ingresos hoy', valor: money(stats.ingresosHoy), icon: TrendingUp, to: '/citas', color: 'text-emerald-600 bg-emerald-50' },
     { label: 'Clientes', valor: stats.clientes, icon: Users, to: '/clientes', color: 'text-sky-600 bg-sky-50' },
-    { label: 'Servicios', valor: stats.servicios, icon: Scissors, to: '/servicios', color: 'text-amber-600 bg-amber-50' },
-    { label: 'Empleados', valor: stats.empleados, icon: UserCog, to: '/empleados', color: 'text-fuchsia-600 bg-fuchsia-50' },
+    { label: 'Stock bajo', valor: stats.stockBajo, icon: PackageX, to: '/articulos', color: stats.stockBajo > 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-500 bg-slate-100' },
   ]
 
   return (
@@ -84,6 +88,13 @@ export default function Dashboard() {
           </Link>
         ))}
       </div>
+
+      {stats.stockBajo > 0 && (
+        <Link to="/articulos" className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100">
+          <PackageX size={20} />
+          <span><strong>{stats.stockBajo}</strong> artículo(s) con stock bajo (≤ {UMBRAL_STOCK}). Toca para revisar el inventario.</span>
+        </Link>
+      )}
 
       <div className="card">
         <div className="mb-4 flex items-center justify-between">

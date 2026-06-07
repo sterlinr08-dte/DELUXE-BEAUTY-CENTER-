@@ -143,7 +143,9 @@ export default function Articulos() {
                   <td className="px-5 py-3 text-right text-slate-500">{money(a.costo)}</td>
                   <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(a.precio)}</td>
                   <td className="px-5 py-3 text-right">
-                    <span className={`badge ${Number(a.stock) > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{a.stock}</span>
+                    <span className={`badge ${Number(a.stock) <= 0 ? 'bg-rose-50 text-rose-700' : Number(a.stock) <= 5 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                      {Number(a.stock) <= 0 ? 'Agotado' : a.stock}
+                    </span>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
