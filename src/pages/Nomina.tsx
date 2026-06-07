@@ -35,6 +35,12 @@ export default function Nomina() {
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
 
+  // Resumen de comisión: servicios/facturas realizados por el empleado en un rango
+  const [comDesde, setComDesde] = useState(hoyISO().slice(0, 7) + '-01')
+  const [comHasta, setComHasta] = useState(hoyISO())
+  const [comItems, setComItems] = useState<any[]>([])
+  const [comLoading, setComLoading] = useState(false)
+
   async function cargar() {
     setLoading(true)
     const { data } = await supabase.from('pagos_empleados').select('*').order('fecha', { ascending: false })
@@ -51,6 +57,38 @@ export default function Nomina() {
     cargar()
     cargarEmpleados()
   }, [])
+
+  // Carga los servicios realizados por el empleado (facturas pagadas) en el rango
+  useEffect(() => {
+    if (!open || !form.empleado_id) {
+      setComItems([])
+      return
+    }
+    let cancel = false
+    ;(async () => {
+      setComLoading(true)
+      const { data } = await supabase
+        .from('factura_items')
+        .select('descripcion,cantidad,importe, facturas!inner(numero,fecha,estado)')
+        .eq('empleado_id', form.empleado_id)
+        .eq('facturas.estado', 'PAGADA')
+        .gte('facturas.fecha', comDesde)
+        .lte('facturas.fecha', comHasta)
+        .order('fecha', { foreignTable: 'facturas', ascending: true })
+      if (!cancel) {
+        setComItems(data ?? [])
+        setComLoading(false)
+      }
+    })()
+    return () => {
+      cancel = true
+    }
+  }, [open, form.empleado_id, comDesde, comHasta])
+
+  const empSel = empleados.find((e) => e.id === form.empleado_id)
+  const comTotal = comItems.reduce((s, it) => s + Number(it.importe), 0)
+  const comPct = Number(empSel?.comision_pct ?? 0)
+  const comMonto = Math.round((comTotal * comPct) / 100)
 
   const totalMes = items
     .filter((p) => p.fecha.slice(0, 7) === hoyISO().slice(0, 7))
@@ -201,6 +239,58 @@ export default function Nomina() {
               <input className="input" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} placeholder="Ej: 1ra quincena junio" />
             </div>
           </div>
+          {form.empleado_id && (
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <label className="label !mb-0">Servicios realizados (para comisión)</label>
+                <span className="text-xs text-slate-500">Comisión: {comPct}%</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-xs text-slate-400">Desde</span>
+                  <input type="date" className="input" value={comDesde} onChange={(e) => setComDesde(e.target.value)} />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400">Hasta</span>
+                  <input type="date" className="input" value={comHasta} onChange={(e) => setComHasta(e.target.value)} />
+                </div>
+              </div>
+
+              {comLoading ? (
+                <p className="mt-2 text-sm text-slate-500">Calculando…</p>
+              ) : comItems.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-500">No realizó servicios pagados en este rango.</p>
+              ) : (
+                <>
+                  <div className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-white/70">
+                    <table className="w-full text-xs">
+                      <tbody className="divide-y divide-slate-100">
+                        {comItems.map((it, idx) => (
+                          <tr key={idx}>
+                            <td className="px-2 py-1 text-slate-400">{fechaCorta(it.facturas?.fecha)} · #{it.facturas?.numero}</td>
+                            <td className="px-2 py-1 text-slate-700">{it.descripcion}{it.cantidad > 1 ? ` ×${it.cantidad}` : ''}</td>
+                            <td className="px-2 py-1 text-right font-medium text-slate-700">{money(it.importe)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-2 space-y-0.5 text-sm">
+                    <div className="flex justify-between text-slate-600"><span>{comItems.length} servicio(s) · ventas</span><span>{money(comTotal)}</span></div>
+                    <div className="flex justify-between font-semibold text-emerald-700"><span>Comisión ({comPct}%)</span><span>{money(comMonto)}</span></div>
+                  </div>
+                  <button
+                    className="btn-ghost mt-2 w-full"
+                    onClick={() => setForm((f) => ({ ...f, tipo: 'COMISION', monto: comMonto, periodo: f.periodo || `${comDesde} a ${comHasta}` }))}
+                  >
+                    Usar comisión como monto ({money(comMonto)})
+                  </button>
+                  <p className="mt-1 text-xs text-slate-400">Para un incentivo/bono extra, cambia el tipo a BONO y ajusta el monto.</p>
+                </>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="label">Método de pago</label>
             <select className="input" value={form.metodo_pago} onChange={(e) => setForm({ ...form, metodo_pago: e.target.value })}>
