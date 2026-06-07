@@ -5,6 +5,11 @@ import Citas from './pages/Citas'
 import Clientes from './pages/Clientes'
 import Servicios from './pages/Servicios'
 import Empleados from './pages/Empleados'
+import Facturacion from './pages/Facturacion'
+import Compras from './pages/Compras'
+import Gastos from './pages/Gastos'
+import Nomina from './pages/Nomina'
+import Contabilidad from './pages/Contabilidad'
 import Login from './pages/Login'
 import { useAuth } from './lib/auth'
 
@@ -32,6 +37,11 @@ export default function App() {
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/servicios" element={<Servicios />} />
             <Route path="/empleados" element={<Empleados />} />
+            <Route path="/facturacion" element={<Facturacion />} />
+            <Route path="/compras" element={<Compras />} />
+            <Route path="/gastos" element={<Gastos />} />
+            <Route path="/nomina" element={<Nomina />} />
+            <Route path="/contabilidad" element={<Contabilidad />} />
           </Routes>
         </div>
       </main>

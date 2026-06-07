@@ -1,0 +1,192 @@
+import { useEffect, useState } from 'react'
+import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { Gasto } from '../types'
+import { money, fechaCorta, hoyISO } from '../lib/format'
+import { METODOS_PAGO, CATEGORIAS_GASTO } from '../lib/constants'
+import PageHeader from '../components/PageHeader'
+import Modal from '../components/Modal'
+
+const vacio = {
+  fecha: hoyISO(),
+  categoria: 'General',
+  concepto: '',
+  beneficiario: '',
+  monto: 0,
+  metodo_pago: 'Efectivo',
+  notas: '',
+}
+
+export default function Gastos() {
+  const [items, setItems] = useState<Gasto[]>([])
+  const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [form, setForm] = useState(vacio)
+  const [saving, setSaving] = useState(false)
+
+  async function cargar() {
+    setLoading(true)
+    const { data } = await supabase.from('gastos').select('*').order('fecha', { ascending: false })
+    setItems(data ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  const totalMes = items
+    .filter((g) => g.fecha.slice(0, 7) === hoyISO().slice(0, 7))
+    .reduce((s, g) => s + Number(g.monto), 0)
+
+  function abrirNuevo() {
+    setEditId(null)
+    setForm(vacio)
+    setOpen(true)
+  }
+
+  function abrirEditar(g: Gasto) {
+    setEditId(g.id)
+    setForm({
+      fecha: g.fecha,
+      categoria: g.categoria,
+      concepto: g.concepto,
+      beneficiario: g.beneficiario ?? '',
+      monto: Number(g.monto),
+      metodo_pago: g.metodo_pago ?? 'Efectivo',
+      notas: g.notas ?? '',
+    })
+    setOpen(true)
+  }
+
+  async function guardar() {
+    if (!form.concepto.trim()) return alert('El concepto es obligatorio')
+    if (form.monto <= 0) return alert('El monto debe ser mayor que 0')
+    setSaving(true)
+    const payload = { ...form, beneficiario: form.beneficiario || null, notas: form.notas || null }
+    const { error } = editId
+      ? await supabase.from('gastos').update(payload).eq('id', editId)
+      : await supabase.from('gastos').insert(payload)
+    setSaving(false)
+    if (error) return alert('Error al guardar: ' + error.message)
+    setOpen(false)
+    cargar()
+  }
+
+  async function eliminar(g: Gasto) {
+    if (!confirm(`¿Eliminar el gasto "${g.concepto}"?`)) return
+    const { error } = await supabase.from('gastos').delete().eq('id', g.id)
+    if (error) return alert('Error al eliminar: ' + error.message)
+    cargar()
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Gastos"
+        subtitle={`Gastos de este mes: ${money(totalMes)}`}
+        action={
+          <button className="btn-primary" onClick={abrirNuevo}>
+            <Plus size={16} /> Nuevo gasto
+          </button>
+        }
+      />
+
+      {loading ? (
+        <p className="text-slate-500">Cargando…</p>
+      ) : items.length === 0 ? (
+        <div className="card flex flex-col items-center gap-3 py-12 text-center">
+          <Wallet className="text-brand-300" size={40} />
+          <p className="text-slate-500">Aún no hay gastos registrados.</p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
+          <table className="min-w-full divide-y divide-slate-100 text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Fecha</th>
+                <th className="px-5 py-3">Concepto</th>
+                <th className="px-5 py-3">Categoría</th>
+                <th className="px-5 py-3">Pago</th>
+                <th className="px-5 py-3 text-right">Monto</th>
+                <th className="px-5 py-3"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {items.map((g) => (
+                <tr key={g.id}>
+                  <td className="px-5 py-3 text-slate-600">{fechaCorta(g.fecha)}</td>
+                  <td className="px-5 py-3">
+                    <p className="font-medium text-slate-800">{g.concepto}</p>
+                    {g.beneficiario && <p className="text-xs text-slate-400">{g.beneficiario}</p>}
+                  </td>
+                  <td className="px-5 py-3"><span className="badge bg-slate-100 text-slate-600">{g.categoria}</span></td>
+                  <td className="px-5 py-3 text-slate-600">{g.metodo_pago}</td>
+                  <td className="px-5 py-3 text-right font-semibold text-rose-600">{money(g.monto)}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => abrirEditar(g)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                      <button onClick={() => eliminar(g)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal
+        open={open}
+        title={editId ? 'Editar gasto' : 'Nuevo gasto'}
+        onClose={() => setOpen(false)}
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
+            <button className="btn-primary" onClick={guardar} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Fecha</label>
+              <input type="date" className="input" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Categoría</label>
+              <select className="input" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}>
+                {CATEGORIAS_GASTO.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Concepto</label>
+            <input className="input" value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} placeholder="Pago de luz" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Beneficiario</label>
+              <input className="input" value={form.beneficiario} onChange={(e) => setForm({ ...form, beneficiario: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Monto (RD$)</label>
+              <input type="number" min={0} step={50} className="input" value={form.monto} onChange={(e) => setForm({ ...form, monto: Number(e.target.value) })} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Método de pago</label>
+            <select className="input" value={form.metodo_pago} onChange={(e) => setForm({ ...form, metodo_pago: e.target.value })}>
+              {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Notas</label>
+            <textarea className="input" rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}
