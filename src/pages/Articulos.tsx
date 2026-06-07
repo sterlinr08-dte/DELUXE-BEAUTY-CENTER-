@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Package } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Plus, Pencil, Trash2, Package, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Articulo } from '../types'
 import { money } from '../lib/format'
@@ -16,10 +16,11 @@ const vacio = {
   activo: true,
 }
 
-const categorias = ['Cabello', 'Uñas', 'Facial', 'Maquillaje', 'General', 'Otros']
+const categorias = ['Cabello', 'Uñas', 'Facial', 'Maquillaje', 'Bebidas', 'Cafetería', 'General', 'Otros']
 
 export default function Articulos() {
   const [items, setItems] = useState<Articulo[]>([])
+  const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -36,6 +37,17 @@ export default function Articulos() {
   useEffect(() => {
     cargar()
   }, [])
+
+  const filtrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase()
+    if (!q) return items
+    return items.filter(
+      (a) =>
+        a.nombre.toLowerCase().includes(q) ||
+        a.categoria.toLowerCase().includes(q) ||
+        String(a.codigo).includes(q),
+    )
+  }, [items, busqueda])
 
   function abrirNuevo() {
     setEditId(null)
@@ -88,12 +100,22 @@ export default function Articulos() {
         }
       />
 
+      <div className="relative mb-4 max-w-sm">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          className="input pl-9"
+          placeholder="Buscar por nombre, categoría o código…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </div>
+
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
-      ) : items.length === 0 ? (
+      ) : filtrados.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Package className="text-brand-300" size={40} />
-          <p className="text-slate-500">Aún no hay artículos.</p>
+          <p className="text-slate-500">{items.length === 0 ? 'Aún no hay artículos.' : 'No hay artículos que coincidan.'}</p>
         </div>
       ) : (
         <div className="overflow-x-auto panel-3d">
@@ -110,7 +132,7 @@ export default function Articulos() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {items.map((a) => (
+              {filtrados.map((a) => (
                 <tr key={a.id} className={a.activo ? '' : 'opacity-50'}>
                   <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{a.codigo}</td>
                   <td className="px-5 py-3">

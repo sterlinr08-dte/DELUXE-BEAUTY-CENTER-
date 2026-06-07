@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Receipt, Printer, Ban, X } from 'lucide-react'
+import { Plus, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
@@ -50,6 +50,38 @@ export default function Facturacion() {
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
   const [lineas, setLineas] = useState<LineaTmp[]>([{ ...lineaVacia }])
+  const [buscarItem, setBuscarItem] = useState('')
+
+  // Resultados del buscador (servicios + artículos)
+  const q = buscarItem.trim().toLowerCase()
+  const resultados = q
+    ? [
+        ...servicios
+          .filter((s) => s.nombre.toLowerCase().includes(q) || (s.categoria ?? '').toLowerCase().includes(q))
+          .map((s) => ({ tipo: 's' as const, id: s.id, nombre: s.nombre, precio: Number(s.precio), categoria: s.categoria })),
+        ...articulos
+          .filter((a) => a.nombre.toLowerCase().includes(q) || a.categoria.toLowerCase().includes(q) || String(a.codigo).includes(q))
+          .map((a) => ({ tipo: 'a' as const, id: a.id, nombre: a.nombre, precio: Number(a.precio), categoria: a.categoria })),
+      ].slice(0, 8)
+    : []
+
+  function agregarDesdeBusqueda(r: { tipo: 's' | 'a'; id: string; nombre: string; precio: number }) {
+    const linea: LineaTmp = {
+      servicio_id: r.tipo === 's' ? r.id : '',
+      articulo_id: r.tipo === 'a' ? r.id : '',
+      descripcion: r.nombre,
+      cantidad: 1,
+      precio_unit: r.precio,
+    }
+    setLineas((prev) => {
+      const last = prev[prev.length - 1]
+      if (last && !last.descripcion && !last.servicio_id && !last.articulo_id) {
+        return [...prev.slice(0, -1), linea]
+      }
+      return [...prev, linea]
+    })
+    setBuscarItem('')
+  }
 
   async function cargar() {
     setLoading(true)
@@ -88,6 +120,7 @@ export default function Facturacion() {
     setDescuento(0)
     setNotas('')
     setLineas([{ ...lineaVacia }])
+    setBuscarItem('')
     setOpen(true)
   }
 
@@ -278,6 +311,43 @@ export default function Facturacion() {
               <input className="input" value={clienteNombre} onChange={(e) => setClienteNombre(e.target.value)} placeholder="Opcional" />
             </div>
           )}
+
+          <div>
+            <label className="label">Buscar servicio o artículo</label>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder="Ej: corte, cerveza, shampoo… (escribe para agregar)"
+                value={buscarItem}
+                onChange={(e) => setBuscarItem(e.target.value)}
+              />
+              {q && (
+                <div className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-pink-100 bg-white shadow-card">
+                  {resultados.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-slate-400">Sin coincidencias</p>
+                  ) : (
+                    resultados.map((r) => (
+                      <button
+                        key={`${r.tipo}:${r.id}`}
+                        type="button"
+                        onClick={() => agregarDesdeBusqueda(r)}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-pink-50"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className={`badge ${r.tipo === 's' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
+                            {r.tipo === 's' ? 'Servicio' : 'Artículo'}
+                          </span>
+                          <span className="truncate text-slate-700">{r.nombre}</span>
+                        </span>
+                        <span className="shrink-0 font-semibold text-slate-800">{money(r.precio)}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
           <div>
             <label className="label">Renglones</label>
