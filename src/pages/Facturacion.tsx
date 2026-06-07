@@ -3,8 +3,9 @@ import { Plus, Trash2, Receipt, Printer, Ban, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
-import { METODOS_PAGO, ITBIS_RATE, NEGOCIO } from '../lib/constants'
+import { METODOS_PAGO, ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -26,6 +27,7 @@ const estadoBadge: Record<EstadoFactura, string> = {
 
 export default function Facturacion() {
   const { puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const puedeAnular = puedeAccion('facturas.anular')
   const puedeEliminar = puedeAccion('facturas.eliminar')
 
@@ -376,11 +378,11 @@ export default function Facturacion() {
         {facturaVista && (
           <div id="factura-print" className="print-area space-y-3">
             <div className="text-center">
-              <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-2 h-20 rounded-lg bg-black object-contain" />
-              <p className="font-display text-xl font-bold text-brand-800">{NEGOCIO.nombre}</p>
-              {NEGOCIO.rnc && <p className="text-xs text-slate-500">RNC: {NEGOCIO.rnc}</p>}
-              <p className="text-xs text-slate-500">{NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
-              <p className="text-xs text-slate-500">Tel {NEGOCIO.telefono} · WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
+              <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-2 h-20 rounded-lg bg-black object-contain" />
+              <p className="font-display text-xl font-bold text-brand-800">{negocio.nombre}</p>
+              {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+              <p className="text-xs text-slate-500">{negocio.direccion} · {negocio.referencia}</p>
+              <p className="text-xs text-slate-500">Tel {negocio.telefono} · WhatsApp {negocio.whatsapp} · {negocio.instagram}</p>
               <p className="mt-1 text-xs font-medium text-slate-400">Factura #{facturaVista.numero} · {fechaCorta(facturaVista.fecha)}</p>
             </div>
             <div className="text-sm text-slate-600">

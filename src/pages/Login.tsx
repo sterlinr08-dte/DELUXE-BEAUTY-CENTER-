@@ -1,10 +1,12 @@
 import { FormEvent, useState } from 'react'
 import { LogIn, MapPin, Phone, Instagram } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { NEGOCIO, usuarioAEmail } from '../lib/constants'
+import { usuarioAEmail } from '../lib/constants'
+import { useNegocio } from '../lib/negocio'
 
 export default function Login() {
   const { signIn } = useAuth()
+  const { negocio } = useNegocio()
   const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -24,8 +26,8 @@ export default function Login() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="mb-6 flex flex-col items-center text-center">
           <img
-            src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`}
-            alt={NEGOCIO.nombre}
+            src={`${import.meta.env.BASE_URL}${negocio.logo}`}
+            alt={negocio.nombre}
             className="mb-3 w-60 max-w-full rounded-2xl bg-black object-contain shadow-md"
           />
           <p className="mt-1 text-sm text-slate-500">Inicia sesión para administrar el salón</p>
@@ -70,9 +72,9 @@ export default function Login() {
         </form>
 
         <div className="mt-6 space-y-1 border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
-          <p className="flex items-center justify-center gap-1"><MapPin size={12} /> {NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
-          <p className="flex items-center justify-center gap-1"><Phone size={12} /> {NEGOCIO.whatsapp}</p>
-          <p className="flex items-center justify-center gap-1"><Instagram size={12} /> {NEGOCIO.instagram}</p>
+          <p className="flex items-center justify-center gap-1"><MapPin size={12} /> {negocio.direccion} · {negocio.referencia}</p>
+          <p className="flex items-center justify-center gap-1"><Phone size={12} /> {negocio.whatsapp}</p>
+          <p className="flex items-center justify-center gap-1"><Instagram size={12} /> {negocio.instagram}</p>
         </div>
       </div>
     </div>

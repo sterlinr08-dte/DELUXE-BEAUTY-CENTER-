@@ -3,8 +3,9 @@ import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt,
 import { supabase } from '../lib/supabase'
 import { CajaSesion, CajaMovimiento, Factura, FacturaItem } from '../types'
 import { money, fechaHora } from '../lib/format'
-import { METODOS_PAGO, NEGOCIO } from '../lib/constants'
+import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -31,6 +32,7 @@ function desglosePorMetodo(lista: Factura[]) {
 
 export default function Caja() {
   const { perfil, puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const usuario = perfil?.nombre || perfil?.username || 'Usuario'
   const puedeAbrir = puedeAccion('caja.abrir')
   const puedeMover = puedeAccion('caja.movimiento')
@@ -541,10 +543,10 @@ export default function Caja() {
             {/* Recibo imprimible */}
             <div id="recibo-print" className="print-area space-y-2 rounded-xl border border-slate-100 p-3 text-sm">
               <div className="text-center">
-                <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
-                <p className="font-display text-base font-bold text-brand-800">{NEGOCIO.nombre}</p>
-                {NEGOCIO.rnc && <p className="text-xs text-slate-500">RNC: {NEGOCIO.rnc}</p>}
-                <p className="text-xs text-slate-500">Tel/WhatsApp: {NEGOCIO.telefono}</p>
+                <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+                <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
+                {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+                <p className="text-xs text-slate-500">Tel/WhatsApp: {negocio.telefono}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
                 <p className="text-xs text-slate-400">Factura #{cobrarFactura?.numero} · {fechaHora(cobroHora)}</p>
               </div>
@@ -571,8 +573,8 @@ export default function Caja() {
               </div>
               <p className="text-xs text-slate-400">Atendido por: {usuario}</p>
               <div className="border-t pt-1 text-center text-xs text-slate-500">
-                <p>{NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
-                <p>WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
+                <p>{negocio.direccion} · {negocio.referencia}</p>
+                <p>WhatsApp {negocio.whatsapp} · {negocio.instagram}</p>
               </div>
               <p className="text-center text-xs font-medium text-brand-600">¡Gracias por su preferencia! 💕</p>
             </div>
@@ -735,8 +737,8 @@ export default function Caja() {
           return (
             <div className="print-area space-y-3">
               <div className="text-center">
-                <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-2 h-16 rounded-lg bg-black object-contain" />
-                <p className="font-display text-lg font-bold text-brand-800">{NEGOCIO.nombre}</p>
+                <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-2 h-16 rounded-lg bg-black object-contain" />
+                <p className="font-display text-lg font-bold text-brand-800">{negocio.nombre}</p>
                 <p className="text-xs font-medium text-slate-400">Comprobante de cierre de caja #{verCierre.numero}</p>
               </div>
               <div className="text-sm text-slate-600">

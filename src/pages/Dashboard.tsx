@@ -4,7 +4,7 @@ import { CalendarDays, Users, Scissors, UserCog, TrendingUp, Clock } from 'lucid
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones } from '../types'
 import { hora, money, hoyISO, fechaLarga } from '../lib/format'
-import { NEGOCIO } from '../lib/constants'
+import { useNegocio } from '../lib/negocio'
 
 interface Stats {
   clientes: number
@@ -20,6 +20,7 @@ const SELECT = `*,
   servicio:servicios(id,nombre,precio,duracion_min)`
 
 export default function Dashboard() {
+  const { negocio } = useNegocio()
   const [stats, setStats] = useState<Stats>({ clientes: 0, empleados: 0, servicios: 0, citasHoy: 0, ingresosHoy: 0 })
   const [agenda, setAgenda] = useState<CitaConRelaciones[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,14 +62,14 @@ export default function Dashboard() {
     <div>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-[#15060f] via-brand-800 to-brand-600 px-7 py-8 text-white ring-1 ring-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_24px_48px_-14px_rgba(236,72,153,0.55)]">
         <div>
-          <p className="text-sm uppercase tracking-[0.25em] text-gold-400">{NEGOCIO.nombre}</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-gold-400">{negocio.nombre}</p>
           <h1 className="mt-1 font-display text-3xl font-bold">Bienvenida 💅</h1>
           <p className="mt-2 text-brand-100">{fechaLarga(hoy)}</p>
         </div>
         <div className="text-sm text-brand-100">
-          <p>📍 {NEGOCIO.direccion}</p>
-          <p>📱 {NEGOCIO.whatsapp}</p>
-          <p>📷 {NEGOCIO.instagram}</p>
+          <p>📍 {negocio.direccion}</p>
+          <p>📱 {negocio.whatsapp}</p>
+          <p>📷 {negocio.instagram}</p>
         </div>
       </div>
 

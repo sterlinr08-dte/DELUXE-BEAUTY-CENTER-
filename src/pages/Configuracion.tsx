@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado } from '../types'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -20,11 +21,16 @@ interface UsuarioRow {
 
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
-  const [tab, setTab] = useState<'usuarios' | 'roles'>('usuarios')
+  const { recargarNegocio } = useNegocio()
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'negocio'>('usuarios')
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [loading, setLoading] = useState(true)
+
+  // datos del negocio
+  const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '' })
+  const [savingNeg, setSavingNeg] = useState(false)
 
   // modal usuario
   const [openU, setOpenU] = useState(false)
@@ -48,7 +54,22 @@ export default function Configuracion() {
     setUsuarios((u.data as any) ?? [])
     setRoles((r.data as any) ?? [])
     setEmpleados((e.data as any) ?? [])
+    const { data: neg } = await supabase.from('ajustes_negocio').select('*').maybeSingle()
+    if (neg) setFormNeg({
+      nombre: neg.nombre ?? '', direccion: neg.direccion ?? '', referencia: neg.referencia ?? '',
+      telefono: neg.telefono ?? '', whatsapp: neg.whatsapp ?? '', instagram: neg.instagram ?? '', rnc: neg.rnc ?? '',
+    })
     setLoading(false)
+  }
+
+  async function guardarNegocio() {
+    if (!formNeg.nombre.trim()) return alert('El nombre del negocio es obligatorio')
+    setSavingNeg(true)
+    const { error } = await supabase.from('ajustes_negocio').update({ ...formNeg, updated_at: new Date().toISOString() }).eq('id', true)
+    setSavingNeg(false)
+    if (error) return alert('Error: ' + error.message)
+    await recargarNegocio()
+    alert('Datos del negocio actualizados ✓')
   }
 
   useEffect(() => {
@@ -152,6 +173,9 @@ export default function Configuracion() {
         <button onClick={() => setTab('roles')} className={tab === 'roles' ? 'btn-primary' : 'btn-ghost'}>
           <ShieldCheck size={16} /> Roles y permisos
         </button>
+        <button onClick={() => setTab('negocio')} className={tab === 'negocio' ? 'btn-primary' : 'btn-ghost'}>
+          <Store size={16} /> Negocio
+        </button>
       </div>
 
       {loading ? (
@@ -197,7 +221,7 @@ export default function Configuracion() {
             </table>
           </div>
         </div>
-      ) : (
+      ) : tab === 'roles' ? (
         <div>
           <div className="mb-4 flex justify-end">
             <button className="btn-primary" onClick={nuevoRol}>
@@ -228,6 +252,47 @@ export default function Configuracion() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-2xl">
+          <div className="card space-y-4">
+            <div>
+              <label className="label">Nombre del negocio</label>
+              <input className="input" value={formNeg.nombre} onChange={(e) => setFormNeg({ ...formNeg, nombre: e.target.value })} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">RNC</label>
+                <input className="input" value={formNeg.rnc} onChange={(e) => setFormNeg({ ...formNeg, rnc: e.target.value })} placeholder="Aparece en los tickets" />
+              </div>
+              <div>
+                <label className="label">Teléfono</label>
+                <input className="input" value={formNeg.telefono} onChange={(e) => setFormNeg({ ...formNeg, telefono: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">WhatsApp</label>
+                <input className="input" value={formNeg.whatsapp} onChange={(e) => setFormNeg({ ...formNeg, whatsapp: e.target.value })} />
+              </div>
+              <div>
+                <label className="label">Instagram</label>
+                <input className="input" value={formNeg.instagram} onChange={(e) => setFormNeg({ ...formNeg, instagram: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="label">Dirección</label>
+              <input className="input" value={formNeg.direccion} onChange={(e) => setFormNeg({ ...formNeg, direccion: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Referencia</label>
+              <input className="input" value={formNeg.referencia} onChange={(e) => setFormNeg({ ...formNeg, referencia: e.target.value })} placeholder="Ej: Frente a Banco Popular" />
+            </div>
+            <p className="text-xs text-slate-400">Estos datos aparecen en los tickets de cobro, facturas, comprobantes de cierre, el panel y el inicio de sesión.</p>
+            <div className="flex justify-end">
+              <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar cambios'}</button>
+            </div>
           </div>
         </div>
       )}
