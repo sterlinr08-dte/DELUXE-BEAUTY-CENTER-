@@ -12,8 +12,10 @@ export const NEGOCIO = {
   nombre: 'DeluXe Beauty Center',
   direccion: 'Av. Duarte #180, 2do nivel',
   referencia: 'Frente a Banco Popular',
+  telefono: '809-354-4083',
   whatsapp: '809-354-4083',
   instagram: '@centerdeluxebeauty',
+  rnc: '', // Coloca aquí el RNC si aplica (aparece en los tickets)
   logo: 'deluxe-logo.png',
 }
 

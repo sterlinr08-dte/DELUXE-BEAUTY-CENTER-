@@ -543,7 +543,8 @@ export default function Caja() {
               <div className="text-center">
                 <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
                 <p className="font-display text-base font-bold text-brand-800">{NEGOCIO.nombre}</p>
-                <p className="text-xs text-slate-500">{NEGOCIO.direccion}</p>
+                {NEGOCIO.rnc && <p className="text-xs text-slate-500">RNC: {NEGOCIO.rnc}</p>}
+                <p className="text-xs text-slate-500">Tel/WhatsApp: {NEGOCIO.telefono}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
                 <p className="text-xs text-slate-400">Factura #{cobrarFactura?.numero} · {fechaHora(cobroHora)}</p>
               </div>
@@ -569,7 +570,11 @@ export default function Caja() {
                 )}
               </div>
               <p className="text-xs text-slate-400">Atendido por: {usuario}</p>
-              <p className="pt-1 text-center text-xs font-medium text-brand-600">¡Gracias por su preferencia! 💕</p>
+              <div className="border-t pt-1 text-center text-xs text-slate-500">
+                <p>{NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
+                <p>WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
+              </div>
+              <p className="text-center text-xs font-medium text-brand-600">¡Gracias por su preferencia! 💕</p>
             </div>
 
             <div className="flex gap-2 no-print">

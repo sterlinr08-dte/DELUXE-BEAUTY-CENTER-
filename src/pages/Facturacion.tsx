@@ -378,8 +378,9 @@ export default function Facturacion() {
             <div className="text-center">
               <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-2 h-20 rounded-lg bg-black object-contain" />
               <p className="font-display text-xl font-bold text-brand-800">{NEGOCIO.nombre}</p>
+              {NEGOCIO.rnc && <p className="text-xs text-slate-500">RNC: {NEGOCIO.rnc}</p>}
               <p className="text-xs text-slate-500">{NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
-              <p className="text-xs text-slate-500">WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
+              <p className="text-xs text-slate-500">Tel {NEGOCIO.telefono} · WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
               <p className="mt-1 text-xs font-medium text-slate-400">Factura #{facturaVista.numero} · {fechaCorta(facturaVista.fecha)}</p>
             </div>
             <div className="text-sm text-slate-600">
