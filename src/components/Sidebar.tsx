@@ -5,7 +5,6 @@ import {
   Scissors,
   UserCog,
   LayoutDashboard,
-  Sparkles,
   LogOut,
   Receipt,
   ShoppingCart,
@@ -67,17 +66,13 @@ export default function Sidebar({ open, onClose }: Props) {
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400/30 to-gold-600/10 ring-1 ring-gold-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_18px_-6px_rgba(212,175,55,0.5)]">
-              <Sparkles className="text-gold-400" size={22} />
-            </div>
-            <div>
-              <p className="font-display text-base font-bold leading-tight text-white">DELUXE</p>
-              <p className="text-xs tracking-[0.2em] text-gold-400">BEAUTY CENTER</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-brand-200 hover:bg-white/10 lg:hidden">
+        <div className="relative px-5 py-6">
+          <img
+            src={`${import.meta.env.BASE_URL}deluxe-logo.png`}
+            alt="DeluXe Beauty Center"
+            className="mx-auto w-44 rounded-2xl ring-1 ring-pink-500/20 shadow-[0_12px_30px_-8px_rgba(236,72,153,0.55)]"
+          />
+          <button onClick={onClose} className="absolute right-3 top-3 rounded-lg p-1 text-brand-200 hover:bg-white/10 lg:hidden">
             <X size={22} />
           </button>
         </div>

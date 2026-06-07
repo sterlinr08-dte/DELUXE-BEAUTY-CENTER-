@@ -1,6 +1,6 @@
 import { useState, ReactElement } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { Menu, Sparkles } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Citas from './pages/Citas'
@@ -47,14 +47,15 @@ export default function App() {
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-          <button onClick={() => setMenuOpen(true)} className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100" aria-label="Abrir menú">
+        <header className="flex items-center gap-3 border-b border-pink-100 bg-gradient-to-r from-[#0b0710] to-[#160a15] px-4 py-2.5 lg:hidden">
+          <button onClick={() => setMenuOpen(true)} className="rounded-lg p-1.5 text-pink-200 hover:bg-white/10" aria-label="Abrir menú">
             <Menu size={24} />
           </button>
-          <div className="flex items-center gap-2">
-            <Sparkles className="text-brand-600" size={18} />
-            <span className="font-display font-bold text-brand-800">DeluXe Beauty Center</span>
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}deluxe-logo.png`}
+            alt="DeluXe Beauty Center"
+            className="h-10 rounded-lg ring-1 ring-pink-500/20"
+          />
         </header>
 
         <main className="flex-1 overflow-y-auto">
