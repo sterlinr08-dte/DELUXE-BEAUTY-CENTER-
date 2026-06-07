@@ -3,7 +3,7 @@ import { Plus, Trash2, Receipt, Printer, Check, Ban, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
-import { METODOS_PAGO, ITBIS_RATE } from '../lib/constants'
+import { METODOS_PAGO, ITBIS_RATE, NEGOCIO } from '../lib/constants'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -353,8 +353,10 @@ export default function Facturacion() {
         {facturaVista && (
           <div id="factura-print" className="space-y-3">
             <div className="text-center">
-              <p className="font-display text-xl font-bold text-brand-800">DELUXE BEAUTY CENTER</p>
-              <p className="text-xs text-slate-400">Factura #{facturaVista.numero} · {fechaCorta(facturaVista.fecha)}</p>
+              <p className="font-display text-xl font-bold text-brand-800">{NEGOCIO.nombre}</p>
+              <p className="text-xs text-slate-500">{NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
+              <p className="text-xs text-slate-500">WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
+              <p className="mt-1 text-xs font-medium text-slate-400">Factura #{facturaVista.numero} · {fechaCorta(facturaVista.fecha)}</p>
             </div>
             <div className="text-sm text-slate-600">
               <p><span className="font-medium">Cliente:</span> {facturaVista.cliente_nombre}</p>

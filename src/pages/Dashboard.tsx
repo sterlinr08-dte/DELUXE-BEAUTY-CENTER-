@@ -4,6 +4,7 @@ import { CalendarDays, Users, Scissors, UserCog, TrendingUp, Clock } from 'lucid
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones } from '../types'
 import { hora, money, hoyISO, fechaLarga } from '../lib/format'
+import { NEGOCIO } from '../lib/constants'
 
 interface Stats {
   clientes: number
@@ -58,10 +59,17 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8 rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 px-7 py-8 text-white shadow-lg">
-        <p className="text-sm tracking-[0.25em] text-gold-400">DELUXE BEAUTY CENTER</p>
-        <h1 className="mt-1 font-display text-3xl font-bold">Bienvenida 💅</h1>
-        <p className="mt-2 text-brand-100">{fechaLarga(hoy)}</p>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 px-7 py-8 text-white shadow-lg">
+        <div>
+          <p className="text-sm uppercase tracking-[0.25em] text-gold-400">{NEGOCIO.nombre}</p>
+          <h1 className="mt-1 font-display text-3xl font-bold">Bienvenida 💅</h1>
+          <p className="mt-2 text-brand-100">{fechaLarga(hoy)}</p>
+        </div>
+        <div className="text-sm text-brand-100">
+          <p>📍 {NEGOCIO.direccion}</p>
+          <p>📱 {NEGOCIO.whatsapp}</p>
+          <p>📷 {NEGOCIO.instagram}</p>
+        </div>
       </div>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
