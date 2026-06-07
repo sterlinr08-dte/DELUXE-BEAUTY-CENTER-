@@ -33,6 +33,7 @@ export interface Rol {
 export interface Perfil {
   id: string
   nombre: string | null
+  username: string | null
   email: string | null
   rol_key: string | null
   activo: boolean

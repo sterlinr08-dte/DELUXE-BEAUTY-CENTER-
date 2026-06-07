@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!data) {
       // Usuario sin perfil asignado: acceso mínimo
-      setPerfil({ id: userId, nombre: null, email: null, rol_key: null, activo: true, permisos: ['panel'], es_admin: false })
+      setPerfil({ id: userId, nombre: null, username: null, email: null, rol_key: null, activo: true, permisos: ['panel'], es_admin: false })
       return
     }
     const rol = (data as any).roles
@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPerfil({
       id: data.id,
       nombre: data.nombre,
+      username: (data as any).username ?? null,
       email: data.email,
       rol_key: data.rol_key,
       activo: data.activo,

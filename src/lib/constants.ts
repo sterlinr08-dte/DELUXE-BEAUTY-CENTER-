@@ -1,5 +1,12 @@
 // Constantes compartidas del sistema
 
+// Login por nombre de usuario: internamente se usa un correo "<usuario>@deluxe.local"
+export const DOMINIO_USUARIO = '@deluxe.local'
+export function usuarioAEmail(usuario: string): string {
+  return usuario.trim().toLowerCase() + DOMINIO_USUARIO
+}
+
+
 // Datos del negocio (aparecen en facturas, login y panel)
 export const NEGOCIO = {
   nombre: 'DeluXe Beauty Center',

@@ -1,11 +1,11 @@
 import { FormEvent, useState } from 'react'
 import { LogIn, MapPin, Phone, Instagram } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { NEGOCIO } from '../lib/constants'
+import { NEGOCIO, usuarioAEmail } from '../lib/constants'
 
 export default function Login() {
   const { signIn } = useAuth()
-  const [email, setEmail] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -14,9 +14,9 @@ export default function Login() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const { error } = await signIn(email.trim(), password)
+    const { error } = await signIn(usuarioAEmail(usuario), password)
     setLoading(false)
-    if (error) setError('Credenciales incorrectas. Verifica tu correo y contraseña.')
+    if (error) setError('Usuario o contraseña incorrectos. Verifica e intenta de nuevo.')
   }
 
   return (
@@ -33,14 +33,16 @@ export default function Login() {
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="label">Correo electrónico</label>
+            <label className="label">Usuario</label>
             <input
-              type="email"
-              className="input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tucorreo@ejemplo.com"
-              autoComplete="email"
+              type="text"
+              className="input lowercase"
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
+              placeholder="usuario"
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="username"
               required
             />
           </div>

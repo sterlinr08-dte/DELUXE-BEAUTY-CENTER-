@@ -9,6 +9,7 @@ import Modal from '../components/Modal'
 interface UsuarioRow {
   id: string
   nombre: string | null
+  username: string | null
   email: string | null
   rol_key: string | null
   activo: boolean
@@ -25,7 +26,7 @@ export default function Configuracion() {
   // modal usuario
   const [openU, setOpenU] = useState(false)
   const [editU, setEditU] = useState<UsuarioRow | null>(null)
-  const [formU, setFormU] = useState({ nombre: '', email: '', password: '', rol_key: '', activo: true })
+  const [formU, setFormU] = useState({ nombre: '', usuario: '', password: '', rol_key: '', activo: true })
   const [savingU, setSavingU] = useState(false)
 
   // modal rol
@@ -37,7 +38,7 @@ export default function Configuracion() {
   async function cargar() {
     setLoading(true)
     const [u, r] = await Promise.all([
-      supabase.from('perfiles').select('id,nombre,email,rol_key,activo, roles(nombre)').order('nombre'),
+      supabase.from('perfiles').select('id,nombre,username,email,rol_key,activo, roles(nombre)').order('nombre'),
       supabase.from('roles').select('*').order('nombre'),
     ])
     setUsuarios((u.data as any) ?? [])
@@ -52,23 +53,23 @@ export default function Configuracion() {
   // ---------- USUARIOS ----------
   function nuevoUsuario() {
     setEditU(null)
-    setFormU({ nombre: '', email: '', password: '', rol_key: roles[0]?.key ?? '', activo: true })
+    setFormU({ nombre: '', usuario: '', password: '', rol_key: roles[0]?.key ?? '', activo: true })
     setOpenU(true)
   }
   function editarUsuario(u: UsuarioRow) {
     setEditU(u)
-    setFormU({ nombre: u.nombre ?? '', email: u.email ?? '', password: '', rol_key: u.rol_key ?? '', activo: u.activo })
+    setFormU({ nombre: u.nombre ?? '', usuario: u.username ?? '', password: '', rol_key: u.rol_key ?? '', activo: u.activo })
     setOpenU(true)
   }
 
   async function guardarUsuario() {
-    if (!editU && (!formU.email || !formU.password)) return alert('Email y contraseña son obligatorios')
+    if (!editU && (!formU.usuario || !formU.password)) return alert('Usuario y contraseña son obligatorios')
     if (!editU && formU.password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres')
     setSavingU(true)
     const accion = editU ? 'actualizar' : 'crear'
     const payload: any = editU
       ? { accion, id: editU.id, nombre: formU.nombre, rol_key: formU.rol_key, activo: formU.activo }
-      : { accion, email: formU.email, password: formU.password, nombre: formU.nombre, rol_key: formU.rol_key }
+      : { accion, username: formU.usuario, password: formU.password, nombre: formU.nombre, rol_key: formU.rol_key }
     if (editU && formU.password) payload.password = formU.password
     const { data, error } = await supabase.functions.invoke('gestionar-usuarios', { body: payload })
     setSavingU(false)
@@ -156,7 +157,7 @@ export default function Configuracion() {
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-3">Nombre</th>
-                  <th className="px-5 py-3">Correo</th>
+                  <th className="px-5 py-3">Usuario</th>
                   <th className="px-5 py-3">Rol</th>
                   <th className="px-5 py-3">Estado</th>
                   <th className="px-5 py-3"></th>
@@ -166,7 +167,7 @@ export default function Configuracion() {
                 {usuarios.map((u) => (
                   <tr key={u.id}>
                     <td className="px-5 py-3 font-medium text-slate-800">{u.nombre || '—'}</td>
-                    <td className="px-5 py-3 text-slate-600">{u.email}</td>
+                    <td className="px-5 py-3 font-mono text-slate-600">{u.username || '—'}</td>
                     <td className="px-5 py-3"><span className="badge bg-brand-50 text-brand-700">{u.roles?.nombre || u.rol_key || '—'}</span></td>
                     <td className="px-5 py-3">
                       <span className={`badge ${u.activo ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
@@ -238,9 +239,9 @@ export default function Configuracion() {
             <input className="input" value={formU.nombre} onChange={(e) => setFormU({ ...formU, nombre: e.target.value })} />
           </div>
           <div>
-            <label className="label">Correo (usuario para iniciar sesión)</label>
-            <input type="email" className="input disabled:bg-slate-100" value={formU.email} disabled={!!editU} onChange={(e) => setFormU({ ...formU, email: e.target.value })} />
-            {editU && <p className="mt-1 text-xs text-slate-400">El correo no se puede cambiar.</p>}
+            <label className="label">Usuario (para iniciar sesión)</label>
+            <input type="text" className="input lowercase disabled:bg-slate-100" value={formU.usuario} disabled={!!editU} autoCapitalize="none" autoCorrect="off" onChange={(e) => setFormU({ ...formU, usuario: e.target.value })} placeholder="ej: maria" />
+            {editU ? <p className="mt-1 text-xs text-slate-400">El usuario no se puede cambiar.</p> : <p className="mt-1 text-xs text-slate-400">Sin espacios. No importa mayúsculas/minúsculas.</p>}
           </div>
           <div>
             <label className="label">{editU ? 'Nueva contraseña (opcional)' : 'Contraseña'}</label>

@@ -1,18 +1,18 @@
 // Edge Function: gestionar-usuarios
-// Crea, actualiza y elimina usuarios (login) — solo accesible por administradores.
+// Crea, actualiza y elimina usuarios (login por nombre de usuario) — solo administradores.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const DOMINIO = '@deluxe.local'
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
-
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  })
+  return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
+}
+function limpiarUsuario(u: string) {
+  return String(u || '').trim().toLowerCase()
 }
 
 Deno.serve(async (req) => {
@@ -29,10 +29,7 @@ Deno.serve(async (req) => {
   if (userErr || !userData?.user) return json({ error: 'No autenticado' }, 401)
 
   const { data: perfil } = await admin
-    .from('perfiles')
-    .select('rol_key, activo, roles(es_admin)')
-    .eq('id', userData.user.id)
-    .single()
+    .from('perfiles').select('rol_key, activo, roles(es_admin)').eq('id', userData.user.id).single()
   const esAdmin = perfil?.activo && (perfil as any)?.roles?.es_admin
   if (!esAdmin) return json({ error: 'Solo un administrador puede gestionar usuarios' }, 403)
 
@@ -42,14 +39,16 @@ Deno.serve(async (req) => {
 
   try {
     if (accion === 'crear') {
-      const { email, password, nombre, rol_key } = body
-      if (!email || !password) return json({ error: 'Email y contraseña son obligatorios' }, 400)
+      const username = limpiarUsuario(body.username)
+      const { password, nombre, rol_key } = body
+      if (!username || !password) return json({ error: 'Usuario y contraseña son obligatorios' }, 400)
+      const email = username + DOMINIO
       const { data: created, error } = await admin.auth.admin.createUser({
-        email, password, email_confirm: true, user_metadata: { nombre },
+        email, password, email_confirm: true, user_metadata: { nombre, username },
       })
-      if (error) return json({ error: error.message }, 400)
+      if (error) return json({ error: error.message.includes('already') ? 'Ese usuario ya existe' : error.message }, 400)
       const { error: pErr } = await admin.from('perfiles').upsert({
-        id: created.user.id, nombre: nombre ?? null, email, rol_key: rol_key ?? null, activo: true,
+        id: created.user.id, nombre: nombre ?? null, username, email, rol_key: rol_key ?? null, activo: true,
       })
       if (pErr) return json({ error: pErr.message }, 400)
       return json({ ok: true, id: created.user.id })
@@ -62,8 +61,7 @@ Deno.serve(async (req) => {
         const { error } = await admin.auth.admin.updateUserById(id, { password })
         if (error) return json({ error: error.message }, 400)
       }
-      const { error: pErr } = await admin.from('perfiles')
-        .update({ nombre, rol_key, activo }).eq('id', id)
+      const { error: pErr } = await admin.from('perfiles').update({ nombre, rol_key, activo }).eq('id', id)
       if (pErr) return json({ error: pErr.message }, 400)
       return json({ ok: true })
     }

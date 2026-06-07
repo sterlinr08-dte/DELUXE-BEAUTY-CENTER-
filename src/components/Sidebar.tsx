@@ -51,7 +51,7 @@ interface Props {
 }
 
 export default function Sidebar({ open, onClose }: Props) {
-  const { session, perfil, signOut, puede } = useAuth()
+  const { perfil, signOut, puede } = useAuth()
   const visibles = grupos
     .map((g) => ({ ...g, links: g.links.filter((l) => puede(l.modulo)) }))
     .filter((g) => g.links.length > 0)
@@ -112,8 +112,8 @@ export default function Sidebar({ open, onClose }: Props) {
           {perfil?.rol_nombre && (
             <p className="px-3 text-xs font-semibold text-gold-400">{perfil.rol_nombre}</p>
           )}
-          {session?.user?.email && (
-            <p className="truncate px-3 text-xs text-brand-300">{session.user.email}</p>
+          {(perfil?.username || perfil?.nombre) && (
+            <p className="truncate px-3 text-xs text-brand-300">{perfil?.nombre || perfil?.username}{perfil?.username ? ` · ${perfil.username}` : ''}</p>
           )}
           <button
             onClick={signOut}
