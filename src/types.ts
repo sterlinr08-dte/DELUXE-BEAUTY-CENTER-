@@ -75,6 +75,8 @@ export interface FacturaItem {
   cantidad: number
   precio_unit: number
   importe: number
+  articulo_id?: string | null
+  empleado?: { nombre: string } | null
 }
 
 export interface Factura {

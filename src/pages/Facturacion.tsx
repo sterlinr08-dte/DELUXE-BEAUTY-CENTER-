@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
+import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
@@ -15,9 +15,10 @@ interface LineaTmp {
   descripcion: string
   cantidad: number
   precio_unit: number
+  empleado_id: string
 }
 
-const lineaVacia: LineaTmp = { servicio_id: '', articulo_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }
+const lineaVacia: LineaTmp = { servicio_id: '', articulo_id: '', descripcion: '', cantidad: 1, precio_unit: 0, empleado_id: '' }
 
 const estadoBadge: Record<EstadoFactura, string> = {
   PENDIENTE: 'bg-amber-50 text-amber-700',
@@ -35,6 +36,7 @@ export default function Facturacion() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [articulos, setArticulos] = useState<Articulo[]>([])
+  const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -49,6 +51,7 @@ export default function Facturacion() {
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
   const [lineas, setLineas] = useState<LineaTmp[]>([{ ...lineaVacia }])
+  const [empleadoDefault, setEmpleadoDefault] = useState('')
   const [buscarItem, setBuscarItem] = useState('')
 
   // Resultados del buscador (servicios + artículos)
@@ -74,6 +77,7 @@ export default function Facturacion() {
       descripcion: r.nombre,
       cantidad: 1,
       precio_unit: r.precio,
+      empleado_id: empleadoDefault,
     }
     setLineas((prev) => {
       const last = prev[prev.length - 1]
@@ -93,14 +97,16 @@ export default function Facturacion() {
   }
 
   async function cargarCatalogos() {
-    const [cl, se, ar] = await Promise.all([
+    const [cl, se, ar, em] = await Promise.all([
       supabase.from('clientes').select('*').order('nombre'),
       supabase.from('servicios').select('*').eq('activo', true).order('nombre'),
       supabase.from('articulos').select('*').eq('activo', true).order('nombre'),
+      supabase.from('empleados').select('*').eq('activo', true).order('nombre'),
     ])
     setClientes(cl.data ?? [])
     setServicios(se.data ?? [])
     setArticulos(ar.data ?? [])
+    setEmpleados(em.data ?? [])
   }
 
   useEffect(() => {
@@ -121,6 +127,7 @@ export default function Facturacion() {
     setDescuento(0)
     setNotas('')
     setLineas([{ ...lineaVacia }])
+    setEmpleadoDefault('')
     setBuscarItem('')
     setOpen(true)
   }
@@ -170,6 +177,7 @@ export default function Facturacion() {
       factura_id: factura.id,
       servicio_id: l.servicio_id || null,
       articulo_id: l.articulo_id || null,
+      empleado_id: l.empleado_id || empleadoDefault || null,
       descripcion: l.descripcion,
       cantidad: l.cantidad,
       precio_unit: l.precio_unit,
@@ -224,8 +232,8 @@ export default function Facturacion() {
 
   async function verDetalle(f: Factura) {
     setVerId(f.id)
-    const { data } = await supabase.from('factura_items').select('*').eq('factura_id', f.id)
-    setVerItems(data ?? [])
+    const { data } = await supabase.from('factura_items').select('*, empleado:empleados(nombre)').eq('factura_id', f.id)
+    setVerItems((data as FacturaItem[]) ?? [])
   }
 
   const facturaVista = facturas.find((f) => f.id === verId)
@@ -383,6 +391,26 @@ export default function Facturacion() {
           </div>
 
           <div>
+            <label className="label">Empleado que atiende</label>
+            <select
+              className="input"
+              value={empleadoDefault}
+              onChange={(e) => {
+                const val = e.target.value
+                // Aplica a los renglones que aún no tengan empleado asignado
+                setLineas((prev) => prev.map((l) => (l.empleado_id ? l : { ...l, empleado_id: val })))
+                setEmpleadoDefault(val)
+              }}
+            >
+              <option value="">— Sin asignar —</option>
+              {empleados.map((e) => (
+                <option key={e.id} value={e.id}>{e.nombre}{e.puesto ? ` (${e.puesto})` : ''}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">Se aplica a los renglones; si hay varios servicios puedes cambiar quién hizo cada uno abajo.</p>
+          </div>
+
+          <div>
             <label className="label">Renglones</label>
             <div className="space-y-2">
               {lineas.map((l, i) => (
@@ -417,6 +445,15 @@ export default function Facturacion() {
                     value={l.descripcion}
                     onChange={(e) => setLinea(i, { descripcion: e.target.value })}
                   />
+                  <div className="mt-2">
+                    <span className="text-xs text-slate-400">Realizado por</span>
+                    <select className="input" value={l.empleado_id} onChange={(e) => setLinea(i, { empleado_id: e.target.value })}>
+                      <option value="">— Sin asignar —</option>
+                      {empleados.map((e) => (
+                        <option key={e.id} value={e.id}>{e.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     <div>
                       <span className="text-xs text-slate-400">Cant.</span>
@@ -491,7 +528,10 @@ export default function Facturacion() {
               <tbody>
                 {verItems.map((it) => (
                   <tr key={it.id} className="border-b border-slate-50">
-                    <td className="py-1">{it.descripcion}</td>
+                    <td className="py-1">
+                      {it.descripcion}
+                      {(it as any).empleado?.nombre && <span className="block text-xs text-slate-400">por {(it as any).empleado.nombre}</span>}
+                    </td>
                     <td className="py-1 text-center">{it.cantidad}</td>
                     <td className="py-1 text-right">{money(it.importe)}</td>
                   </tr>
