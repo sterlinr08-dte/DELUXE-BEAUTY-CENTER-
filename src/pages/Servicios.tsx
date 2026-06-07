@@ -96,7 +96,7 @@ export default function Servicios() {
           <p className="text-slate-500">Aún no hay servicios. Agrega el primero.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-slate-100">
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-pink-100/70">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
