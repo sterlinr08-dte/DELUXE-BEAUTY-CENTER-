@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Receipt, Printer, Check, Ban, X } from 'lucide-react'
+import { Plus, Trash2, Receipt, Printer, Ban, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
@@ -26,7 +26,6 @@ const estadoBadge: Record<EstadoFactura, string> = {
 
 export default function Facturacion() {
   const { puedeAccion } = useAuth()
-  const puedeCobrar = puedeAccion('facturas.cobrar')
   const puedeAnular = puedeAccion('facturas.anular')
   const puedeEliminar = puedeAccion('facturas.eliminar')
 
@@ -216,10 +215,8 @@ export default function Facturacion() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
-                      {f.estado === 'PENDIENTE' && puedeCobrar && (
-                        <button title="Marcar pagada" onClick={() => cambiarEstado(f, 'PAGADA')} className="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600">
-                          <Check size={16} />
-                        </button>
+                      {f.estado === 'PENDIENTE' && (
+                        <span className="badge bg-amber-50 text-amber-600">Se cobra en Caja</span>
                       )}
                       {f.estado !== 'ANULADA' && puedeAnular && (
                         <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600">

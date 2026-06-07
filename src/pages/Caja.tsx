@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt, HandCoins, Printer, FileText } from 'lucide-react'
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt, HandCoins, Printer, FileText, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { CajaSesion, CajaMovimiento, Factura } from '../types'
+import { CajaSesion, CajaMovimiento, Factura, FacturaItem } from '../types'
 import { money, fechaHora } from '../lib/format'
 import { METODOS_PAGO, NEGOCIO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
@@ -10,6 +10,15 @@ import Modal from '../components/Modal'
 
 // Denominaciones de pesos dominicanos (billetes y monedas) para el arqueo
 const DENOMS = [2000, 1000, 500, 200, 100, 50, 25, 10, 5, 1]
+
+// Iconos por método de pago para el cobro
+const METODO_ICONO: Record<string, typeof Banknote> = {
+  Efectivo: Banknote,
+  Tarjeta: CreditCard,
+  Transferencia: ArrowLeftRight,
+  PayPal: Wallet,
+  Otro: MoreHorizontal,
+}
 
 // Desglose de cobros por método de pago
 function desglosePorMetodo(lista: Factura[]) {
@@ -41,7 +50,10 @@ export default function Caja() {
   const [movOpen, setMovOpen] = useState(false)
   const [cerrarOpen, setCerrarOpen] = useState(false)
   const [cobrarFactura, setCobrarFactura] = useState<Factura | null>(null)
+  const [cobroItems, setCobroItems] = useState<FacturaItem[]>([])
   const [metodoCobro, setMetodoCobro] = useState('Efectivo')
+  const [efectivoRecibido, setEfectivoRecibido] = useState(0)
+  const [cobroOk, setCobroOk] = useState(false)
 
   // comprobante de cierre
   const [verCierre, setVerCierre] = useState<CajaSesion | null>(null)
@@ -107,6 +119,12 @@ export default function Caja() {
   const porMetodo = desglosePorMetodo(cobros)
   const totalCobrado = cobros.reduce((s, f) => s + Number(f.total), 0)
 
+  // Derivados del cobro en curso (mini-POS)
+  const cobroTotal = Number(cobrarFactura?.total ?? 0)
+  const cobroEsEfectivo = metodoCobro === 'Efectivo'
+  const cobroCambio = efectivoRecibido - cobroTotal
+  const cobroPuede = !cobroEsEfectivo || efectivoRecibido >= cobroTotal
+
   const esperado = (sesion ? Number(sesion.monto_inicial) : 0) + entradas - salidas
   const contado = DENOMS.reduce((s, d) => s + d * (conteo[d] || 0), 0)
   const diferencia = contado - esperado
@@ -149,9 +167,14 @@ export default function Caja() {
     cargar()
   }
 
-  function iniciarCobro(f: Factura) {
+  async function iniciarCobro(f: Factura) {
     setCobrarFactura(f)
     setMetodoCobro('Efectivo')
+    setEfectivoRecibido(0)
+    setCobroOk(false)
+    setCobroItems([])
+    const { data } = await supabase.from('factura_items').select('*').eq('factura_id', f.id)
+    setCobroItems(data ?? [])
   }
 
   async function confirmarCobro() {
@@ -177,8 +200,10 @@ export default function Caja() {
       })
     }
     setSaving(false)
-    setCobrarFactura(null)
+    setCobroOk(true) // muestra confirmación animada
     cargar()
+    // cierra solo tras la animación
+    setTimeout(() => setCobrarFactura(null), 1400)
   }
 
   async function abrirComprobante(s: CajaSesion) {
@@ -490,35 +515,110 @@ export default function Caja() {
         </div>
       </Modal>
 
-      {/* Modal cobrar factura */}
+      {/* Modal cobrar factura (mini-POS) */}
       <Modal
         open={!!cobrarFactura}
-        title={`Cobrar factura #${cobrarFactura?.numero ?? ''}`}
+        title={cobroOk ? 'Cobro realizado' : `Cobrar factura #${cobrarFactura?.numero ?? ''}`}
         onClose={() => setCobrarFactura(null)}
         footer={
-          <>
-            <button className="btn-ghost" onClick={() => setCobrarFactura(null)}>Cancelar</button>
-            <button className="btn-primary" onClick={confirmarCobro} disabled={saving}>{saving ? 'Cobrando…' : `Cobrar ${money(cobrarFactura?.total)}`}</button>
-          </>
+          cobroOk ? null : (
+            <>
+              <button className="btn-ghost" onClick={() => setCobrarFactura(null)}>Cancelar</button>
+              <button className="btn-primary" onClick={confirmarCobro} disabled={saving || !cobroPuede}>
+                {saving ? 'Cobrando…' : `Cobrar ${money(cobroTotal)}`}
+              </button>
+            </>
+          )
         }
       >
-        <div className="space-y-4">
-          <div className="rounded-xl bg-slate-50 p-4 text-sm">
-            <div className="flex justify-between py-1"><span className="text-slate-500">Cliente</span><span className="font-medium">{cobrarFactura?.cliente_nombre ?? 'Cliente'}</span></div>
-            <div className="flex justify-between py-1"><span className="text-slate-500">Total a cobrar</span><span className="font-bold text-slate-900">{money(cobrarFactura?.total)}</span></div>
+        {cobroOk ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <CheckCircle2 className="animate-pop text-emerald-500" size={76} />
+            <p className="text-xl font-bold text-slate-800">¡Cobro registrado!</p>
+            <p className="text-slate-500">Factura #{cobrarFactura?.numero} · {money(cobroTotal)} · {metodoCobro}</p>
+            {cobroEsEfectivo && cobroCambio > 0 && (
+              <div className="mt-1 rounded-xl bg-amber-50 px-4 py-2 text-amber-700">
+                Devuelta al cliente: <span className="font-bold">{money(cobroCambio)}</span>
+              </div>
+            )}
           </div>
-          <div>
-            <label className="label">Método de pago</label>
-            <select className="input" value={metodoCobro} onChange={(e) => setMetodoCobro(e.target.value)}>
-              {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
-            </select>
-            <p className="mt-1 text-xs text-slate-400">
-              {metodoCobro === 'Efectivo'
-                ? 'Se registrará como entrada de efectivo en esta caja.'
-                : 'Pago no en efectivo: se marca la factura como pagada sin afectar el efectivo de la caja.'}
-            </p>
+        ) : (
+          <div className="space-y-4">
+            {/* Cliente + renglones */}
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="mb-1 text-sm font-semibold text-slate-700">{cobrarFactura?.cliente_nombre ?? 'Cliente'}</p>
+              <ul className="max-h-32 space-y-0.5 overflow-y-auto text-sm">
+                {cobroItems.map((it) => (
+                  <li key={it.id} className="flex justify-between text-slate-600">
+                    <span className="truncate pr-2">{it.cantidad}× {it.descripcion}</span>
+                    <span className="shrink-0">{money(it.importe)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Total grande */}
+            <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-500 px-5 py-4 text-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_14px_30px_-12px_rgba(236,72,153,0.6)]">
+              <p className="text-xs uppercase tracking-widest text-white/80">Total a cobrar</p>
+              <p className="text-3xl font-extrabold">{money(cobroTotal)}</p>
+            </div>
+
+            {/* Método de pago como botones */}
+            <div>
+              <label className="label">Método de pago</label>
+              <div className="grid grid-cols-3 gap-2">
+                {METODOS_PAGO.map((m) => {
+                  const Icon = METODO_ICONO[m] ?? MoreHorizontal
+                  const activo = metodoCobro === m
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMetodoCobro(m)}
+                      className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-xs font-semibold transition ${
+                        activo
+                          ? 'border-brand-400 bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_6px_14px_-4px_rgba(236,72,153,0.35)]'
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-pink-200'
+                      }`}
+                    >
+                      <Icon size={20} />
+                      {m}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Calculadora de cambio (solo efectivo) */}
+            {cobroEsEfectivo ? (
+              <div className="space-y-2 rounded-xl border border-pink-100 bg-pink-50/40 p-3">
+                <label className="label !mb-0">Efectivo recibido</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={50}
+                  className="input"
+                  value={efectivoRecibido}
+                  onChange={(e) => setEfectivoRecibido(Number(e.target.value))}
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => setEfectivoRecibido(cobroTotal)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Exacto</button>
+                  {[100, 200, 500, 1000, 2000].filter((v) => v > cobroTotal).map((v) => (
+                    <button key={v} type="button" onClick={() => setEfectivoRecibido(v)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">{money(v)}</button>
+                  ))}
+                </div>
+                <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-bold ${cobroCambio < 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                  <span>{cobroCambio < 0 ? 'Falta' : 'Devuelta / cambio'}</span>
+                  <span>{money(Math.abs(cobroCambio))}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">
+                Pago no en efectivo: se marca la factura como pagada y se registra en esta caja, sin afectar el efectivo del arqueo.
+              </p>
+            )}
           </div>
-        </div>
+        )}
       </Modal>
 
       {/* Modal cerrar caja / arqueo */}
