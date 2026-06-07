@@ -192,7 +192,7 @@ export default function Facturacion() {
 
   async function guardar() {
     const items = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0)
-    if (items.length === 0) return alert('Agrega al menos un renglón con descripción')
+    if (items.length === 0) return alert('Agrega al menos un ítem con descripción')
     setSaving(true)
     const datos = {
       cliente_id: clienteId || null,
@@ -467,11 +467,11 @@ export default function Facturacion() {
                 <option key={e.id} value={e.id}>{e.nombre}{e.puesto ? ` (${e.puesto})` : ''}</option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-slate-400">Se aplica a los renglones; si hay varios servicios puedes cambiar quién hizo cada uno abajo.</p>
+            <p className="mt-1 text-xs text-slate-400">Se aplica a los ítems; si hay varios servicios puedes cambiar quién hizo cada uno abajo.</p>
           </div>
 
           <div>
-            <label className="label">Renglones</label>
+            <label className="label">Ítems</label>
             <div className="space-y-2">
               {lineas.map((l, i) => (
                 <div key={i} className="rounded-lg border border-slate-200 p-2">
@@ -537,7 +537,7 @@ export default function Facturacion() {
               className="btn-ghost mt-2"
               onClick={() => setLineas([...lineas, { ...lineaVacia }])}
             >
-              <Plus size={14} /> Agregar renglón
+              <Plus size={14} /> Agregar ítem
             </button>
           </div>
 
