@@ -8,6 +8,7 @@ interface AuthContextValue {
   perfil: Perfil | null
   permisos: string[]
   puede: (modulo: string) => boolean
+  puedeAccion: (accion: string) => boolean
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextValue>({
   perfil: null,
   permisos: [],
   puede: () => false,
+  puedeAccion: () => false,
   loading: true,
   signIn: async () => ({ error: 'no-provider' }),
   signOut: async () => {},
@@ -87,9 +89,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const permisos = perfil?.permisos ?? []
   const puede = (modulo: string) => permisos.includes(modulo)
+  // El admin puede todas las funciones; los demás según su rol.
+  const puedeAccion = (accion: string) => !!perfil?.es_admin || permisos.includes(accion)
 
   return (
-    <AuthContext.Provider value={{ session, perfil, permisos, puede, loading, signIn, signOut, recargarPerfil }}>
+    <AuthContext.Provider value={{ session, perfil, permisos, puede, puedeAccion, loading, signIn, signOut, recargarPerfil }}>
       {children}
     </AuthContext.Provider>
   )

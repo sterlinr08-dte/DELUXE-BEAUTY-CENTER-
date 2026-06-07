@@ -90,6 +90,7 @@ export interface Factura {
   total: number
   estado: EstadoFactura
   metodo_pago: string | null
+  caja_id: string | null
   notas: string | null
   created_at: string
   updated_at: string
@@ -163,6 +164,7 @@ export interface CajaMovimiento {
   tipo: 'ENTRADA' | 'SALIDA'
   concepto: string
   monto: number
+  factura_id: string | null
   created_at: string
 }
 

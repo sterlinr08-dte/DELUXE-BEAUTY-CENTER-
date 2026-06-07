@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History } from 'lucide-react'
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt, HandCoins } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { CajaSesion, CajaMovimiento } from '../types'
+import { CajaSesion, CajaMovimiento, Factura } from '../types'
 import { money, fechaHora } from '../lib/format'
+import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
@@ -11,12 +12,16 @@ import Modal from '../components/Modal'
 const DENOMS = [2000, 1000, 500, 200, 100, 50, 25, 10, 5, 1]
 
 export default function Caja() {
-  const { perfil } = useAuth()
+  const { perfil, puedeAccion } = useAuth()
   const usuario = perfil?.nombre || perfil?.username || 'Usuario'
+  const puedeAbrir = puedeAccion('caja.abrir')
+  const puedeMover = puedeAccion('caja.movimiento')
+  const puedeCobrar = puedeAccion('facturas.cobrar')
 
   const [sesion, setSesion] = useState<CajaSesion | null>(null)
   const [movs, setMovs] = useState<CajaMovimiento[]>([])
   const [historial, setHistorial] = useState<CajaSesion[]>([])
+  const [pendientes, setPendientes] = useState<Factura[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -24,6 +29,8 @@ export default function Caja() {
   const [abrirOpen, setAbrirOpen] = useState(false)
   const [movOpen, setMovOpen] = useState(false)
   const [cerrarOpen, setCerrarOpen] = useState(false)
+  const [cobrarFactura, setCobrarFactura] = useState<Factura | null>(null)
+  const [metodoCobro, setMetodoCobro] = useState('Efectivo')
 
   // formularios
   const [montoInicial, setMontoInicial] = useState(0)
@@ -62,6 +69,14 @@ export default function Caja() {
       .order('cerrada_at', { ascending: false })
       .limit(20)
     setHistorial(hist ?? [])
+
+    // Facturas pendientes de cobro
+    const { data: pend } = await supabase
+      .from('facturas')
+      .select('*')
+      .eq('estado', 'PENDIENTE')
+      .order('numero', { ascending: false })
+    setPendientes(pend ?? [])
     setLoading(false)
   }
 
@@ -113,6 +128,38 @@ export default function Caja() {
     cargar()
   }
 
+  function iniciarCobro(f: Factura) {
+    setCobrarFactura(f)
+    setMetodoCobro('Efectivo')
+  }
+
+  async function confirmarCobro() {
+    if (!cobrarFactura || !sesion) return
+    setSaving(true)
+    // 1) Marcar la factura como pagada y vincularla a esta caja
+    const { error: e1 } = await supabase
+      .from('facturas')
+      .update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id })
+      .eq('id', cobrarFactura.id)
+    if (e1) {
+      setSaving(false)
+      return alert('Error al cobrar: ' + e1.message)
+    }
+    // 2) Si fue en efectivo, registrar la entrada en la caja
+    if (metodoCobro === 'Efectivo') {
+      await supabase.from('caja_movimientos').insert({
+        caja_id: sesion.id,
+        tipo: 'ENTRADA',
+        concepto: `Factura #${cobrarFactura.numero} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
+        monto: cobrarFactura.total,
+        factura_id: cobrarFactura.id,
+      })
+    }
+    setSaving(false)
+    setCobrarFactura(null)
+    cargar()
+  }
+
   function abrirCierre() {
     setConteo({})
     setCierreNotas('')
@@ -147,7 +194,7 @@ export default function Caja() {
         title="Caja"
         subtitle="Control de efectivo: apertura, movimientos y cierre"
         action={
-          sesion ? (
+          !puedeAbrir ? null : sesion ? (
             <button className="btn-danger" onClick={abrirCierre}>
               <Lock size={16} /> Cerrar caja
             </button>
@@ -165,9 +212,13 @@ export default function Caja() {
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Wallet className="text-brand-300" size={40} />
           <p className="text-slate-500">No hay una caja abierta.</p>
-          <button className="btn-primary" onClick={() => setAbrirOpen(true)}>
-            <Unlock size={16} /> Abrir caja
-          </button>
+          {puedeAbrir ? (
+            <button className="btn-primary" onClick={() => setAbrirOpen(true)}>
+              <Unlock size={16} /> Abrir caja
+            </button>
+          ) : (
+            <p className="text-xs text-slate-400">No tienes permiso para abrir la caja.</p>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -195,18 +246,49 @@ export default function Caja() {
             Caja #{sesion.numero} · abierta por {sesion.abierta_por} · {fechaHora(sesion.abierta_at)}
           </p>
 
+          {/* Facturas por cobrar */}
+          {puedeCobrar && (
+            <div className="panel-3d p-5">
+              <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold text-slate-800">
+                <Receipt size={18} /> Facturas por cobrar
+                {pendientes.length > 0 && <span className="badge bg-amber-50 text-amber-700">{pendientes.length}</span>}
+              </h2>
+              {pendientes.length === 0 ? (
+                <p className="py-4 text-center text-slate-400">No hay facturas pendientes de cobro.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {pendientes.map((f) => (
+                    <li key={f.id} className="flex items-center gap-3 py-3">
+                      <span className="font-mono font-semibold text-slate-500">#{f.numero}</span>
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-800">{f.cliente_nombre ?? 'Cliente'}</p>
+                        <p className="text-xs text-slate-400">{fechaHora(f.created_at)}</p>
+                      </div>
+                      <span className="font-semibold text-slate-800">{money(f.total)}</span>
+                      <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={() => iniciarCobro(f)}>
+                        <HandCoins size={14} /> Cobrar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           {/* Movimientos */}
           <div className="panel-3d p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-lg font-bold text-slate-800">Movimientos</h2>
-              <div className="flex gap-2">
-                <button className="btn-ghost !text-emerald-700" onClick={() => nuevoMov('ENTRADA')}>
-                  <ArrowDownCircle size={16} /> Entrada
-                </button>
-                <button className="btn-ghost !text-rose-700" onClick={() => nuevoMov('SALIDA')}>
-                  <ArrowUpCircle size={16} /> Salida
-                </button>
-              </div>
+              {puedeMover && (
+                <div className="flex gap-2">
+                  <button className="btn-ghost !text-emerald-700" onClick={() => nuevoMov('ENTRADA')}>
+                    <ArrowDownCircle size={16} /> Entrada
+                  </button>
+                  <button className="btn-ghost !text-rose-700" onClick={() => nuevoMov('SALIDA')}>
+                    <ArrowUpCircle size={16} /> Salida
+                  </button>
+                </div>
+              )}
             </div>
             {movs.length === 0 ? (
               <p className="py-6 text-center text-slate-400">Aún no hay movimientos en esta caja.</p>
@@ -318,6 +400,37 @@ export default function Caja() {
           <div>
             <label className="label">Monto (RD$)</label>
             <input type="number" min={0} step={50} className="input" value={movMonto} onChange={(e) => setMovMonto(Number(e.target.value))} />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal cobrar factura */}
+      <Modal
+        open={!!cobrarFactura}
+        title={`Cobrar factura #${cobrarFactura?.numero ?? ''}`}
+        onClose={() => setCobrarFactura(null)}
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setCobrarFactura(null)}>Cancelar</button>
+            <button className="btn-primary" onClick={confirmarCobro} disabled={saving}>{saving ? 'Cobrando…' : `Cobrar ${money(cobrarFactura?.total)}`}</button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl bg-slate-50 p-4 text-sm">
+            <div className="flex justify-between py-1"><span className="text-slate-500">Cliente</span><span className="font-medium">{cobrarFactura?.cliente_nombre ?? 'Cliente'}</span></div>
+            <div className="flex justify-between py-1"><span className="text-slate-500">Total a cobrar</span><span className="font-bold text-slate-900">{money(cobrarFactura?.total)}</span></div>
+          </div>
+          <div>
+            <label className="label">Método de pago</label>
+            <select className="input" value={metodoCobro} onChange={(e) => setMetodoCobro(e.target.value)}>
+              {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              {metodoCobro === 'Efectivo'
+                ? 'Se registrará como entrada de efectivo en esta caja.'
+                : 'Pago no en efectivo: se marca la factura como pagada sin afectar el efectivo de la caja.'}
+            </p>
           </div>
         </div>
       </Modal>

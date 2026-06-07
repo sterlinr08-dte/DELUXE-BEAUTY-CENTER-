@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
 import { METODOS_PAGO, ITBIS_RATE, NEGOCIO } from '../lib/constants'
+import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -24,6 +25,11 @@ const estadoBadge: Record<EstadoFactura, string> = {
 }
 
 export default function Facturacion() {
+  const { puedeAccion } = useAuth()
+  const puedeCobrar = puedeAccion('facturas.cobrar')
+  const puedeAnular = puedeAccion('facturas.anular')
+  const puedeEliminar = puedeAccion('facturas.eliminar')
+
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
@@ -210,12 +216,12 @@ export default function Facturacion() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
-                      {f.estado === 'PENDIENTE' && (
+                      {f.estado === 'PENDIENTE' && puedeCobrar && (
                         <button title="Marcar pagada" onClick={() => cambiarEstado(f, 'PAGADA')} className="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600">
                           <Check size={16} />
                         </button>
                       )}
-                      {f.estado !== 'ANULADA' && (
+                      {f.estado !== 'ANULADA' && puedeAnular && (
                         <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
                           <Ban size={16} />
                         </button>
@@ -223,9 +229,11 @@ export default function Facturacion() {
                       <button title="Ver / imprimir" onClick={() => verDetalle(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
                         <Printer size={16} />
                       </button>
-                      <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                        <Trash2 size={16} />
-                      </button>
+                      {puedeEliminar && (
+                        <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

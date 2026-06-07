@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { MODULOS, Rol } from '../lib/permisos'
+import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado } from '../types'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
@@ -223,7 +223,7 @@ export default function Configuracion() {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1">
                   {(r.es_admin ? MODULOS.map((m) => m.key) : r.permisos).map((m) => (
-                    <span key={m} className="badge bg-slate-100 text-slate-600">{MODULOS.find((x) => x.key === m)?.label ?? m}</span>
+                    <span key={m} className="badge bg-slate-100 text-slate-600">{etiquetaPermiso(m)}</span>
                   ))}
                 </div>
               </div>
@@ -306,6 +306,19 @@ export default function Configuracion() {
                 <label key={m.key} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
                   <input type="checkbox" checked={formR.permisos.includes(m.key)} onChange={() => toggleModulo(m.key)} />
                   {m.label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="label">Funciones permitidas (control de acciones)</label>
+            <p className="mb-2 text-xs text-slate-400">Activa solo lo que este rol está autorizado a hacer. Lo demás queda bloqueado.</p>
+            <div className="space-y-2">
+              {ACCIONES.map((a) => (
+                <label key={a.key} className="flex items-center gap-2 rounded-lg border border-pink-100 bg-pink-50/30 px-3 py-2 text-sm text-slate-600">
+                  <input type="checkbox" checked={formR.permisos.includes(a.key)} onChange={() => toggleModulo(a.key)} />
+                  <span>{a.label}</span>
+                  <span className="ml-auto badge bg-slate-100 text-slate-500">{etiquetaPermiso(a.modulo)}</span>
                 </label>
               ))}
             </div>

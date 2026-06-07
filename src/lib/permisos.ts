@@ -24,6 +24,26 @@ export const MODULOS: Modulo[] = [
 
 export const TODOS_MODULOS = MODULOS.map((m) => m.key)
 
+// Funciones / acciones controlables por rol (control de accesos fino).
+// Se guardan en el mismo arreglo de permisos del rol.
+export interface Accion {
+  key: string
+  label: string
+  modulo: string
+}
+
+export const ACCIONES: Accion[] = [
+  { key: 'facturas.cobrar', label: 'Cobrar / registrar pago de facturas', modulo: 'facturacion' },
+  { key: 'facturas.anular', label: 'Anular facturas', modulo: 'facturacion' },
+  { key: 'facturas.eliminar', label: 'Eliminar facturas', modulo: 'facturacion' },
+  { key: 'caja.abrir', label: 'Abrir y cerrar caja', modulo: 'caja' },
+  { key: 'caja.movimiento', label: 'Registrar entradas / salidas de efectivo', modulo: 'caja' },
+]
+
+export function etiquetaPermiso(key: string): string {
+  return MODULOS.find((m) => m.key === key)?.label ?? ACCIONES.find((a) => a.key === key)?.label ?? key
+}
+
 export interface Rol {
   key: string
   nombre: string
