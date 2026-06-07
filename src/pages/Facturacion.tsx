@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
@@ -31,6 +31,7 @@ export default function Facturacion() {
   const { negocio } = useNegocio()
   const puedeAnular = puedeAccion('facturas.anular')
   const puedeEliminar = puedeAccion('facturas.eliminar')
+  const puedeEditar = puedeAccion('facturas.editar')
 
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -53,6 +54,7 @@ export default function Facturacion() {
   const [lineas, setLineas] = useState<LineaTmp[]>([{ ...lineaVacia }])
   const [empleadoDefault, setEmpleadoDefault] = useState('')
   const [buscarItem, setBuscarItem] = useState('')
+  const [editId, setEditId] = useState<string | null>(null)
 
   // Resultados del buscador (servicios + artículos)
   const q = buscarItem.trim().toLowerCase()
@@ -80,6 +82,13 @@ export default function Facturacion() {
       empleado_id: empleadoDefault,
     }
     setLineas((prev) => {
+      // Si el mismo servicio/artículo ya está, suma la cantidad en vez de duplicar el renglón
+      const existe = prev.findIndex((l) =>
+        r.tipo === 's' ? l.servicio_id === r.id : l.articulo_id === r.id,
+      )
+      if (existe >= 0) {
+        return prev.map((l, idx) => (idx === existe ? { ...l, cantidad: l.cantidad + 1 } : l))
+      }
       const last = prev[prev.length - 1]
       if (last && !last.descripcion && !last.servicio_id && !last.articulo_id) {
         return [...prev.slice(0, -1), linea]
@@ -120,6 +129,7 @@ export default function Facturacion() {
   const total = baseImponible + itbis
 
   function nuevaFactura() {
+    setEditId(null)
     setClienteId('')
     setClienteNombre('')
     setFecha(hoyISO())
@@ -129,6 +139,37 @@ export default function Facturacion() {
     setLineas([{ ...lineaVacia }])
     setEmpleadoDefault('')
     setBuscarItem('')
+    setOpen(true)
+  }
+
+  // Editar una factura ya guardada (solo PENDIENTE y con permiso)
+  async function abrirEditar(f: Factura) {
+    if (f.estado !== 'PENDIENTE') return alert('Solo se pueden editar facturas pendientes (aún no cobradas).')
+    const { data, error } = await supabase
+      .from('factura_items')
+      .select('*')
+      .eq('factura_id', f.id)
+      .order('id')
+    if (error) return alert('Error al cargar la factura: ' + error.message)
+    setEditId(f.id)
+    setClienteId(f.cliente_id ?? '')
+    setClienteNombre(f.cliente_nombre ?? '')
+    setFecha(f.fecha)
+    setAplicaItbis(Number(f.itbis) > 0)
+    setDescuento(Number(f.descuento))
+    setNotas(f.notas ?? '')
+    setEmpleadoDefault('')
+    setBuscarItem('')
+    setLineas(
+      (data ?? []).map((it: any) => ({
+        servicio_id: it.servicio_id ?? '',
+        articulo_id: it.articulo_id ?? '',
+        descripcion: it.descripcion,
+        cantidad: Number(it.cantidad),
+        precio_unit: Number(it.precio_unit),
+        empleado_id: it.empleado_id ?? '',
+      })),
+    )
     setOpen(true)
   }
 
@@ -153,28 +194,42 @@ export default function Facturacion() {
     const items = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0)
     if (items.length === 0) return alert('Agrega al menos un renglón con descripción')
     setSaving(true)
-    const { data: factura, error } = await supabase
-      .from('facturas')
-      .insert({
-        cliente_id: clienteId || null,
-        cliente_nombre: clienteId ? clientes.find((c) => c.id === clienteId)?.nombre : clienteNombre || 'Cliente de contado',
-        fecha,
-        subtotal,
-        descuento,
-        itbis,
-        total,
-        estado: 'PENDIENTE',
-        metodo_pago: null,
-        notas: notas || null,
-      })
-      .select()
-      .single()
-    if (error || !factura) {
-      setSaving(false)
-      return alert('Error al crear factura: ' + error?.message)
+    const datos = {
+      cliente_id: clienteId || null,
+      cliente_nombre: clienteId ? clientes.find((c) => c.id === clienteId)?.nombre : clienteNombre || 'Cliente de contado',
+      fecha,
+      subtotal,
+      descuento,
+      itbis,
+      total,
+      notas: notas || null,
     }
+
+    let facturaId = editId
+    if (editId) {
+      // Editar: devolver el stock anterior, actualizar y reinsertar el detalle
+      await restaurarStock(editId)
+      const { error } = await supabase.from('facturas').update(datos).eq('id', editId)
+      if (error) {
+        setSaving(false)
+        return alert('Error al actualizar factura: ' + error.message)
+      }
+      await supabase.from('factura_items').delete().eq('factura_id', editId)
+    } else {
+      const { data: factura, error } = await supabase
+        .from('facturas')
+        .insert({ ...datos, estado: 'PENDIENTE', metodo_pago: null })
+        .select()
+        .single()
+      if (error || !factura) {
+        setSaving(false)
+        return alert('Error al crear factura: ' + error?.message)
+      }
+      facturaId = factura.id
+    }
+
     const payload = items.map((l) => ({
-      factura_id: factura.id,
+      factura_id: facturaId,
       servicio_id: l.servicio_id || null,
       articulo_id: l.articulo_id || null,
       empleado_id: l.empleado_id || empleadoDefault || null,
@@ -186,7 +241,7 @@ export default function Facturacion() {
     const { error: e2 } = await supabase.from('factura_items').insert(payload)
     if (e2) {
       setSaving(false)
-      return alert('Factura creada pero falló el detalle: ' + e2.message)
+      return alert('Factura guardada pero falló el detalle: ' + e2.message)
     }
     // Descontar del stock los artículos vendidos
     for (const l of items) {
@@ -289,6 +344,11 @@ export default function Facturacion() {
                       {f.estado === 'PENDIENTE' && (
                         <span className="badge bg-amber-50 text-amber-600">Se cobra en Caja</span>
                       )}
+                      {f.estado === 'PENDIENTE' && puedeEditar && (
+                        <button title="Editar" onClick={() => abrirEditar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                          <Pencil size={16} />
+                        </button>
+                      )}
                       {f.estado !== 'ANULADA' && puedeAnular && (
                         <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
                           <Ban size={16} />
@@ -311,10 +371,10 @@ export default function Facturacion() {
         </div>
       )}
 
-      {/* Modal NUEVA FACTURA */}
+      {/* Modal NUEVA / EDITAR FACTURA */}
       <Modal
         open={open}
-        title="Nueva factura"
+        title={editId ? 'Editar factura' : 'Nueva factura'}
         onClose={() => setOpen(false)}
         footer={
           <>
@@ -440,10 +500,12 @@ export default function Facturacion() {
                     )}
                   </div>
                   <input
-                    className="input mt-2"
+                    className={`input mt-2 ${l.articulo_id ? 'bg-slate-50 text-slate-500' : ''}`}
                     placeholder="Descripción"
                     value={l.descripcion}
                     onChange={(e) => setLinea(i, { descripcion: e.target.value })}
+                    readOnly={!!l.articulo_id}
+                    title={l.articulo_id ? 'El nombre del artículo no se puede modificar' : undefined}
                   />
                   <div className="mt-2">
                     <span className="text-xs text-slate-400">Realizado por</span>
