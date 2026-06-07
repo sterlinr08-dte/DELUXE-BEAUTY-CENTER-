@@ -14,6 +14,7 @@ export const MODULOS: Modulo[] = [
   { key: 'articulos', label: 'Artículos / Productos', path: '/articulos' },
   { key: 'empleados', label: 'Empleados', path: '/empleados' },
   { key: 'facturacion', label: 'Facturación', path: '/facturacion' },
+  { key: 'caja', label: 'Caja', path: '/caja' },
   { key: 'compras', label: 'Compras', path: '/compras' },
   { key: 'gastos', label: 'Gastos', path: '/gastos' },
   { key: 'nomina', label: 'Pagos a empleados', path: '/nomina' },

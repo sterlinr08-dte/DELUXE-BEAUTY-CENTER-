@@ -142,6 +142,30 @@ export interface PagoEmpleado {
 // Tipado mínimo para el cliente de Supabase.
 export type Database = any
 
+export interface CajaSesion {
+  id: string
+  numero: number
+  abierta_at: string
+  cerrada_at: string | null
+  monto_inicial: number
+  monto_contado: number | null
+  diferencia: number | null
+  estado: 'ABIERTA' | 'CERRADA'
+  abierta_por: string | null
+  cerrada_por: string | null
+  notas: string | null
+  created_at: string
+}
+
+export interface CajaMovimiento {
+  id: string
+  caja_id: string
+  tipo: 'ENTRADA' | 'SALIDA'
+  concepto: string
+  monto: number
+  created_at: string
+}
+
 export interface Articulo {
   id: string
   codigo: number

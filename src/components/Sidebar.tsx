@@ -24,6 +24,7 @@ const grupos: { titulo: string; links: Link[] }[] = [
     links: [
       { to: '/', label: 'Panel', icon: LayoutDashboard, modulo: 'panel', end: true },
       { to: '/facturacion', label: 'Facturación', icon: Receipt, modulo: 'facturacion' },
+      { to: '/caja', label: 'Caja', icon: Wallet, modulo: 'caja' },
       { to: '/compras', label: 'Compras', icon: ShoppingCart, modulo: 'compras' },
       { to: '/gastos', label: 'Gastos', icon: Wallet, modulo: 'gastos' },
       { to: '/nomina', label: 'Pagos a empleados', icon: Users, modulo: 'nomina' },

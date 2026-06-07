@@ -35,6 +35,17 @@ export function hora(h: string | null): string {
   return `${hour}:${mm} ${ampm}`
 }
 
+export function fechaHora(ts: string | null): string {
+  if (!ts) return ''
+  return new Date(ts).toLocaleString('es-DO', {
+    day: '2-digit',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 export function hoyISO(): string {
   const d = new Date()
   const off = d.getTimezoneOffset()

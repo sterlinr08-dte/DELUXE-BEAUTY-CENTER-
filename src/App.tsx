@@ -9,6 +9,7 @@ import Servicios from './pages/Servicios'
 import Articulos from './pages/Articulos'
 import Empleados from './pages/Empleados'
 import Facturacion from './pages/Facturacion'
+import Caja from './pages/Caja'
 import Compras from './pages/Compras'
 import Gastos from './pages/Gastos'
 import Nomina from './pages/Nomina'
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="/articulos" element={<Protegido modulo="articulos"><Articulos /></Protegido>} />
               <Route path="/empleados" element={<Protegido modulo="empleados"><Empleados /></Protegido>} />
               <Route path="/facturacion" element={<Protegido modulo="facturacion"><Facturacion /></Protegido>} />
+              <Route path="/caja" element={<Protegido modulo="caja"><Caja /></Protegido>} />
               <Route path="/compras" element={<Protegido modulo="compras"><Compras /></Protegido>} />
               <Route path="/gastos" element={<Protegido modulo="gastos"><Gastos /></Protegido>} />
               <Route path="/nomina" element={<Protegido modulo="nomina"><Nomina /></Protegido>} />
