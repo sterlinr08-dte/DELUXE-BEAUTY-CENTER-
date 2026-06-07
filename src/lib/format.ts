@@ -51,3 +51,8 @@ export function hoyISO(): string {
   const off = d.getTimezoneOffset()
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10)
 }
+
+// Código de artículo a 4 dígitos con ceros a la izquierda: 0000, 0001, …
+export function codigoArticulo(n: number | null | undefined): string {
+  return String(n ?? 0).padStart(4, '0')
+}

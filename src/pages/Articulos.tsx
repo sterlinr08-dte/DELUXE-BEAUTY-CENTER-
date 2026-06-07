@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2, Package, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Articulo } from '../types'
-import { money } from '../lib/format'
+import { money, codigoArticulo } from '../lib/format'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -49,7 +49,7 @@ export default function Articulos() {
       (a) =>
         a.nombre.toLowerCase().includes(q) ||
         a.categoria.toLowerCase().includes(q) ||
-        String(a.codigo).includes(q),
+        codigoArticulo(a.codigo).includes(q),
     )
   }, [items, busqueda])
 
@@ -139,7 +139,7 @@ export default function Articulos() {
             <tbody className="divide-y divide-slate-50">
               {filtrados.map((a) => (
                 <tr key={a.id} className={a.activo ? '' : 'opacity-50'}>
-                  <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{a.codigo}</td>
+                  <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{codigoArticulo(a.codigo)}</td>
                   <td className="px-5 py-3">
                     <p className="font-medium text-slate-800">{a.nombre}</p>
                     {a.descripcion && <p className="text-xs text-slate-400">{a.descripcion}</p>}

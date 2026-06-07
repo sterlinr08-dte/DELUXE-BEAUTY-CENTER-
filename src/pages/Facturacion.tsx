@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
-import { money, fechaCorta, hoyISO } from '../lib/format'
+import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
@@ -59,7 +59,7 @@ export default function Facturacion() {
           .filter((s) => s.nombre.toLowerCase().includes(q) || (s.categoria ?? '').toLowerCase().includes(q))
           .map((s) => ({ tipo: 's' as const, id: s.id, nombre: s.nombre, precio: Number(s.precio), stock: null as number | null })),
         ...articulos
-          .filter((a) => a.nombre.toLowerCase().includes(q) || a.categoria.toLowerCase().includes(q) || String(a.codigo).includes(q))
+          .filter((a) => a.nombre.toLowerCase().includes(q) || a.categoria.toLowerCase().includes(q) || codigoArticulo(a.codigo).includes(q))
           .map((a) => ({ tipo: 'a' as const, id: a.id, nombre: a.nombre, precio: Number(a.precio), stock: Number(a.stock) })),
       ].slice(0, 8)
     : []

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, ShoppingCart, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Compra, Articulo } from '../types'
-import { money, fechaCorta, hoyISO } from '../lib/format'
+import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
@@ -256,7 +256,7 @@ export default function Compras() {
             <label className="label">Artículo de inventario {editId ? '' : '(suma al stock)'}</label>
             <select className="input" value={form.articulo_id} onChange={(e) => elegirArticulo(e.target.value)} disabled={!!editId}>
               <option value="">— Compra sin inventario —</option>
-              {articulos.map((a) => <option key={a.id} value={a.id}>#{a.codigo} {a.nombre} (stock {a.stock})</option>)}
+              {articulos.map((a) => <option key={a.id} value={a.id}>#{codigoArticulo(a.codigo)} {a.nombre} (stock {a.stock})</option>)}
             </select>
             {form.articulo_id && (
               <div className="mt-2 grid grid-cols-2 gap-2">
