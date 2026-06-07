@@ -127,7 +127,7 @@ export default function Nomina() {
           <p className="text-slate-500">Aún no hay pagos registrados.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
+        <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
