@@ -38,6 +38,7 @@ export const ACCIONES: Accion[] = [
   { key: 'facturas.eliminar', label: 'Eliminar facturas', modulo: 'facturacion' },
   { key: 'caja.abrir', label: 'Abrir y cerrar caja', modulo: 'caja' },
   { key: 'caja.movimiento', label: 'Registrar entradas / salidas de efectivo', modulo: 'caja' },
+  { key: 'caja.cerrar_descuadre', label: 'Cerrar caja aunque haya descuadre (diferencia)', modulo: 'caja' },
 ]
 
 export function etiquetaPermiso(key: string): string {

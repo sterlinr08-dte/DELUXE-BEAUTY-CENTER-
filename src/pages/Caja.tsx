@@ -17,6 +17,7 @@ export default function Caja() {
   const puedeAbrir = puedeAccion('caja.abrir')
   const puedeMover = puedeAccion('caja.movimiento')
   const puedeCobrar = puedeAccion('facturas.cobrar')
+  const puedeCerrarDescuadre = puedeAccion('caja.cerrar_descuadre')
 
   const [sesion, setSesion] = useState<CajaSesion | null>(null)
   const [movs, setMovs] = useState<CajaMovimiento[]>([])
@@ -166,8 +167,16 @@ export default function Caja() {
     setCerrarOpen(true)
   }
 
+  const bloqueadoPorDescuadre = diferencia !== 0 && !puedeCerrarDescuadre
+
   async function cerrarCaja() {
     if (!sesion) return
+    if (bloqueadoPorDescuadre) {
+      return alert(
+        `Hay un descuadre de ${money(Math.abs(diferencia))}. No tienes permiso para cerrar la caja con diferencia. ` +
+          'Cuenta de nuevo el efectivo o solicita a un supervisor/administrador que la cierre.'
+      )
+    }
     setSaving(true)
     const detalle = DENOMS.filter((d) => conteo[d]).map((d) => `${conteo[d]}×${d}`).join(', ')
     const notas = [detalle ? `Arqueo: ${detalle}` : '', cierreNotas].filter(Boolean).join(' · ')
@@ -435,15 +444,17 @@ export default function Caja() {
         </div>
       </Modal>
 
-      {/* Modal cerrar caja */}
+      {/* Modal cerrar caja / arqueo */}
       <Modal
         open={cerrarOpen}
-        title="Cerrar caja"
+        title="Arqueo y cierre de caja"
         onClose={() => setCerrarOpen(false)}
         footer={
           <>
             <button className="btn-ghost" onClick={() => setCerrarOpen(false)}>Cancelar</button>
-            <button className="btn-danger" onClick={cerrarCaja} disabled={saving}>{saving ? 'Cerrando…' : 'Cerrar caja'}</button>
+            <button className="btn-danger" onClick={cerrarCaja} disabled={saving || bloqueadoPorDescuadre} title={bloqueadoPorDescuadre ? 'No puedes cerrar con descuadre' : ''}>
+              {saving ? 'Cerrando…' : 'Cerrar caja'}
+            </button>
           </>
         }
       >
@@ -480,6 +491,12 @@ export default function Caja() {
           <div className={`rounded-xl p-3 text-center text-sm font-semibold ${diferencia === 0 ? 'bg-emerald-50 text-emerald-700' : diferencia > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
             {diferencia === 0 ? 'Caja cuadrada ✓' : diferencia > 0 ? `Sobrante: ${money(diferencia)}` : `Faltante: ${money(Math.abs(diferencia))}`}
           </div>
+          {bloqueadoPorDescuadre && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-center text-xs font-medium text-rose-700">
+              ⚠️ Hay un descuadre. No tienes permiso para cerrar la caja con diferencia.
+              Vuelve a contar el efectivo o pide a un supervisor/administrador que la cierre.
+            </div>
+          )}
           <div>
             <label className="label">Notas (opcional)</label>
             <textarea className="input" rows={2} value={cierreNotas} onChange={(e) => setCierreNotas(e.target.value)} />
