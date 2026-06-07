@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, ShoppingCart } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { Compra } from '../types'
+import { Compra, Articulo } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import PageHeader from '../components/PageHeader'
@@ -15,11 +15,14 @@ const vacio = {
   subtotal: 0,
   aplicaItbis: false,
   metodo_pago: 'Efectivo',
+  articulo_id: '',
+  cantidad: 0,
   notas: '',
 }
 
 export default function Compras() {
   const [items, setItems] = useState<Compra[]>([])
+  const [articulos, setArticulos] = useState<Articulo[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -28,8 +31,12 @@ export default function Compras() {
 
   async function cargar() {
     setLoading(true)
-    const { data } = await supabase.from('compras').select('*').order('fecha', { ascending: false })
+    const [{ data }, { data: arts }] = await Promise.all([
+      supabase.from('compras').select('*').order('fecha', { ascending: false }),
+      supabase.from('articulos').select('*').eq('activo', true).order('nombre'),
+    ])
     setItems(data ?? [])
+    setArticulos(arts ?? [])
     setLoading(false)
   }
 
@@ -60,6 +67,8 @@ export default function Compras() {
       subtotal: Number(c.subtotal),
       aplicaItbis: Number(c.itbis) > 0,
       metodo_pago: c.metodo_pago ?? 'Efectivo',
+      articulo_id: c.articulo_id ?? '',
+      cantidad: Number(c.cantidad ?? 0),
       notas: c.notas ?? '',
     })
     setOpen(true)
@@ -69,6 +78,7 @@ export default function Compras() {
     if (!form.descripcion.trim()) return alert('La descripción es obligatoria')
     if (form.subtotal <= 0) return alert('El monto debe ser mayor que 0')
     setSaving(true)
+    const vinculaArticulo = form.articulo_id && form.cantidad > 0
     const payload = {
       fecha: form.fecha,
       proveedor: form.proveedor || null,
@@ -78,6 +88,8 @@ export default function Compras() {
       itbis,
       total,
       metodo_pago: form.metodo_pago,
+      articulo_id: vinculaArticulo ? form.articulo_id : null,
+      cantidad: vinculaArticulo ? form.cantidad : null,
       notas: form.notas || null,
     }
     const { error } = editId
@@ -85,12 +97,20 @@ export default function Compras() {
       : await supabase.from('compras').insert(payload)
     setSaving(false)
     if (error) return alert('Error al guardar: ' + error.message)
+    // Al registrar una compra nueva vinculada a un artículo, sumar al stock
+    if (!editId && vinculaArticulo) {
+      await supabase.rpc('ajustar_stock', { p_articulo: form.articulo_id, p_delta: form.cantidad })
+    }
     setOpen(false)
     cargar()
   }
 
   async function eliminar(c: Compra) {
     if (!confirm(`¿Eliminar la compra "${c.descripcion}"?`)) return
+    // Si sumaba stock, descontarlo al eliminar
+    if (c.articulo_id && c.cantidad) {
+      await supabase.rpc('ajustar_stock', { p_articulo: c.articulo_id, p_delta: -Number(c.cantidad) })
+    }
     const { error } = await supabase.from('compras').delete().eq('id', c.id)
     if (error) return alert('Error al eliminar: ' + error.message)
     cargar()
@@ -193,6 +213,19 @@ export default function Compras() {
             <input type="checkbox" checked={form.aplicaItbis} onChange={(e) => setForm({ ...form, aplicaItbis: e.target.checked })} />
             Incluir ITBIS (18%)
           </label>
+          {!editId && (
+            <div className="rounded-xl border border-pink-100 bg-pink-50/40 p-3">
+              <label className="label">Sumar al inventario (opcional)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <select className="input" value={form.articulo_id} onChange={(e) => setForm({ ...form, articulo_id: e.target.value })}>
+                  <option value="">— No suma stock —</option>
+                  {articulos.map((a) => <option key={a.id} value={a.id}>#{a.codigo} {a.nombre}</option>)}
+                </select>
+                <input type="number" min={0} className="input" placeholder="Cantidad" value={form.cantidad || ''} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} disabled={!form.articulo_id} />
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Si eliges un artículo y cantidad, se suma a su stock automáticamente.</p>
+            </div>
+          )}
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
             <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(form.subtotal)}</span></div>
             {form.aplicaItbis && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(itbis)}</span></div>}

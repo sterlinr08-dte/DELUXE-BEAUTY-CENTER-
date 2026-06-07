@@ -3,7 +3,7 @@ import { Plus, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
-import { METODOS_PAGO, ITBIS_RATE } from '../lib/constants'
+import { ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
@@ -45,7 +45,6 @@ export default function Facturacion() {
   const [clienteId, setClienteId] = useState('')
   const [clienteNombre, setClienteNombre] = useState('')
   const [fecha, setFecha] = useState(hoyISO())
-  const [metodoPago, setMetodoPago] = useState('Efectivo')
   const [aplicaItbis, setAplicaItbis] = useState(false)
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
@@ -115,7 +114,6 @@ export default function Facturacion() {
     setClienteId('')
     setClienteNombre('')
     setFecha(hoyISO())
-    setMetodoPago('Efectivo')
     setAplicaItbis(false)
     setDescuento(0)
     setNotas('')
@@ -156,7 +154,7 @@ export default function Facturacion() {
         itbis,
         total,
         estado: 'PENDIENTE',
-        metodo_pago: metodoPago,
+        metodo_pago: null,
         notas: notas || null,
       })
       .select()
@@ -175,13 +173,36 @@ export default function Facturacion() {
       importe: l.cantidad * l.precio_unit,
     }))
     const { error: e2 } = await supabase.from('factura_items').insert(payload)
+    if (e2) {
+      setSaving(false)
+      return alert('Factura creada pero falló el detalle: ' + e2.message)
+    }
+    // Descontar del stock los artículos vendidos
+    for (const l of items) {
+      if (l.articulo_id) {
+        await supabase.rpc('ajustar_stock', { p_articulo: l.articulo_id, p_delta: -l.cantidad })
+      }
+    }
     setSaving(false)
-    if (e2) return alert('Factura creada pero falló el detalle: ' + e2.message)
     setOpen(false)
     cargar()
   }
 
+  // Devuelve al stock los artículos de una factura
+  async function restaurarStock(facturaId: string) {
+    const { data } = await supabase.from('factura_items').select('articulo_id, cantidad').eq('factura_id', facturaId)
+    for (const it of data ?? []) {
+      if ((it as any).articulo_id) {
+        await supabase.rpc('ajustar_stock', { p_articulo: (it as any).articulo_id, p_delta: Number((it as any).cantidad) })
+      }
+    }
+  }
+
   async function cambiarEstado(f: Factura, estado: EstadoFactura) {
+    // Al anular, devolver los artículos al inventario
+    if (estado === 'ANULADA' && f.estado !== 'ANULADA') {
+      await restaurarStock(f.id)
+    }
     const { error } = await supabase.from('facturas').update({ estado }).eq('id', f.id)
     if (error) return alert('Error: ' + error.message)
     cargar()
@@ -189,6 +210,10 @@ export default function Facturacion() {
 
   async function eliminar(f: Factura) {
     if (!confirm(`¿Eliminar la factura #${f.numero}?`)) return
+    // Si no estaba anulada, devolver el stock antes de borrar
+    if (f.estado !== 'ANULADA') {
+      await restaurarStock(f.id)
+    }
     const { error } = await supabase.from('facturas').delete().eq('id', f.id)
     if (error) return alert('Error al eliminar: ' + error.message)
     cargar()
@@ -409,19 +434,10 @@ export default function Facturacion() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Método de pago</label>
-              <select className="input" value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)}>
-                {METODOS_PAGO.map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Descuento (RD$)</label>
-              <input type="number" min={0} step={50} className="input" value={descuento || ''} onChange={(e) => setDescuento(Number(e.target.value))} />
-            </div>
+          <div>
+            <label className="label">Descuento (RD$)</label>
+            <input type="number" min={0} step={50} className="input" value={descuento || ''} onChange={(e) => setDescuento(Number(e.target.value))} />
+            <p className="mt-1 text-xs text-slate-400">El método de pago se elige al cobrar en Caja.</p>
           </div>
 
           <label className="flex items-center gap-2 text-sm text-slate-600">

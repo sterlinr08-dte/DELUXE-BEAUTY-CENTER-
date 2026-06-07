@@ -123,6 +123,8 @@ export interface Compra {
   itbis: number
   total: number
   metodo_pago: string | null
+  articulo_id: string | null
+  cantidad: number | null
   notas: string | null
   created_at: string
 }
