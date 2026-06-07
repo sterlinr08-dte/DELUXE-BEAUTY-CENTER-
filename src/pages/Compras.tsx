@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, ShoppingCart } from 'lucide-react'
+import { Plus, Pencil, Trash2, ShoppingCart, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Compra, Articulo } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
@@ -24,6 +24,7 @@ const vacio = {
 export default function Compras() {
   const [items, setItems] = useState<Compra[]>([])
   const [articulos, setArticulos] = useState<Articulo[]>([])
+  const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -48,6 +49,17 @@ export default function Compras() {
   const totalMes = items
     .filter((c) => c.fecha.slice(0, 7) === hoyISO().slice(0, 7))
     .reduce((s, c) => s + Number(c.total), 0)
+
+  const q = busqueda.trim().toLowerCase()
+  const visibles = q
+    ? items.filter((c) =>
+        c.descripcion.toLowerCase().includes(q) ||
+        (c.proveedor ?? '').toLowerCase().includes(q) ||
+        c.categoria.toLowerCase().includes(q) ||
+        String(c.numero).includes(q) ||
+        c.fecha.includes(q),
+      )
+    : items
 
   // Si hay artículo + cantidad + costo, el subtotal se calcula (cantidad × costo); si no, es manual
   const vinculaArticulo = !!form.articulo_id && form.cantidad > 0
@@ -150,12 +162,29 @@ export default function Compras() {
         }
       />
 
+      {items.length > 0 && (
+        <div className="relative mb-4 max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input pl-9"
+            placeholder="Buscar por descripción, proveedor, categoría, # o fecha…"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </div>
+      )}
+
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
       ) : items.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <ShoppingCart className="text-brand-300" size={40} />
           <p className="text-slate-500">Aún no hay compras registradas.</p>
+        </div>
+      ) : visibles.length === 0 ? (
+        <div className="card flex flex-col items-center gap-3 py-12 text-center">
+          <Search className="text-brand-300" size={40} />
+          <p className="text-slate-500">No hay compras que coincidan con «{busqueda}».</p>
         </div>
       ) : (
         <div className="overflow-x-auto panel-3d">
@@ -172,7 +201,7 @@ export default function Compras() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {items.map((c) => (
+              {visibles.map((c) => (
                 <tr key={c.id}>
                   <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{c.numero}</td>
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(c.fecha)}</td>
