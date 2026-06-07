@@ -63,7 +63,7 @@ export default function Sidebar({ open, onClose }: Props) {
       {open && <div className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" onClick={onClose} />}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 transform flex-col bg-gradient-to-b from-brand-900 to-brand-800 text-brand-100 transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 transform flex-col bg-gradient-to-b from-[#0b0710] via-[#160a15] to-[#0b0710] text-brand-100 shadow-[8px_0_30px_-12px_rgba(236,72,153,0.35)] ring-1 ring-pink-500/10 transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
