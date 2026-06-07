@@ -116,10 +116,11 @@ export default function Compras() {
           <p className="text-slate-500">Aún no hay compras registradas.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-slate-100">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
+                <th className="px-5 py-3">#</th>
                 <th className="px-5 py-3">Fecha</th>
                 <th className="px-5 py-3">Descripción</th>
                 <th className="px-5 py-3">Proveedor</th>
@@ -131,6 +132,7 @@ export default function Compras() {
             <tbody className="divide-y divide-slate-50">
               {items.map((c) => (
                 <tr key={c.id}>
+                  <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{c.numero}</td>
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(c.fecha)}</td>
                   <td className="px-5 py-3 font-medium text-slate-800">{c.descripcion}</td>
                   <td className="px-5 py-3 text-slate-600">{c.proveedor || '—'}</td>

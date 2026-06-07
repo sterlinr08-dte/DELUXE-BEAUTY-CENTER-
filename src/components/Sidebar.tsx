@@ -12,6 +12,7 @@ import {
   Wallet,
   Calculator,
   Settings,
+  Package,
   X,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -36,6 +37,7 @@ const grupos: { titulo: string; links: Link[] }[] = [
       { to: '/citas', label: 'Citas / Agenda', icon: CalendarDays, modulo: 'citas' },
       { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
       { to: '/servicios', label: 'Servicios y precios', icon: Scissors, modulo: 'servicios' },
+      { to: '/articulos', label: 'Artículos / Productos', icon: Package, modulo: 'articulos' },
       { to: '/empleados', label: 'Empleados', icon: UserCog, modulo: 'empleados' },
     ],
   },

@@ -113,6 +113,7 @@ export interface Gasto {
 
 export interface Compra {
   id: string
+  numero: number
   fecha: string
   proveedor: string | null
   descripcion: string
@@ -140,3 +141,17 @@ export interface PagoEmpleado {
 
 // Tipado mínimo para el cliente de Supabase.
 export type Database = any
+
+export interface Articulo {
+  id: string
+  codigo: number
+  nombre: string
+  categoria: string
+  descripcion: string | null
+  precio: number
+  costo: number
+  stock: number
+  activo: boolean
+  created_at: string
+  updated_at: string
+}

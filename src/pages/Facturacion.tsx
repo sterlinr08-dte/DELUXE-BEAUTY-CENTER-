@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, Receipt, Printer, Check, Ban, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { Cliente, Factura, FacturaItem, Servicio, EstadoFactura } from '../types'
+import { Cliente, Factura, FacturaItem, Servicio, Articulo, EstadoFactura } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
 import { METODOS_PAGO, ITBIS_RATE, NEGOCIO } from '../lib/constants'
 import PageHeader from '../components/PageHeader'
@@ -9,10 +9,13 @@ import Modal from '../components/Modal'
 
 interface LineaTmp {
   servicio_id: string
+  articulo_id: string
   descripcion: string
   cantidad: number
   precio_unit: number
 }
+
+const lineaVacia: LineaTmp = { servicio_id: '', articulo_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }
 
 const estadoBadge: Record<EstadoFactura, string> = {
   PENDIENTE: 'bg-amber-50 text-amber-700',
@@ -24,6 +27,7 @@ export default function Facturacion() {
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
+  const [articulos, setArticulos] = useState<Articulo[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -38,7 +42,7 @@ export default function Facturacion() {
   const [aplicaItbis, setAplicaItbis] = useState(false)
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
-  const [lineas, setLineas] = useState<LineaTmp[]>([{ servicio_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }])
+  const [lineas, setLineas] = useState<LineaTmp[]>([{ ...lineaVacia }])
 
   async function cargar() {
     setLoading(true)
@@ -48,12 +52,14 @@ export default function Facturacion() {
   }
 
   async function cargarCatalogos() {
-    const [cl, se] = await Promise.all([
+    const [cl, se, ar] = await Promise.all([
       supabase.from('clientes').select('*').order('nombre'),
       supabase.from('servicios').select('*').eq('activo', true).order('nombre'),
+      supabase.from('articulos').select('*').eq('activo', true).order('nombre'),
     ])
     setClientes(cl.data ?? [])
     setServicios(se.data ?? [])
+    setArticulos(ar.data ?? [])
   }
 
   useEffect(() => {
@@ -74,7 +80,7 @@ export default function Facturacion() {
     setAplicaItbis(false)
     setDescuento(0)
     setNotas('')
-    setLineas([{ servicio_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }])
+    setLineas([{ ...lineaVacia }])
     setOpen(true)
   }
 
@@ -82,13 +88,17 @@ export default function Facturacion() {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
   }
 
-  function elegirServicio(i: number, servicioId: string) {
-    const s = servicios.find((x) => x.id === servicioId)
-    setLinea(i, {
-      servicio_id: servicioId,
-      descripcion: s ? s.nombre : '',
-      precio_unit: s ? Number(s.precio) : 0,
-    })
+  // value: 's:<id>' para servicio, 'a:<id>' para artículo
+  function elegirItem(i: number, value: string) {
+    if (value.startsWith('s:')) {
+      const s = servicios.find((x) => x.id === value.slice(2))
+      setLinea(i, { servicio_id: s?.id ?? '', articulo_id: '', descripcion: s?.nombre ?? '', precio_unit: s ? Number(s.precio) : 0 })
+    } else if (value.startsWith('a:')) {
+      const a = articulos.find((x) => x.id === value.slice(2))
+      setLinea(i, { articulo_id: a?.id ?? '', servicio_id: '', descripcion: a?.nombre ?? '', precio_unit: a ? Number(a.precio) : 0 })
+    } else {
+      setLinea(i, { servicio_id: '', articulo_id: '' })
+    }
   }
 
   async function guardar() {
@@ -118,6 +128,7 @@ export default function Facturacion() {
     const payload = items.map((l) => ({
       factura_id: factura.id,
       servicio_id: l.servicio_id || null,
+      articulo_id: l.articulo_id || null,
       descripcion: l.descripcion,
       cantidad: l.cantidad,
       precio_unit: l.precio_unit,
@@ -171,7 +182,7 @@ export default function Facturacion() {
           <p className="text-slate-500">Aún no hay facturas.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-slate-100">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -269,13 +280,20 @@ export default function Facturacion() {
                   <div className="flex gap-2">
                     <select
                       className="input flex-1"
-                      value={l.servicio_id}
-                      onChange={(e) => elegirServicio(i, e.target.value)}
+                      value={l.servicio_id ? `s:${l.servicio_id}` : l.articulo_id ? `a:${l.articulo_id}` : ''}
+                      onChange={(e) => elegirItem(i, e.target.value)}
                     >
-                      <option value="">Servicio / manual…</option>
-                      {servicios.map((s) => (
-                        <option key={s.id} value={s.id}>{s.nombre} · {money(s.precio)}</option>
-                      ))}
+                      <option value="">Elegir / escribir manual…</option>
+                      <optgroup label="Servicios">
+                        {servicios.map((s) => (
+                          <option key={s.id} value={`s:${s.id}`}>{s.nombre} · {money(s.precio)}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Artículos">
+                        {articulos.map((a) => (
+                          <option key={a.id} value={`a:${a.id}`}>{a.nombre} · {money(a.precio)}</option>
+                        ))}
+                      </optgroup>
                     </select>
                     {lineas.length > 1 && (
                       <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg px-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
@@ -308,7 +326,7 @@ export default function Facturacion() {
             </div>
             <button
               className="btn-ghost mt-2"
-              onClick={() => setLineas([...lineas, { servicio_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }])}
+              onClick={() => setLineas([...lineas, { ...lineaVacia }])}
             >
               <Plus size={14} /> Agregar renglón
             </button>

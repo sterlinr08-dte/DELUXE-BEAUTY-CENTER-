@@ -11,30 +11,42 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-800 antialiased;
+  @apply text-slate-800 antialiased;
+  background-color: #faf7fb;
+  background-image: radial-gradient(1100px 600px at 100% -10%, rgba(217, 70, 239, 0.08), transparent),
+    radial-gradient(900px 500px at -10% 110%, rgba(212, 175, 55, 0.09), transparent);
+  background-attachment: fixed;
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-brand-300 active:translate-y-px disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn text-white shadow-btn;
+    background-image: linear-gradient(135deg, #d946ef 0%, #c026d3 55%, #a21caf 100%);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 12px 26px -6px rgba(192, 38, 211, 0.6);
   }
   .btn-ghost {
-    @apply btn bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50;
+    @apply btn bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 hover:shadow;
   }
   .btn-danger {
     @apply btn bg-rose-50 text-rose-600 ring-1 ring-rose-200 hover:bg-rose-100;
   }
   .input {
-    @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200;
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200;
   }
   .label {
     @apply mb-1 block text-sm font-medium text-slate-600;
   }
   .card {
-    @apply rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100;
+    @apply rounded-2xl bg-white p-5 shadow-card ring-1 ring-slate-100/80 transition-all duration-200;
+  }
+  .card:hover {
+    @apply -translate-y-0.5 shadow-3d;
   }
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
