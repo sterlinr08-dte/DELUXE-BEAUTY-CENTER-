@@ -7,7 +7,7 @@ export const NEGOCIO = {
   referencia: 'Frente a Banco Popular',
   whatsapp: '809-354-4083',
   instagram: '@centerdeluxebeauty',
-  logo: 'deluxe-tarjeta.png',
+  logo: 'deluxe-logo.png',
 }
 
 

@@ -26,9 +26,8 @@ export default function Login() {
           <img
             src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`}
             alt={NEGOCIO.nombre}
-            className="mb-3 h-24 w-24 rounded-2xl object-cover shadow-md ring-1 ring-brand-100"
+            className="mb-3 w-60 max-w-full rounded-2xl bg-black object-contain shadow-md"
           />
-          <h1 className="font-display text-2xl font-bold text-slate-800">{NEGOCIO.nombre}</h1>
           <p className="mt-1 text-sm text-slate-500">Inicia sesión para administrar el salón</p>
         </div>
 

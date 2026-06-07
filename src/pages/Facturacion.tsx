@@ -353,6 +353,7 @@ export default function Facturacion() {
         {facturaVista && (
           <div id="factura-print" className="space-y-3">
             <div className="text-center">
+              <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-2 h-20 rounded-lg bg-black object-contain" />
               <p className="font-display text-xl font-bold text-brand-800">{NEGOCIO.nombre}</p>
               <p className="text-xs text-slate-500">{NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
               <p className="text-xs text-slate-500">WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
