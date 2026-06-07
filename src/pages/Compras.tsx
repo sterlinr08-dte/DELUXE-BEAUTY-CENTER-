@@ -17,6 +17,7 @@ const vacio = {
   metodo_pago: 'Efectivo',
   articulo_id: '',
   cantidad: 0,
+  costo_unit: 0,
   notas: '',
 }
 
@@ -48,8 +49,11 @@ export default function Compras() {
     .filter((c) => c.fecha.slice(0, 7) === hoyISO().slice(0, 7))
     .reduce((s, c) => s + Number(c.total), 0)
 
-  const itbis = form.aplicaItbis ? form.subtotal * ITBIS_RATE : 0
-  const total = form.subtotal + itbis
+  // Si hay artículo + cantidad + costo, el subtotal se calcula (cantidad × costo); si no, es manual
+  const vinculaArticulo = !!form.articulo_id && form.cantidad > 0
+  const subtotal = vinculaArticulo ? form.cantidad * form.costo_unit : form.subtotal
+  const itbis = form.aplicaItbis ? subtotal * ITBIS_RATE : 0
+  const total = subtotal + itbis
 
   function abrirNuevo() {
     setEditId(null)
@@ -59,6 +63,7 @@ export default function Compras() {
 
   function abrirEditar(c: Compra) {
     setEditId(c.id)
+    const cant = Number(c.cantidad ?? 0)
     setForm({
       fecha: c.fecha,
       proveedor: c.proveedor ?? '',
@@ -68,23 +73,36 @@ export default function Compras() {
       aplicaItbis: Number(c.itbis) > 0,
       metodo_pago: c.metodo_pago ?? 'Efectivo',
       articulo_id: c.articulo_id ?? '',
-      cantidad: Number(c.cantidad ?? 0),
+      cantidad: cant,
+      costo_unit: cant > 0 ? Number(c.subtotal) / cant : 0,
       notas: c.notas ?? '',
     })
     setOpen(true)
   }
 
+  // Al elegir un artículo, precarga su costo y nombre como descripción
+  function elegirArticulo(id: string) {
+    const a = articulos.find((x) => x.id === id)
+    setForm((f) => ({
+      ...f,
+      articulo_id: id,
+      costo_unit: a ? Number(a.costo) || f.costo_unit : f.costo_unit,
+      descripcion: f.descripcion.trim() || (a ? a.nombre : ''),
+    }))
+  }
+
   async function guardar() {
+    if (form.articulo_id && form.cantidad <= 0) return alert('Indica la cantidad comprada')
+    if (vinculaArticulo && form.costo_unit <= 0) return alert('Indica el costo unitario')
     if (!form.descripcion.trim()) return alert('La descripción es obligatoria')
-    if (form.subtotal <= 0) return alert('El monto debe ser mayor que 0')
+    if (subtotal <= 0) return alert('El monto debe ser mayor que 0')
     setSaving(true)
-    const vinculaArticulo = form.articulo_id && form.cantidad > 0
     const payload = {
       fecha: form.fecha,
       proveedor: form.proveedor || null,
       descripcion: form.descripcion,
       categoria: form.categoria,
-      subtotal: form.subtotal,
+      subtotal,
       itbis,
       total,
       metodo_pago: form.metodo_pago,
@@ -95,12 +113,16 @@ export default function Compras() {
     const { error } = editId
       ? await supabase.from('compras').update(payload).eq('id', editId)
       : await supabase.from('compras').insert(payload)
-    setSaving(false)
-    if (error) return alert('Error al guardar: ' + error.message)
-    // Al registrar una compra nueva vinculada a un artículo, sumar al stock
+    if (error) {
+      setSaving(false)
+      return alert('Error al guardar: ' + error.message)
+    }
+    // Al registrar una compra nueva vinculada a un artículo: sumar al stock y actualizar su costo
     if (!editId && vinculaArticulo) {
       await supabase.rpc('ajustar_stock', { p_articulo: form.articulo_id, p_delta: form.cantidad })
+      await supabase.from('articulos').update({ costo: form.costo_unit }).eq('id', form.articulo_id)
     }
+    setSaving(false)
     setOpen(false)
     cargar()
   }
@@ -196,38 +218,51 @@ export default function Compras() {
             </div>
           </div>
           <div>
+            <label className="label">Proveedor</label>
+            <input className="input" value={form.proveedor} onChange={(e) => setForm({ ...form, proveedor: e.target.value })} />
+          </div>
+
+          {/* Compra de un artículo de inventario: artículo + cantidad + costo */}
+          <div className="rounded-xl border border-pink-100 bg-pink-50/40 p-3">
+            <label className="label">Artículo de inventario {editId ? '' : '(suma al stock)'}</label>
+            <select className="input" value={form.articulo_id} onChange={(e) => elegirArticulo(e.target.value)} disabled={!!editId}>
+              <option value="">— Compra sin inventario —</option>
+              {articulos.map((a) => <option key={a.id} value={a.id}>#{a.codigo} {a.nombre} (stock {a.stock})</option>)}
+            </select>
+            {form.articulo_id && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">Cantidad</label>
+                  <input type="number" min={0} className="input" placeholder="Cantidad" value={form.cantidad || ''} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} disabled={!!editId} />
+                </div>
+                <div>
+                  <label className="label">Costo unitario (RD$)</label>
+                  <input type="number" min={0} step={5} className="input" placeholder="Costo c/u" value={form.costo_unit || ''} onChange={(e) => setForm({ ...form, costo_unit: Number(e.target.value) })} disabled={!!editId} />
+                </div>
+              </div>
+            )}
+            {form.articulo_id && !editId && <p className="mt-1 text-xs text-slate-400">Subtotal = cantidad × costo. Se suma al stock y se actualiza el costo del artículo.</p>}
+          </div>
+
+          <div>
             <label className="label">Descripción</label>
             <input className="input" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Esmaltes, tintes…" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Proveedor</label>
-              <input className="input" value={form.proveedor} onChange={(e) => setForm({ ...form, proveedor: e.target.value })} />
-            </div>
+
+          {!vinculaArticulo && (
             <div>
               <label className="label">Subtotal (RD$)</label>
               <input type="number" min={0} step={50} className="input" value={form.subtotal || ''} onChange={(e) => setForm({ ...form, subtotal: Number(e.target.value) })} />
             </div>
-          </div>
+          )}
+
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={form.aplicaItbis} onChange={(e) => setForm({ ...form, aplicaItbis: e.target.checked })} />
             Incluir ITBIS (18%)
           </label>
-          {!editId && (
-            <div className="rounded-xl border border-pink-100 bg-pink-50/40 p-3">
-              <label className="label">Sumar al inventario (opcional)</label>
-              <div className="grid grid-cols-2 gap-2">
-                <select className="input" value={form.articulo_id} onChange={(e) => setForm({ ...form, articulo_id: e.target.value })}>
-                  <option value="">— No suma stock —</option>
-                  {articulos.map((a) => <option key={a.id} value={a.id}>#{a.codigo} {a.nombre}</option>)}
-                </select>
-                <input type="number" min={0} className="input" placeholder="Cantidad" value={form.cantidad || ''} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} disabled={!form.articulo_id} />
-              </div>
-              <p className="mt-1 text-xs text-slate-400">Si eliges un artículo y cantidad, se suma a su stock automáticamente.</p>
-            </div>
-          )}
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
-            <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(form.subtotal)}</span></div>
+            {vinculaArticulo && <div className="flex justify-between text-slate-500"><span>{form.cantidad} × {money(form.costo_unit)}</span><span></span></div>}
+            <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(subtotal)}</span></div>
             {form.aplicaItbis && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(itbis)}</span></div>}
             <div className="mt-1 flex justify-between border-t border-slate-200 pt-1 font-bold text-slate-800"><span>Total</span><span>{money(total)}</span></div>
           </div>
