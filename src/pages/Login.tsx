@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
-import { Sparkles, LogIn } from 'lucide-react'
+import { LogIn, MapPin, Phone, Instagram } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { NEGOCIO } from '../lib/constants'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -22,10 +23,12 @@ export default function Login() {
     <div className="flex min-h-full items-center justify-center bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 ring-1 ring-brand-100">
-            <Sparkles className="text-brand-600" size={26} />
-          </div>
-          <h1 className="font-display text-2xl font-bold text-slate-800">DELUXE BEAUTY CENTER</h1>
+          <img
+            src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`}
+            alt={NEGOCIO.nombre}
+            className="mb-3 h-24 w-24 rounded-2xl object-cover shadow-md ring-1 ring-brand-100"
+          />
+          <h1 className="font-display text-2xl font-bold text-slate-800">{NEGOCIO.nombre}</h1>
           <p className="mt-1 text-sm text-slate-500">Inicia sesión para administrar el salón</p>
         </div>
 
@@ -64,6 +67,12 @@ export default function Login() {
             {loading ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
+
+        <div className="mt-6 space-y-1 border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
+          <p className="flex items-center justify-center gap-1"><MapPin size={12} /> {NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
+          <p className="flex items-center justify-center gap-1"><Phone size={12} /> {NEGOCIO.whatsapp}</p>
+          <p className="flex items-center justify-center gap-1"><Instagram size={12} /> {NEGOCIO.instagram}</p>
+        </div>
       </div>
     </div>
   )
