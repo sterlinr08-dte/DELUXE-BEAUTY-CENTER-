@@ -61,5 +61,82 @@ export interface CitaConRelaciones extends Cita {
   servicio: Pick<Servicio, 'id' | 'nombre' | 'precio' | 'duracion_min'> | null
 }
 
+// ===================== FACTURACIÓN Y CONTABILIDAD =====================
+
+export type EstadoFactura = 'PENDIENTE' | 'PAGADA' | 'ANULADA'
+export type TipoPagoEmpleado = 'SALARIO' | 'COMISION' | 'ADELANTO' | 'BONO'
+
+export interface FacturaItem {
+  id: string
+  factura_id: string
+  servicio_id: string | null
+  empleado_id: string | null
+  descripcion: string
+  cantidad: number
+  precio_unit: number
+  importe: number
+}
+
+export interface Factura {
+  id: string
+  numero: number
+  cliente_id: string | null
+  cliente_nombre: string | null
+  cita_id: string | null
+  fecha: string
+  subtotal: number
+  descuento: number
+  itbis: number
+  total: number
+  estado: EstadoFactura
+  metodo_pago: string | null
+  notas: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FacturaConItems extends Factura {
+  items: FacturaItem[]
+}
+
+export interface Gasto {
+  id: string
+  fecha: string
+  categoria: string
+  concepto: string
+  beneficiario: string | null
+  monto: number
+  metodo_pago: string | null
+  notas: string | null
+  created_at: string
+}
+
+export interface Compra {
+  id: string
+  fecha: string
+  proveedor: string | null
+  descripcion: string
+  categoria: string
+  subtotal: number
+  itbis: number
+  total: number
+  metodo_pago: string | null
+  notas: string | null
+  created_at: string
+}
+
+export interface PagoEmpleado {
+  id: string
+  empleado_id: string | null
+  empleado_nombre: string | null
+  fecha: string
+  periodo: string | null
+  tipo: TipoPagoEmpleado
+  monto: number
+  metodo_pago: string | null
+  notas: string | null
+  created_at: string
+}
+
 // Tipado mínimo para el cliente de Supabase.
 export type Database = any

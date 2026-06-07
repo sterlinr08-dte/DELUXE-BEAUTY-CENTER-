@@ -16,6 +16,11 @@ Aplicación web construida con **React + Vite + TypeScript + Tailwind CSS** y
 - **Clientes** — registro y búsqueda de clientes con datos de contacto y notas.
 - **Servicios y precios** — catálogo de servicios por categoría, duración y precio.
 - **Empleados / Staff** — personal del salón, puesto, comisión y color en la agenda.
+- **Facturación** — facturas con renglones (servicios o manuales), ITBIS opcional (18%), descuento, estados (Pendiente/Pagada/Anulada) e impresión.
+- **Compras** — registro de compras a proveedores con ITBIS.
+- **Gastos** — registro de gastos por categoría.
+- **Pagos a empleados (nómina)** — salario, comisión, adelantos y bonos.
+- **Contabilidad** — resumen mensual de ingresos, egresos y utilidad neta.
 
 ## 🧱 Stack
 
