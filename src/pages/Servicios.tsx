@@ -15,10 +15,9 @@ const vacio = {
   activo: true,
 }
 
-const categorias = ['Cabello', 'Uñas', 'Facial', 'Maquillaje', 'Depilación', 'General']
-
 export default function Servicios() {
   const [items, setItems] = useState<Servicio[]>([])
+  const [categorias, setCategorias] = useState<string[]>(['General'])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -27,9 +26,13 @@ export default function Servicios() {
 
   async function cargar() {
     setLoading(true)
-    const { data, error } = await supabase.from('servicios').select('*').order('categoria').order('nombre')
+    const [{ data, error }, { data: cats }] = await Promise.all([
+      supabase.from('servicios').select('*').order('categoria').order('nombre'),
+      supabase.from('categorias').select('nombre').eq('tipo', 'servicio').order('nombre'),
+    ])
     if (error) alert('Error al cargar servicios: ' + error.message)
     setItems(data ?? [])
+    if (cats && cats.length) setCategorias(cats.map((c: any) => c.nombre))
     setLoading(false)
   }
 

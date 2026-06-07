@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado } from '../types'
@@ -22,7 +22,7 @@ interface UsuarioRow {
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
   const { recargarNegocio } = useNegocio()
-  const [tab, setTab] = useState<'usuarios' | 'roles' | 'negocio'>('usuarios')
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'negocio' | 'categorias'>('usuarios')
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -31,6 +31,11 @@ export default function Configuracion() {
   // datos del negocio
   const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '' })
   const [savingNeg, setSavingNeg] = useState(false)
+
+  // categorías
+  const [categorias, setCategorias] = useState<{ id: string; nombre: string; tipo: string }[]>([])
+  const [catNombre, setCatNombre] = useState('')
+  const [catTipo, setCatTipo] = useState<'articulo' | 'servicio'>('articulo')
 
   // modal usuario
   const [openU, setOpenU] = useState(false)
@@ -59,7 +64,24 @@ export default function Configuracion() {
       nombre: neg.nombre ?? '', direccion: neg.direccion ?? '', referencia: neg.referencia ?? '',
       telefono: neg.telefono ?? '', whatsapp: neg.whatsapp ?? '', instagram: neg.instagram ?? '', rnc: neg.rnc ?? '',
     })
+    const { data: cats } = await supabase.from('categorias').select('id,nombre,tipo').order('tipo').order('nombre')
+    setCategorias((cats as any) ?? [])
     setLoading(false)
+  }
+
+  async function agregarCategoria() {
+    if (!catNombre.trim()) return alert('Escribe el nombre de la categoría')
+    const { error } = await supabase.from('categorias').insert({ nombre: catNombre.trim(), tipo: catTipo })
+    if (error) return alert(error.message.includes('duplicate') ? 'Esa categoría ya existe' : 'Error: ' + error.message)
+    setCatNombre('')
+    cargar()
+  }
+
+  async function eliminarCategoria(id: string) {
+    if (!confirm('¿Eliminar esta categoría? Los registros que ya la usan no cambian.')) return
+    const { error } = await supabase.from('categorias').delete().eq('id', id)
+    if (error) return alert('Error: ' + error.message)
+    cargar()
   }
 
   async function guardarNegocio() {
@@ -176,6 +198,9 @@ export default function Configuracion() {
         <button onClick={() => setTab('negocio')} className={tab === 'negocio' ? 'btn-primary' : 'btn-ghost'}>
           <Store size={16} /> Negocio
         </button>
+        <button onClick={() => setTab('categorias')} className={tab === 'categorias' ? 'btn-primary' : 'btn-ghost'}>
+          <Tags size={16} /> Categorías
+        </button>
       </div>
 
       {loading ? (
@@ -254,7 +279,7 @@ export default function Configuracion() {
             ))}
           </div>
         </div>
-      ) : (
+      ) : tab === 'negocio' ? (
         <div className="max-w-2xl">
           <div className="card space-y-4">
             <div>
@@ -294,6 +319,34 @@ export default function Configuracion() {
               <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar cambios'}</button>
             </div>
           </div>
+        </div>
+      ) : (
+        <div className="max-w-2xl space-y-4">
+          <div className="card space-y-3">
+            <label className="label">Nueva categoría</label>
+            <div className="flex flex-wrap gap-2">
+              <input className="input flex-1" placeholder="Ej: Bebidas, Spa, Barbería…" value={catNombre} onChange={(e) => setCatNombre(e.target.value)} />
+              <select className="input w-auto" value={catTipo} onChange={(e) => setCatTipo(e.target.value as 'articulo' | 'servicio')}>
+                <option value="articulo">Artículo</option>
+                <option value="servicio">Servicio</option>
+              </select>
+              <button className="btn-primary" onClick={agregarCategoria}><Plus size={16} /> Agregar</button>
+            </div>
+          </div>
+          {(['articulo', 'servicio'] as const).map((t) => (
+            <div key={t} className="card">
+              <h3 className="mb-3 font-display font-bold text-slate-800">{t === 'articulo' ? 'Categorías de artículos' : 'Categorías de servicios'}</h3>
+              <div className="flex flex-wrap gap-2">
+                {categorias.filter((c) => c.tipo === t).map((c) => (
+                  <span key={c.id} className="badge flex items-center gap-1 bg-slate-100 text-slate-600">
+                    {c.nombre}
+                    <button onClick={() => eliminarCategoria(c.id)} className="text-slate-400 hover:text-rose-600"><Trash2 size={12} /></button>
+                  </span>
+                ))}
+                {categorias.filter((c) => c.tipo === t).length === 0 && <p className="text-sm text-slate-400">Sin categorías.</p>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

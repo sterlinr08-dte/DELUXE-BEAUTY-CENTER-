@@ -17,10 +17,9 @@ const vacio = {
   activo: true,
 }
 
-const categorias = ['Cabello', 'Uñas', 'Facial', 'Maquillaje', 'Bebidas', 'Cafetería', 'General', 'Otros']
-
 export default function Articulos() {
   const [items, setItems] = useState<Articulo[]>([])
+  const [categorias, setCategorias] = useState<string[]>(['General'])
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -30,8 +29,12 @@ export default function Articulos() {
 
   async function cargar() {
     setLoading(true)
-    const { data } = await supabase.from('articulos').select('*').order('codigo')
+    const [{ data }, { data: cats }] = await Promise.all([
+      supabase.from('articulos').select('*').order('codigo'),
+      supabase.from('categorias').select('nombre').eq('tipo', 'articulo').order('nombre'),
+    ])
     setItems(data ?? [])
+    if (cats && cats.length) setCategorias(cats.map((c: any) => c.nombre))
     setLoading(false)
   }
 
