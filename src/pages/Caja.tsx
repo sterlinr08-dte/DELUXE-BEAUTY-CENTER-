@@ -208,13 +208,14 @@ export default function Caja() {
       )
     }
     setSaving(true)
+    const cerradaAt = new Date().toISOString()
     const detalle = DENOMS.filter((d) => conteo[d]).map((d) => `${conteo[d]}×${d}`).join(', ')
     const notas = [detalle ? `Arqueo: ${detalle}` : '', cierreNotas].filter(Boolean).join(' · ')
     const { error } = await supabase
       .from('caja_sesiones')
       .update({
         estado: 'CERRADA',
-        cerrada_at: new Date().toISOString(),
+        cerrada_at: cerradaAt,
         cerrada_por: usuario,
         monto_contado: contado,
         diferencia: contado - esperado,
@@ -224,6 +225,18 @@ export default function Caja() {
     setSaving(false)
     if (error) return alert('Error al cerrar caja: ' + error.message)
     setCerrarOpen(false)
+    // Mostrar el comprobante del cierre recién hecho (con opción de imprimir)
+    setCierreCobros(cobros)
+    setCierreMovs(movs)
+    setVerCierre({
+      ...sesion,
+      estado: 'CERRADA',
+      cerrada_at: cerradaAt,
+      cerrada_por: usuario,
+      monto_contado: contado,
+      diferencia: contado - esperado,
+      notas: notas || null,
+    })
     cargar()
   }
 
