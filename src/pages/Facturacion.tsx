@@ -57,14 +57,17 @@ export default function Facturacion() {
     ? [
         ...servicios
           .filter((s) => s.nombre.toLowerCase().includes(q) || (s.categoria ?? '').toLowerCase().includes(q))
-          .map((s) => ({ tipo: 's' as const, id: s.id, nombre: s.nombre, precio: Number(s.precio), categoria: s.categoria })),
+          .map((s) => ({ tipo: 's' as const, id: s.id, nombre: s.nombre, precio: Number(s.precio), stock: null as number | null })),
         ...articulos
           .filter((a) => a.nombre.toLowerCase().includes(q) || a.categoria.toLowerCase().includes(q) || String(a.codigo).includes(q))
-          .map((a) => ({ tipo: 'a' as const, id: a.id, nombre: a.nombre, precio: Number(a.precio), categoria: a.categoria })),
+          .map((a) => ({ tipo: 'a' as const, id: a.id, nombre: a.nombre, precio: Number(a.precio), stock: Number(a.stock) })),
       ].slice(0, 8)
     : []
 
-  function agregarDesdeBusqueda(r: { tipo: 's' | 'a'; id: string; nombre: string; precio: number }) {
+  function agregarDesdeBusqueda(r: { tipo: 's' | 'a'; id: string; nombre: string; precio: number; stock?: number | null }) {
+    if (r.tipo === 'a' && (r.stock ?? 0) <= 0) {
+      if (!confirm(`"${r.nombre}" no tiene existencia (stock 0). ¿Agregar de todos modos?`)) return
+    }
     const linea: LineaTmp = {
       servicio_id: r.tipo === 's' ? r.id : '',
       articulo_id: r.tipo === 'a' ? r.id : '',
@@ -364,6 +367,11 @@ export default function Facturacion() {
                             {r.tipo === 's' ? 'Servicio' : 'Artículo'}
                           </span>
                           <span className="truncate text-slate-700">{r.nombre}</span>
+                          {r.tipo === 'a' && (
+                            <span className={`text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                              {(r.stock ?? 0) <= 0 ? 'sin stock' : `stock: ${r.stock}`}
+                            </span>
+                          )}
                         </span>
                         <span className="shrink-0 font-semibold text-slate-800">{money(r.precio)}</span>
                       </button>

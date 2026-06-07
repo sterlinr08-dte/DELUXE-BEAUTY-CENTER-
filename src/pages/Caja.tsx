@@ -121,6 +121,7 @@ export default function Caja() {
   // Cobros del día agrupados por método de pago
   const porMetodo = desglosePorMetodo(cobros)
   const totalCobrado = cobros.reduce((s, f) => s + Number(f.total), 0)
+  const cobrosOtros = cobros.filter((f) => (f.metodo_pago ?? 'Efectivo') !== 'Efectivo').reduce((s, f) => s + Number(f.total), 0)
 
   // Derivados del cobro en curso (mini-POS)
   const cobroTotal = Number(cobrarFactura?.total ?? 0)
@@ -685,6 +686,9 @@ export default function Caja() {
             <div className="flex justify-between py-1"><span className="text-slate-500">Entradas</span><span className="font-medium text-emerald-600">+{money(entradas)}</span></div>
             <div className="flex justify-between py-1"><span className="text-slate-500">Salidas</span><span className="font-medium text-rose-600">−{money(salidas)}</span></div>
             <div className="mt-1 flex justify-between border-t border-slate-200 pt-2"><span className="font-semibold text-slate-700">Efectivo esperado</span><span className="font-bold text-slate-900">{money(esperado)}</span></div>
+            {cobrosOtros > 0 && (
+              <p className="mt-2 text-xs text-slate-400">Nota: {money(cobrosOtros)} cobrados por tarjeta/transferencia no entran al arqueo de efectivo.</p>
+            )}
           </div>
           <div>
             <label className="label">Arqueo de caja — cuenta los billetes y monedas</label>

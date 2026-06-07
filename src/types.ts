@@ -179,6 +179,7 @@ export interface Articulo {
   precio: number
   costo: number
   stock: number
+  stock_min: number
   activo: boolean
   created_at: string
   updated_at: string

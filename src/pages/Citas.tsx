@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, CalendarDays, Clock } from 'lucide-react'
+import { Plus, Pencil, Trash2, CalendarDays, Clock, Receipt } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones, Cliente, Empleado, EstadoCita, Servicio } from '../types'
 import { hora, money, fechaLarga, hoyISO } from '../lib/format'
@@ -150,6 +150,46 @@ export default function Citas() {
     cargar()
   }
 
+  // Genera una factura (PENDIENTE) a partir de la cita, lista para cobrar en Caja
+  async function facturar(c: CitaConRelaciones) {
+    // Evitar doble facturación
+    const { data: existente } = await supabase.from('facturas').select('id,numero').eq('cita_id', c.id).maybeSingle()
+    if (existente) return alert(`Esta cita ya tiene la factura #${(existente as any).numero}. Cóbrala en Caja.`)
+    if (!confirm(`¿Generar factura de ${money(c.precio)} para ${c.cliente?.nombre ?? 'el cliente'}? Luego se cobra en Caja.`)) return
+
+    const { data: factura, error } = await supabase
+      .from('facturas')
+      .insert({
+        cliente_id: c.cliente_id,
+        cliente_nombre: c.cliente?.nombre ?? 'Cliente',
+        cita_id: c.id,
+        fecha: hoyISO(),
+        subtotal: c.precio,
+        descuento: 0,
+        itbis: 0,
+        total: c.precio,
+        estado: 'PENDIENTE',
+        metodo_pago: null,
+      })
+      .select()
+      .single()
+    if (error || !factura) return alert('Error al facturar: ' + error?.message)
+
+    await supabase.from('factura_items').insert({
+      factura_id: factura.id,
+      servicio_id: c.servicio_id,
+      empleado_id: c.empleado_id || null,
+      descripcion: c.servicio?.nombre ?? 'Servicio',
+      cantidad: 1,
+      precio_unit: c.precio,
+      importe: c.precio,
+    })
+    // Marcar la cita como completada
+    if (c.estado !== 'COMPLETADA') await supabase.from('citas').update({ estado: 'COMPLETADA' }).eq('id', c.id)
+    alert(`Factura #${factura.numero} generada. Ahora cóbrala en Caja.`)
+    cargar()
+  }
+
   return (
     <div>
       <PageHeader
@@ -211,6 +251,11 @@ export default function Citas() {
               </select>
 
               <div className="flex gap-1">
+                {c.estado !== 'CANCELADA' && (
+                  <button onClick={() => facturar(c)} title="Generar factura" className="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600">
+                    <Receipt size={16} />
+                  </button>
+                )}
                 <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
                   <Pencil size={16} />
                 </button>

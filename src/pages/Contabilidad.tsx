@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown, Receipt, ShoppingCart, Wallet, Users, Scale } from 'lucide-react'
+import { TrendingUp, TrendingDown, Receipt, ShoppingCart, Wallet, Users, Scale, Boxes, Coins } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { money } from '../lib/format'
 import PageHeader from '../components/PageHeader'
@@ -10,6 +10,8 @@ interface Resumen {
   gastos: number
   compras: number
   nomina: number
+  gananciaProductos: number
+  inventarioValor: number
 }
 
 function mesActual(): string {
@@ -27,26 +29,43 @@ function rango(mes: string): { desde: string; hasta: string } {
 
 export default function Contabilidad() {
   const [mes, setMes] = useState(mesActual())
-  const [r, setR] = useState<Resumen>({ ingresos: 0, facturasPendientes: 0, gastos: 0, compras: 0, nomina: 0 })
+  const [r, setR] = useState<Resumen>({ ingresos: 0, facturasPendientes: 0, gastos: 0, compras: 0, nomina: 0, gananciaProductos: 0, inventarioValor: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     ;(async () => {
       setLoading(true)
       const { desde, hasta } = rango(mes)
-      const [fact, gas, com, nom] = await Promise.all([
+      const [fact, gas, com, nom, prod, inv] = await Promise.all([
         supabase.from('facturas').select('total,estado').gte('fecha', desde).lte('fecha', hasta),
         supabase.from('gastos').select('monto').gte('fecha', desde).lte('fecha', hasta),
         supabase.from('compras').select('total').gte('fecha', desde).lte('fecha', hasta),
         supabase.from('pagos_empleados').select('monto').gte('fecha', desde).lte('fecha', hasta),
+        // Ganancia bruta de productos vendidos (precio − costo) en facturas pagadas del mes
+        supabase
+          .from('factura_items')
+          .select('cantidad,precio_unit, articulos!inner(costo), facturas!inner(estado,fecha)')
+          .not('articulo_id', 'is', null)
+          .eq('facturas.estado', 'PAGADA')
+          .gte('facturas.fecha', desde)
+          .lte('facturas.fecha', hasta),
+        // Valor actual del inventario al costo
+        supabase.from('articulos').select('stock,costo').eq('activo', true),
       ])
       const facturas = fact.data ?? []
+      const gananciaProductos = (prod.data ?? []).reduce(
+        (s: number, it: any) => s + (Number(it.precio_unit) - Number(it.articulos?.costo ?? 0)) * Number(it.cantidad),
+        0,
+      )
+      const inventarioValor = (inv.data ?? []).reduce((s: number, a: any) => s + Number(a.stock) * Number(a.costo), 0)
       setR({
         ingresos: facturas.filter((f: any) => f.estado === 'PAGADA').reduce((s: number, f: any) => s + Number(f.total), 0),
         facturasPendientes: facturas.filter((f: any) => f.estado === 'PENDIENTE').reduce((s: number, f: any) => s + Number(f.total), 0),
         gastos: (gas.data ?? []).reduce((s: number, g: any) => s + Number(g.monto), 0),
         compras: (com.data ?? []).reduce((s: number, c: any) => s + Number(c.total), 0),
         nomina: (nom.data ?? []).reduce((s: number, p: any) => s + Number(p.monto), 0),
+        gananciaProductos,
+        inventarioValor,
       })
       setLoading(false)
     })()
@@ -89,6 +108,19 @@ export default function Contabilidad() {
               <div className={`mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg ${utilidad >= 0 ? 'bg-brand-50 text-brand-600' : 'bg-rose-50 text-rose-600'}`}><Scale size={20} /></div>
               <p className={`text-2xl font-bold ${utilidad >= 0 ? 'text-brand-700' : 'text-rose-600'}`}>{money(utilidad)}</p>
               <p className="text-sm text-slate-500">Utilidad neta</p>
+            </div>
+          </div>
+
+          <div className="mb-6 grid gap-4 sm:grid-cols-2">
+            <div className="card">
+              <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><Coins size={20} /></div>
+              <p className="text-2xl font-bold text-emerald-600">{money(r.gananciaProductos)}</p>
+              <p className="text-sm text-slate-500">Ganancia en productos del mes (precio − costo)</p>
+            </div>
+            <div className="card">
+              <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 text-sky-600"><Boxes size={20} /></div>
+              <p className="text-2xl font-bold text-slate-800">{money(r.inventarioValor)}</p>
+              <p className="text-sm text-slate-500">Valor del inventario actual (al costo)</p>
             </div>
           </div>
 

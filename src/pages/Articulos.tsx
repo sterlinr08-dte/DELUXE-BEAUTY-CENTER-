@@ -13,6 +13,7 @@ const vacio = {
   precio: 0,
   costo: 0,
   stock: 0,
+  stock_min: 5,
   activo: true,
 }
 
@@ -63,6 +64,7 @@ export default function Articulos() {
       precio: Number(a.precio),
       costo: Number(a.costo),
       stock: Number(a.stock),
+      stock_min: Number(a.stock_min ?? 5),
       activo: a.activo,
     })
     setOpen(true)
@@ -143,7 +145,7 @@ export default function Articulos() {
                   <td className="px-5 py-3 text-right text-slate-500">{money(a.costo)}</td>
                   <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(a.precio)}</td>
                   <td className="px-5 py-3 text-right">
-                    <span className={`badge ${Number(a.stock) <= 0 ? 'bg-rose-50 text-rose-700' : Number(a.stock) <= 5 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                    <span className={`badge ${Number(a.stock) <= 0 ? 'bg-rose-50 text-rose-700' : Number(a.stock) <= Number(a.stock_min) ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
                       {Number(a.stock) <= 0 ? 'Agotado' : a.stock}
                     </span>
                   </td>
@@ -187,6 +189,10 @@ export default function Articulos() {
               <label className="label">Stock</label>
               <input type="number" min={0} className="input" value={form.stock || ''} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
             </div>
+          </div>
+          <div>
+            <label className="label">Stock mínimo (alerta de bajo inventario)</label>
+            <input type="number" min={0} className="input" value={form.stock_min || ''} onChange={(e) => setForm({ ...form, stock_min: Number(e.target.value) })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

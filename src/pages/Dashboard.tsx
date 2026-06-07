@@ -6,8 +6,6 @@ import { CitaConRelaciones } from '../types'
 import { hora, money, hoyISO, fechaLarga } from '../lib/format'
 import { useNegocio } from '../lib/negocio'
 
-const UMBRAL_STOCK = 5 // stock bajo: igual o menor a este número
-
 interface Stats {
   clientes: number
   citasHoy: number
@@ -30,24 +28,25 @@ export default function Dashboard() {
 
   useEffect(() => {
     ;(async () => {
-      const [cl, citas, factHoy, pend, low] = await Promise.all([
+      const [cl, citas, factHoy, pend, arts] = await Promise.all([
         supabase.from('clientes').select('id', { count: 'exact', head: true }),
         supabase.from('citas').select(SELECT).eq('fecha', hoy).order('hora_inicio'),
         supabase.from('facturas').select('total,estado').eq('fecha', hoy),
         supabase.from('facturas').select('total').eq('estado', 'PENDIENTE'),
-        supabase.from('articulos').select('id', { count: 'exact', head: true }).eq('activo', true).lte('stock', UMBRAL_STOCK),
+        supabase.from('articulos').select('stock,stock_min').eq('activo', true),
       ])
       const lista = (citas.data as CitaConRelaciones[]) ?? []
       const ventasHoy = (factHoy.data ?? [])
         .filter((f: any) => f.estado === 'PAGADA')
         .reduce((s: number, f: any) => s + Number(f.total), 0)
       const porCobrar = (pend.data ?? []).reduce((s: number, f: any) => s + Number(f.total), 0)
+      const stockBajo = (arts.data ?? []).filter((a: any) => Number(a.stock) <= Number(a.stock_min)).length
       setStats({
         clientes: cl.count ?? 0,
         citasHoy: lista.length,
         ventasHoy,
         porCobrar,
-        stockBajo: low.count ?? 0,
+        stockBajo,
       })
       setAgenda(lista)
       setLoading(false)
@@ -92,7 +91,7 @@ export default function Dashboard() {
       {stats.stockBajo > 0 && (
         <Link to="/articulos" className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100">
           <PackageX size={20} />
-          <span><strong>{stats.stockBajo}</strong> artículo(s) con stock bajo (≤ {UMBRAL_STOCK}). Toca para revisar el inventario.</span>
+          <span><strong>{stats.stockBajo}</strong> artículo(s) con stock bajo (en o por debajo de su mínimo). Toca para revisar el inventario.</span>
         </Link>
       )}
 
