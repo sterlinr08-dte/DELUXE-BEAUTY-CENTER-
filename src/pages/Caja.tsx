@@ -488,7 +488,7 @@ export default function Caja() {
           <p className="text-sm text-slate-500">Indica el efectivo con el que inicia la caja (fondo).</p>
           <div>
             <label className="label">Fondo inicial (RD$)</label>
-            <input type="number" min={0} step={100} className="input" value={montoInicial} onChange={(e) => setMontoInicial(Number(e.target.value))} />
+            <input type="number" min={0} step={100} className="input" value={montoInicial || ''} onChange={(e) => setMontoInicial(Number(e.target.value))} />
           </div>
         </div>
       </Modal>
@@ -512,7 +512,7 @@ export default function Caja() {
           </div>
           <div>
             <label className="label">Monto (RD$)</label>
-            <input type="number" min={0} step={50} className="input" value={movMonto} onChange={(e) => setMovMonto(Number(e.target.value))} />
+            <input type="number" min={0} step={50} className="input" value={movMonto || ''} onChange={(e) => setMovMonto(Number(e.target.value))} />
           </div>
         </div>
       </Modal>
@@ -642,7 +642,7 @@ export default function Caja() {
                   min={0}
                   step={50}
                   className="input"
-                  value={efectivoRecibido}
+                  value={efectivoRecibido || ''}
                   onChange={(e) => setEfectivoRecibido(Number(e.target.value))}
                 />
                 <div className="flex flex-wrap gap-1.5">
@@ -697,7 +697,7 @@ export default function Caja() {
                     type="number"
                     min={0}
                     className="input !py-1 !px-2 text-sm"
-                    value={conteo[d] || 0}
+                    value={conteo[d] || ''}
                     onChange={(e) => setConteo({ ...conteo, [d]: Math.max(0, Number(e.target.value)) })}
                   />
                   <span className="w-20 shrink-0 text-right text-xs text-slate-500">{money(d * (conteo[d] || 0))}</span>

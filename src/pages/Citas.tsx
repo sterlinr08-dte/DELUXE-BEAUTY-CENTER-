@@ -275,7 +275,7 @@ export default function Citas() {
             </div>
             <div>
               <label className="label">Precio</label>
-              <input type="number" min={0} step={50} className="input" value={form.precio} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
+              <input type="number" min={0} step={50} className="input" value={form.precio || ''} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
             </div>
           </div>
           <div>

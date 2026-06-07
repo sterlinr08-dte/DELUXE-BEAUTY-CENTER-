@@ -317,11 +317,11 @@ export default function Facturacion() {
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     <div>
                       <span className="text-xs text-slate-400">Cant.</span>
-                      <input type="number" min={1} className="input" value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
+                      <input type="number" min={1} className="input" value={l.cantidad || ''} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
                     </div>
                     <div>
                       <span className="text-xs text-slate-400">Precio</span>
-                      <input type="number" min={0} step={50} className="input" value={l.precio_unit} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
+                      <input type="number" min={0} step={50} className="input" value={l.precio_unit || ''} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
                     </div>
                     <div>
                       <span className="text-xs text-slate-400">Importe</span>
@@ -350,7 +350,7 @@ export default function Facturacion() {
             </div>
             <div>
               <label className="label">Descuento (RD$)</label>
-              <input type="number" min={0} step={50} className="input" value={descuento} onChange={(e) => setDescuento(Number(e.target.value))} />
+              <input type="number" min={0} step={50} className="input" value={descuento || ''} onChange={(e) => setDescuento(Number(e.target.value))} />
             </div>
           </div>
 

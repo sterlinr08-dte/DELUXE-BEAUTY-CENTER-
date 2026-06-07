@@ -186,7 +186,7 @@ export default function Compras() {
             </div>
             <div>
               <label className="label">Subtotal (RD$)</label>
-              <input type="number" min={0} step={50} className="input" value={form.subtotal} onChange={(e) => setForm({ ...form, subtotal: Number(e.target.value) })} />
+              <input type="number" min={0} step={50} className="input" value={form.subtotal || ''} onChange={(e) => setForm({ ...form, subtotal: Number(e.target.value) })} />
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-600">

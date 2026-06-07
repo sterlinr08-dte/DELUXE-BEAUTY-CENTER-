@@ -161,17 +161,17 @@ export default function Articulos() {
             </div>
             <div>
               <label className="label">Stock</label>
-              <input type="number" min={0} className="input" value={form.stock} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
+              <input type="number" min={0} className="input" value={form.stock || ''} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Costo (RD$)</label>
-              <input type="number" min={0} step={10} className="input" value={form.costo} onChange={(e) => setForm({ ...form, costo: Number(e.target.value) })} />
+              <input type="number" min={0} step={10} className="input" value={form.costo || ''} onChange={(e) => setForm({ ...form, costo: Number(e.target.value) })} />
             </div>
             <div>
               <label className="label">Precio de venta (RD$)</label>
-              <input type="number" min={0} step={10} className="input" value={form.precio} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
+              <input type="number" min={0} step={10} className="input" value={form.precio || ''} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
             </div>
           </div>
           <div>

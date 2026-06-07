@@ -165,12 +165,12 @@ export default function Servicios() {
             </div>
             <div>
               <label className="label">Duración (min)</label>
-              <input type="number" min={5} step={5} className="input" value={form.duracion_min} onChange={(e) => setForm({ ...form, duracion_min: Number(e.target.value) })} />
+              <input type="number" min={5} step={5} className="input" value={form.duracion_min || ''} onChange={(e) => setForm({ ...form, duracion_min: Number(e.target.value) })} />
             </div>
           </div>
           <div>
             <label className="label">Precio (RD$)</label>
-            <input type="number" min={0} step={50} className="input" value={form.precio} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
+            <input type="number" min={0} step={50} className="input" value={form.precio || ''} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
           </div>
           <div>
             <label className="label">Descripción</label>

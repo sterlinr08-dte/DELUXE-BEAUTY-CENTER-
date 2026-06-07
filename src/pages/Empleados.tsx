@@ -167,7 +167,7 @@ export default function Empleados() {
             </div>
             <div>
               <label className="label">Comisión (%)</label>
-              <input type="number" min={0} max={100} className="input" value={form.comision_pct} onChange={(ev) => setForm({ ...form, comision_pct: Number(ev.target.value) })} />
+              <input type="number" min={0} max={100} className="input" value={form.comision_pct || ''} onChange={(ev) => setForm({ ...form, comision_pct: Number(ev.target.value) })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

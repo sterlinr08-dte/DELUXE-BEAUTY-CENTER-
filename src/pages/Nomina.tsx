@@ -188,7 +188,7 @@ export default function Nomina() {
             </div>
             <div>
               <label className="label">Monto (RD$)</label>
-              <input type="number" min={0} step={50} className="input" value={form.monto} onChange={(e) => setForm({ ...form, monto: Number(e.target.value) })} />
+              <input type="number" min={0} step={50} className="input" value={form.monto || ''} onChange={(e) => setForm({ ...form, monto: Number(e.target.value) })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
