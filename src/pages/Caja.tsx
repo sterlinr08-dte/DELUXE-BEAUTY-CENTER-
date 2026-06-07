@@ -23,6 +23,7 @@ export default function Caja() {
   const [movs, setMovs] = useState<CajaMovimiento[]>([])
   const [historial, setHistorial] = useState<CajaSesion[]>([])
   const [pendientes, setPendientes] = useState<Factura[]>([])
+  const [cobros, setCobros] = useState<Factura[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -52,14 +53,15 @@ export default function Caja() {
       .maybeSingle()
 
     if (abierta) {
-      const { data: m } = await supabase
-        .from('caja_movimientos')
-        .select('*')
-        .eq('caja_id', abierta.id)
-        .order('created_at', { ascending: false })
+      const [{ data: m }, { data: c }] = await Promise.all([
+        supabase.from('caja_movimientos').select('*').eq('caja_id', abierta.id).order('created_at', { ascending: false }),
+        supabase.from('facturas').select('*').eq('caja_id', abierta.id).eq('estado', 'PAGADA'),
+      ])
       setMovs(m ?? [])
+      setCobros(c ?? [])
     } else {
       setMovs([])
+      setCobros([])
     }
     setSesion(abierta ?? null)
 
@@ -87,6 +89,14 @@ export default function Caja() {
 
   const entradas = movs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
   const salidas = movs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
+  // Cobros del día agrupados por método de pago
+  const porMetodo = METODOS_PAGO.map((m) => ({
+    metodo: m,
+    cantidad: cobros.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).length,
+    total: cobros.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).reduce((s, f) => s + Number(f.total), 0),
+  })).filter((x) => x.cantidad > 0)
+  const totalCobrado = cobros.reduce((s, f) => s + Number(f.total), 0)
+
   const esperado = (sesion ? Number(sesion.monto_inicial) : 0) + entradas - salidas
   const contado = DENOMS.reduce((s, d) => s + d * (conteo[d] || 0), 0)
   const diferencia = contado - esperado
@@ -254,6 +264,34 @@ export default function Caja() {
           <p className="text-xs text-slate-400">
             Caja #{sesion.numero} · abierta por {sesion.abierta_por} · {fechaHora(sesion.abierta_at)}
           </p>
+
+          {/* Resumen de cobros por método de pago */}
+          <div className="panel-3d p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-display text-lg font-bold text-slate-800">
+                <HandCoins size={18} /> Cobros de esta caja
+              </h2>
+              <div className="text-right">
+                <p className="text-xs text-slate-400">{cobros.length} factura(s)</p>
+                <p className="text-lg font-bold text-brand-700">{money(totalCobrado)}</p>
+              </div>
+            </div>
+            {porMetodo.length === 0 ? (
+              <p className="py-3 text-center text-slate-400">Aún no se ha cobrado ninguna factura en esta caja.</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {porMetodo.map((x) => (
+                  <div key={x.metodo} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">{x.metodo}</p>
+                      <p className="text-xs text-slate-400">{x.cantidad} factura(s)</p>
+                    </div>
+                    <p className="font-bold text-slate-800">{money(x.total)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Facturas por cobrar */}
           {puedeCobrar && (
