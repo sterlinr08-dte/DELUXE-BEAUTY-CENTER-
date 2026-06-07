@@ -69,7 +69,7 @@ export default function Sidebar({ open, onClose }: Props) {
       >
         <div className="flex items-center justify-between px-6 py-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-500/20 ring-1 ring-gold-400/40">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400/30 to-gold-600/10 ring-1 ring-gold-400/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_18px_-6px_rgba(212,175,55,0.5)]">
               <Sparkles className="text-gold-400" size={22} />
             </div>
             <div>
@@ -94,10 +94,10 @@ export default function Sidebar({ open, onClose }: Props) {
                     end={end}
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                      `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                         isActive
-                          ? 'bg-white/10 text-white ring-1 ring-white/10'
-                          : 'text-brand-200 hover:bg-white/5 hover:text-white'
+                          ? 'bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white ring-1 ring-pink-300/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_18px_-6px_rgba(236,72,153,0.65)]'
+                          : 'text-brand-200 hover:bg-white/5 hover:text-white hover:translate-x-0.5'
                       }`
                     }
                   >

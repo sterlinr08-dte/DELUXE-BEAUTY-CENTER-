@@ -120,9 +120,9 @@ export default function Clientes() {
           <p className="text-slate-500">No hay clientes que coincidan.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-pink-100/70">
+        <div className="overflow-x-auto panel-3d">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="thead-3d">
               <tr>
                 <th className="px-5 py-3">Nombre</th>
                 <th className="px-5 py-3">Teléfono</th>

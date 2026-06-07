@@ -59,7 +59,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 px-7 py-8 text-white shadow-lg">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gradient-to-br from-[#15060f] via-brand-800 to-brand-600 px-7 py-8 text-white ring-1 ring-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_24px_48px_-14px_rgba(236,72,153,0.55)]">
         <div>
           <p className="text-sm uppercase tracking-[0.25em] text-gold-400">{NEGOCIO.nombre}</p>
           <h1 className="mt-1 font-display text-3xl font-bold">Bienvenida 💅</h1>
@@ -74,8 +74,8 @@ export default function Dashboard() {
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {tarjetas.map((t) => (
-          <Link key={t.label} to={t.to} className="card transition hover:shadow-md">
-            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg ${t.color}`}>
+          <Link key={t.label} to={t.to} className="card">
+            <div className={`mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-black/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_8px_16px_-6px_rgba(236,72,153,0.3)] ${t.color}`}>
               <t.icon size={20} />
             </div>
             <p className="text-2xl font-bold text-slate-800">{loading ? '…' : t.valor}</p>
