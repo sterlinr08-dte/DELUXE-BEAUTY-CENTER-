@@ -9,6 +9,7 @@ Aplicación web construida con **React + Vite + TypeScript + Tailwind CSS** y
 
 ## ✨ Funcionalidades
 
+- **Inicio de sesión** — autenticación con Supabase Auth (email + contraseña). Todo el panel requiere sesión.
 - **Panel / Dashboard** — resumen del día: citas, ingresos, clientes, servicios y empleados.
 - **Citas / Agenda** — agenda diaria, creación y edición de citas, cambio de estado
   (Pendiente, Confirmada, Completada, Cancelada) y cálculo automático de la hora de fin.
@@ -53,10 +54,19 @@ El esquema se aplica con una migración de Supabase. Las tablas son:
 
 El SQL completo del esquema está en [`supabase/migrations/`](./supabase/migrations).
 
-> **Nota de seguridad:** las tablas tienen RLS activado con políticas abiertas
-> para la clave anónima (la app aún no usa autenticación). Antes de ir a
-> producción, agrega **Supabase Auth** y endurece las políticas para limitar el
-> acceso a usuarios autenticados.
+> **Seguridad:** las tablas tienen RLS activado y las políticas exigen un usuario
+> **autenticado** (`to authenticated`). La aplicación usa **Supabase Auth** con
+> email y contraseña; sin sesión no se puede leer ni escribir.
+
+### Acceso inicial
+
+Se creó una cuenta de administrador. **Cambia la contraseña** tras el primer ingreso
+(Supabase → Authentication → Users).
+
+- **Correo:** `sterlinr08@gmail.com`
+- **Contraseña temporal:** `Deluxe2026!`
+
+Para crear más usuarios: Supabase → Authentication → **Add user**.
 
 ## 📁 Estructura
 

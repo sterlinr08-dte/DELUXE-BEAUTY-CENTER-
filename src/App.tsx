@@ -5,8 +5,22 @@ import Citas from './pages/Citas'
 import Clientes from './pages/Clientes'
 import Servicios from './pages/Servicios'
 import Empleados from './pages/Empleados'
+import Login from './pages/Login'
+import { useAuth } from './lib/auth'
 
 export default function App() {
+  const { session, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center text-slate-400">Cargando…</div>
+    )
+  }
+
+  if (!session) {
+    return <Login />
+  }
+
   return (
     <div className="flex h-full">
       <Sidebar />

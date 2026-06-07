@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { CalendarDays, Users, Scissors, UserCog, LayoutDashboard, Sparkles } from 'lucide-react'
+import { CalendarDays, Users, Scissors, UserCog, LayoutDashboard, Sparkles, LogOut } from 'lucide-react'
+import { useAuth } from '../lib/auth'
 
 const links = [
   { to: '/', label: 'Panel', icon: LayoutDashboard, end: true },
@@ -10,6 +11,7 @@ const links = [
 ]
 
 export default function Sidebar() {
+  const { session, signOut } = useAuth()
   return (
     <aside className="flex w-64 flex-col bg-gradient-to-b from-brand-900 to-brand-800 text-brand-100">
       <div className="flex items-center gap-3 px-6 py-6">
@@ -42,8 +44,18 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-6 py-5 text-xs text-brand-300">
-        <p>© {new Date().getFullYear()} Deluxe Beauty Center</p>
+      <div className="space-y-3 px-3 py-5">
+        {session?.user?.email && (
+          <p className="truncate px-3 text-xs text-brand-300">{session.user.email}</p>
+        )}
+        <button
+          onClick={signOut}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-200 transition hover:bg-white/5 hover:text-white"
+        >
+          <LogOut size={18} />
+          Cerrar sesión
+        </button>
+        <p className="px-3 text-xs text-brand-400/70">© {new Date().getFullYear()} Deluxe Beauty Center</p>
       </div>
     </aside>
   )
