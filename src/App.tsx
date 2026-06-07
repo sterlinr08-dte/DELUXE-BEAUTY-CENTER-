@@ -1,4 +1,4 @@
-import { useState, ReactElement } from 'react'
+import { useState, useEffect, ReactElement } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import Sidebar from './components/Sidebar'
@@ -33,6 +33,19 @@ function Protegido({ modulo, children }: { modulo: string; children: ReactElemen
 export default function App() {
   const { session, loading } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // Al enfocar un campo numérico, seleccionar su contenido para que el "0"
+  // se reemplace al escribir (evita tener que borrarlo manualmente).
+  useEffect(() => {
+    const onFocus = (e: FocusEvent) => {
+      const t = e.target as HTMLInputElement
+      if (t instanceof HTMLInputElement && t.type === 'number') {
+        requestAnimationFrame(() => t.select())
+      }
+    }
+    document.addEventListener('focusin', onFocus)
+    return () => document.removeEventListener('focusin', onFocus)
+  }, [])
 
   if (loading) {
     return <div className="flex h-full items-center justify-center text-slate-400">Cargando…</div>
