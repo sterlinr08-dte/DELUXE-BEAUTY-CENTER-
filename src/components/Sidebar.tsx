@@ -20,29 +20,26 @@ type Link = { to: string; label: string; icon: typeof Users; modulo: string; end
 
 const grupos: { titulo: string; links: Link[] }[] = [
   {
-    titulo: 'Facturación y contabilidad',
+    titulo: 'Facturación y operación',
     links: [
+      { to: '/', label: 'Panel', icon: LayoutDashboard, modulo: 'panel', end: true },
       { to: '/facturacion', label: 'Facturación', icon: Receipt, modulo: 'facturacion' },
       { to: '/compras', label: 'Compras', icon: ShoppingCart, modulo: 'compras' },
       { to: '/gastos', label: 'Gastos', icon: Wallet, modulo: 'gastos' },
       { to: '/nomina', label: 'Pagos a empleados', icon: Users, modulo: 'nomina' },
       { to: '/contabilidad', label: 'Contabilidad', icon: Calculator, modulo: 'contabilidad' },
-    ],
-  },
-  {
-    titulo: 'Operación',
-    links: [
-      { to: '/', label: 'Panel', icon: LayoutDashboard, modulo: 'panel', end: true },
       { to: '/citas', label: 'Citas / Agenda', icon: CalendarDays, modulo: 'citas' },
       { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
       { to: '/servicios', label: 'Servicios y precios', icon: Scissors, modulo: 'servicios' },
-      { to: '/articulos', label: 'Artículos / Productos', icon: Package, modulo: 'articulos' },
-      { to: '/empleados', label: 'Empleados', icon: UserCog, modulo: 'empleados' },
     ],
   },
   {
-    titulo: 'Sistema',
-    links: [{ to: '/configuracion', label: 'Configuración', icon: Settings, modulo: 'configuracion' }],
+    titulo: 'Configuración',
+    links: [
+      { to: '/configuracion', label: 'Configuración', icon: Settings, modulo: 'configuracion' },
+      { to: '/articulos', label: 'Artículos / Productos', icon: Package, modulo: 'articulos' },
+      { to: '/empleados', label: 'Empleados', icon: UserCog, modulo: 'empleados' },
+    ],
   },
 ]
 
