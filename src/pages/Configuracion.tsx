@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, Rol } from '../lib/permisos'
+import { Empleado } from '../types'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
@@ -12,6 +13,7 @@ interface UsuarioRow {
   username: string | null
   email: string | null
   rol_key: string | null
+  empleado_id: string | null
   activo: boolean
   roles: { nombre: string } | null
 }
@@ -21,12 +23,13 @@ export default function Configuracion() {
   const [tab, setTab] = useState<'usuarios' | 'roles'>('usuarios')
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
+  const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [loading, setLoading] = useState(true)
 
   // modal usuario
   const [openU, setOpenU] = useState(false)
   const [editU, setEditU] = useState<UsuarioRow | null>(null)
-  const [formU, setFormU] = useState({ nombre: '', usuario: '', password: '', rol_key: '', activo: true })
+  const [formU, setFormU] = useState({ nombre: '', usuario: '', password: '', rol_key: '', empleado_id: '', activo: true })
   const [savingU, setSavingU] = useState(false)
 
   // modal rol
@@ -37,12 +40,14 @@ export default function Configuracion() {
 
   async function cargar() {
     setLoading(true)
-    const [u, r] = await Promise.all([
-      supabase.from('perfiles').select('id,nombre,username,email,rol_key,activo, roles(nombre)').order('nombre'),
+    const [u, r, e] = await Promise.all([
+      supabase.from('perfiles').select('id,nombre,username,email,rol_key,empleado_id,activo, roles(nombre)').order('nombre'),
       supabase.from('roles').select('*').order('nombre'),
+      supabase.from('empleados').select('*').eq('activo', true).order('nombre'),
     ])
     setUsuarios((u.data as any) ?? [])
     setRoles((r.data as any) ?? [])
+    setEmpleados((e.data as any) ?? [])
     setLoading(false)
   }
 
@@ -53,23 +58,29 @@ export default function Configuracion() {
   // ---------- USUARIOS ----------
   function nuevoUsuario() {
     setEditU(null)
-    setFormU({ nombre: '', usuario: '', password: '', rol_key: roles[0]?.key ?? '', activo: true })
+    setFormU({ nombre: '', usuario: '', password: '', rol_key: roles[0]?.key ?? '', empleado_id: '', activo: true })
     setOpenU(true)
   }
   function editarUsuario(u: UsuarioRow) {
     setEditU(u)
-    setFormU({ nombre: u.nombre ?? '', usuario: u.username ?? '', password: '', rol_key: u.rol_key ?? '', activo: u.activo })
+    setFormU({ nombre: u.nombre ?? '', usuario: u.username ?? '', password: '', rol_key: u.rol_key ?? '', empleado_id: u.empleado_id ?? '', activo: u.activo })
     setOpenU(true)
   }
 
+  function elegirEmpleado(id: string) {
+    const emp = empleados.find((e) => e.id === id)
+    setFormU((f) => ({ ...f, empleado_id: id, nombre: emp ? emp.nombre : f.nombre }))
+  }
+
   async function guardarUsuario() {
+    if (!editU && !formU.empleado_id) return alert('Selecciona el empleado')
     if (!editU && (!formU.usuario || !formU.password)) return alert('Usuario y contraseña son obligatorios')
     if (!editU && formU.password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres')
     setSavingU(true)
     const accion = editU ? 'actualizar' : 'crear'
     const payload: any = editU
-      ? { accion, id: editU.id, nombre: formU.nombre, rol_key: formU.rol_key, activo: formU.activo }
-      : { accion, username: formU.usuario, password: formU.password, nombre: formU.nombre, rol_key: formU.rol_key }
+      ? { accion, id: editU.id, nombre: formU.nombre, rol_key: formU.rol_key, empleado_id: formU.empleado_id || null, activo: formU.activo }
+      : { accion, username: formU.usuario, password: formU.password, nombre: formU.nombre, rol_key: formU.rol_key, empleado_id: formU.empleado_id || null }
     if (editU && formU.password) payload.password = formU.password
     const { data, error } = await supabase.functions.invoke('gestionar-usuarios', { body: payload })
     setSavingU(false)
@@ -235,8 +246,16 @@ export default function Configuracion() {
       >
         <div className="space-y-4">
           <div>
-            <label className="label">Nombre</label>
-            <input className="input" value={formU.nombre} onChange={(e) => setFormU({ ...formU, nombre: e.target.value })} />
+            <label className="label">Empleado</label>
+            <select className="input" value={formU.empleado_id} onChange={(e) => elegirEmpleado(e.target.value)}>
+              <option value="">— Selecciona el empleado —</option>
+              {empleados.map((emp) => (
+                <option key={emp.id} value={emp.id}>{emp.nombre}{emp.puesto ? ` (${emp.puesto})` : ''}</option>
+              ))}
+            </select>
+            {empleados.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">No hay empleados activos. Agrégalos primero en el módulo Empleados.</p>
+            )}
           </div>
           <div>
             <label className="label">Usuario (para iniciar sesión)</label>

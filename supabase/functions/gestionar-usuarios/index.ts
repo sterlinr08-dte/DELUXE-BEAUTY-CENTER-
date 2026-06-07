@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
   try {
     if (accion === 'crear') {
       const username = limpiarUsuario(body.username)
-      const { password, nombre, rol_key } = body
+      const { password, nombre, rol_key, empleado_id } = body
       if (!username || !password) return json({ error: 'Usuario y contraseña son obligatorios' }, 400)
       const email = username + DOMINIO
       const { data: created, error } = await admin.auth.admin.createUser({
@@ -48,20 +48,22 @@ Deno.serve(async (req) => {
       })
       if (error) return json({ error: error.message.includes('already') ? 'Ese usuario ya existe' : error.message }, 400)
       const { error: pErr } = await admin.from('perfiles').upsert({
-        id: created.user.id, nombre: nombre ?? null, username, email, rol_key: rol_key ?? null, activo: true,
+        id: created.user.id, nombre: nombre ?? null, username, email,
+        rol_key: rol_key ?? null, empleado_id: empleado_id ?? null, activo: true,
       })
       if (pErr) return json({ error: pErr.message }, 400)
       return json({ ok: true, id: created.user.id })
     }
 
     if (accion === 'actualizar') {
-      const { id, nombre, rol_key, activo, password } = body
+      const { id, nombre, rol_key, activo, password, empleado_id } = body
       if (!id) return json({ error: 'Falta id' }, 400)
       if (password) {
         const { error } = await admin.auth.admin.updateUserById(id, { password })
         if (error) return json({ error: error.message }, 400)
       }
-      const { error: pErr } = await admin.from('perfiles').update({ nombre, rol_key, activo }).eq('id', id)
+      const { error: pErr } = await admin.from('perfiles')
+        .update({ nombre, rol_key, activo, empleado_id: empleado_id ?? null }).eq('id', id)
       if (pErr) return json({ error: pErr.message }, 400)
       return json({ ok: true })
     }
