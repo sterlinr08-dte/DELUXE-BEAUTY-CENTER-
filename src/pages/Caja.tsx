@@ -54,6 +54,7 @@ export default function Caja() {
   const [metodoCobro, setMetodoCobro] = useState('Efectivo')
   const [efectivoRecibido, setEfectivoRecibido] = useState(0)
   const [cobroOk, setCobroOk] = useState(false)
+  const [cobroHora, setCobroHora] = useState('')
 
   // comprobante de cierre
   const [verCierre, setVerCierre] = useState<CajaSesion | null>(null)
@@ -200,10 +201,9 @@ export default function Caja() {
       })
     }
     setSaving(false)
-    setCobroOk(true) // muestra confirmación animada
+    setCobroHora(new Date().toISOString())
+    setCobroOk(true) // muestra confirmación animada + recibo imprimible
     cargar()
-    // cierra solo tras la animación
-    setTimeout(() => setCobrarFactura(null), 1400)
   }
 
   async function abrirComprobante(s: CajaSesion) {
@@ -532,15 +532,52 @@ export default function Caja() {
         }
       >
         {cobroOk ? (
-          <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <CheckCircle2 className="animate-pop text-emerald-500" size={76} />
-            <p className="text-xl font-bold text-slate-800">¡Cobro registrado!</p>
-            <p className="text-slate-500">Factura #{cobrarFactura?.numero} · {money(cobroTotal)} · {metodoCobro}</p>
-            {cobroEsEfectivo && cobroCambio > 0 && (
-              <div className="mt-1 rounded-xl bg-amber-50 px-4 py-2 text-amber-700">
-                Devuelta al cliente: <span className="font-bold">{money(cobroCambio)}</span>
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-1 text-center">
+              <CheckCircle2 className="animate-pop text-emerald-500" size={64} />
+              <p className="text-lg font-bold text-slate-800">¡Cobro registrado!</p>
+            </div>
+
+            {/* Recibo imprimible */}
+            <div id="recibo-print" className="print-area space-y-2 rounded-xl border border-slate-100 p-3 text-sm">
+              <div className="text-center">
+                <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+                <p className="font-display text-base font-bold text-brand-800">{NEGOCIO.nombre}</p>
+                <p className="text-xs text-slate-500">{NEGOCIO.direccion}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
+                <p className="text-xs text-slate-400">Factura #{cobrarFactura?.numero} · {fechaHora(cobroHora)}</p>
               </div>
-            )}
+              <p className="text-slate-600"><span className="font-medium">Cliente:</span> {cobrarFactura?.cliente_nombre ?? 'Cliente'}</p>
+              <table className="w-full">
+                <tbody>
+                  {cobroItems.map((it) => (
+                    <tr key={it.id} className="border-b border-slate-50 text-slate-600">
+                      <td className="py-1">{it.cantidad}× {it.descripcion}</td>
+                      <td className="py-1 text-right">{money(it.importe)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="space-y-0.5 border-t pt-1">
+                <div className="flex justify-between text-base font-bold text-slate-800"><span>Total</span><span>{money(cobroTotal)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Método</span><span>{metodoCobro}</span></div>
+                {cobroEsEfectivo && (
+                  <>
+                    <div className="flex justify-between text-slate-600"><span>Efectivo recibido</span><span>{money(efectivoRecibido)}</span></div>
+                    <div className="flex justify-between font-semibold text-amber-700"><span>Devuelta / cambio</span><span>{money(Math.max(0, cobroCambio))}</span></div>
+                  </>
+                )}
+              </div>
+              <p className="text-xs text-slate-400">Atendido por: {usuario}</p>
+              <p className="pt-1 text-center text-xs font-medium text-brand-600">¡Gracias por su preferencia! 💕</p>
+            </div>
+
+            <div className="flex gap-2 no-print">
+              <button className="btn-ghost flex-1" onClick={() => setCobrarFactura(null)}>Cerrar</button>
+              <button className="btn-primary flex-1" onClick={() => window.print()}>
+                <Printer size={16} /> Imprimir recibo
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
