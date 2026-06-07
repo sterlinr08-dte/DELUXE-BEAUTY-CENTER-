@@ -81,3 +81,24 @@ body {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 32px -14px rgba(236, 72, 153, 0.3);
   }
 }
+
+/* Impresión: aislar solo el área imprimible (.print-area) */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 12px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

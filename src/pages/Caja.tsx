@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt, HandCoins } from 'lucide-react'
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt, HandCoins, Printer, FileText } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CajaSesion, CajaMovimiento, Factura } from '../types'
 import { money, fechaHora } from '../lib/format'
-import { METODOS_PAGO } from '../lib/constants'
+import { METODOS_PAGO, NEGOCIO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
 // Denominaciones de pesos dominicanos (billetes y monedas) para el arqueo
 const DENOMS = [2000, 1000, 500, 200, 100, 50, 25, 10, 5, 1]
+
+// Desglose de cobros por método de pago
+function desglosePorMetodo(lista: Factura[]) {
+  return METODOS_PAGO.map((m) => ({
+    metodo: m,
+    cantidad: lista.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).length,
+    total: lista.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).reduce((s, f) => s + Number(f.total), 0),
+  })).filter((x) => x.cantidad > 0)
+}
 
 export default function Caja() {
   const { perfil, puedeAccion } = useAuth()
@@ -33,6 +42,11 @@ export default function Caja() {
   const [cerrarOpen, setCerrarOpen] = useState(false)
   const [cobrarFactura, setCobrarFactura] = useState<Factura | null>(null)
   const [metodoCobro, setMetodoCobro] = useState('Efectivo')
+
+  // comprobante de cierre
+  const [verCierre, setVerCierre] = useState<CajaSesion | null>(null)
+  const [cierreCobros, setCierreCobros] = useState<Factura[]>([])
+  const [cierreMovs, setCierreMovs] = useState<CajaMovimiento[]>([])
 
   // formularios
   const [montoInicial, setMontoInicial] = useState(0)
@@ -90,11 +104,7 @@ export default function Caja() {
   const entradas = movs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
   const salidas = movs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
   // Cobros del día agrupados por método de pago
-  const porMetodo = METODOS_PAGO.map((m) => ({
-    metodo: m,
-    cantidad: cobros.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).length,
-    total: cobros.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).reduce((s, f) => s + Number(f.total), 0),
-  })).filter((x) => x.cantidad > 0)
+  const porMetodo = desglosePorMetodo(cobros)
   const totalCobrado = cobros.reduce((s, f) => s + Number(f.total), 0)
 
   const esperado = (sesion ? Number(sesion.monto_inicial) : 0) + entradas - salidas
@@ -169,6 +179,16 @@ export default function Caja() {
     setSaving(false)
     setCobrarFactura(null)
     cargar()
+  }
+
+  async function abrirComprobante(s: CajaSesion) {
+    setVerCierre(s)
+    const [{ data: c }, { data: m }] = await Promise.all([
+      supabase.from('facturas').select('*').eq('caja_id', s.id).eq('estado', 'PAGADA'),
+      supabase.from('caja_movimientos').select('*').eq('caja_id', s.id).order('created_at'),
+    ])
+    setCierreCobros(c ?? [])
+    setCierreMovs(m ?? [])
   }
 
   function abrirCierre() {
@@ -379,6 +399,7 @@ export default function Caja() {
                   <th className="px-5 py-3 text-right">Esperado</th>
                   <th className="px-5 py-3 text-right">Contado</th>
                   <th className="px-5 py-3 text-right">Diferencia</th>
+                  <th className="px-5 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -396,6 +417,11 @@ export default function Caja() {
                         <span className={`badge ${dif === 0 ? 'bg-emerald-50 text-emerald-700' : dif > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
                           {dif > 0 ? '+' : ''}{money(dif)}
                         </span>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button title="Ver comprobante" onClick={() => abrirComprobante(s)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                          <FileText size={16} />
+                        </button>
                       </td>
                     </tr>
                   )
@@ -540,6 +566,73 @@ export default function Caja() {
             <textarea className="input" rows={2} value={cierreNotas} onChange={(e) => setCierreNotas(e.target.value)} />
           </div>
         </div>
+      </Modal>
+
+      {/* Comprobante de cierre (imprimible) */}
+      <Modal open={!!verCierre} title={`Cierre de caja #${verCierre?.numero ?? ''}`} onClose={() => setVerCierre(null)}>
+        {verCierre && (() => {
+          const ent = cierreMovs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
+          const sal = cierreMovs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
+          const esp = Number(verCierre.monto_inicial) + ent - sal
+          const dif = Number(verCierre.diferencia ?? 0)
+          const desg = desglosePorMetodo(cierreCobros)
+          const totalCob = cierreCobros.reduce((s, f) => s + Number(f.total), 0)
+          return (
+            <div className="print-area space-y-3">
+              <div className="text-center">
+                <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-2 h-16 rounded-lg bg-black object-contain" />
+                <p className="font-display text-lg font-bold text-brand-800">{NEGOCIO.nombre}</p>
+                <p className="text-xs font-medium text-slate-400">Comprobante de cierre de caja #{verCierre.numero}</p>
+              </div>
+              <div className="text-sm text-slate-600">
+                <p><span className="font-medium">Abierta:</span> {fechaHora(verCierre.abierta_at)} · {verCierre.abierta_por}</p>
+                <p><span className="font-medium">Cerrada:</span> {fechaHora(verCierre.cerrada_at)} · {verCierre.cerrada_por}</p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Cobros por método</p>
+                {desg.length === 0 ? (
+                  <p className="text-sm text-slate-400">Sin cobros registrados.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {desg.map((x) => (
+                        <tr key={x.metodo} className="border-b border-slate-50">
+                          <td className="py-1">{x.metodo}</td>
+                          <td className="py-1 text-center text-xs text-slate-400">{x.cantidad}</td>
+                          <td className="py-1 text-right">{money(x.total)}</td>
+                        </tr>
+                      ))}
+                      <tr className="font-bold text-slate-800">
+                        <td className="py-1">Total cobrado</td>
+                        <td></td>
+                        <td className="py-1 text-right">{money(totalCob)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="space-y-0.5 border-t pt-2 text-sm">
+                <div className="flex justify-between text-slate-600"><span>Fondo inicial</span><span>{money(verCierre.monto_inicial)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Entradas de efectivo</span><span>+{money(ent)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Salidas de efectivo</span><span>−{money(sal)}</span></div>
+                <div className="flex justify-between font-medium text-slate-700"><span>Efectivo esperado</span><span>{money(esp)}</span></div>
+                <div className="flex justify-between font-medium text-slate-700"><span>Efectivo contado</span><span>{money(verCierre.monto_contado)}</span></div>
+                <div className={`flex justify-between border-t pt-1 text-base font-bold ${dif === 0 ? 'text-emerald-700' : dif > 0 ? 'text-sky-700' : 'text-rose-700'}`}>
+                  <span>{dif === 0 ? 'Cuadrada' : dif > 0 ? 'Sobrante' : 'Faltante'}</span>
+                  <span>{dif === 0 ? money(0) : money(Math.abs(dif))}</span>
+                </div>
+              </div>
+
+              {verCierre.notas && <p className="text-xs text-slate-500">{verCierre.notas}</p>}
+
+              <button className="btn-primary no-print w-full" onClick={() => window.print()}>
+                <Printer size={16} /> Imprimir
+              </button>
+            </div>
+          )
+        })()}
       </Modal>
     </div>
   )

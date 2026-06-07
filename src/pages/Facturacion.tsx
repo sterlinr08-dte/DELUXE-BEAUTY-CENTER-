@@ -377,7 +377,7 @@ export default function Facturacion() {
       {/* Modal VER / IMPRIMIR */}
       <Modal open={!!verId} title={`Factura #${facturaVista?.numero ?? ''}`} onClose={() => setVerId(null)}>
         {facturaVista && (
-          <div id="factura-print" className="space-y-3">
+          <div id="factura-print" className="print-area space-y-3">
             <div className="text-center">
               <img src={`${import.meta.env.BASE_URL}${NEGOCIO.logo}`} alt={NEGOCIO.nombre} className="mx-auto mb-2 h-20 rounded-lg bg-black object-contain" />
               <p className="font-display text-xl font-bold text-brand-800">{NEGOCIO.nombre}</p>
@@ -410,7 +410,7 @@ export default function Facturacion() {
               {facturaVista.itbis > 0 && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(facturaVista.itbis)}</span></div>}
               <div className="flex justify-between border-t pt-1 text-base font-bold text-slate-800"><span>Total</span><span>{money(facturaVista.total)}</span></div>
             </div>
-            <button className="btn-primary w-full" onClick={() => window.print()}>
+            <button className="btn-primary no-print w-full" onClick={() => window.print()}>
               <Printer size={16} /> Imprimir
             </button>
           </div>
