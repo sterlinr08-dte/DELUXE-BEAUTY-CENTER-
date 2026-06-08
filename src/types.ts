@@ -169,6 +169,16 @@ export interface Proveedor {
   updated_at: string
 }
 
+export interface Auditoria {
+  id: string
+  fecha: string
+  usuario: string | null
+  modulo: string
+  accion: string
+  descripcion: string | null
+  registro_id: string | null
+}
+
 export interface PagoEmpleado {
   id: string
   empleado_id: string | null

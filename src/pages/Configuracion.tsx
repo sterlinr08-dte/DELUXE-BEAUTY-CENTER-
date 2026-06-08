@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
-import { Empleado, Proveedor } from '../types'
+import { Empleado, Proveedor, Auditoria } from '../types'
+import { fechaHora } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+import DataTable from '../components/DataTable'
+
+const MODULO_LABEL: Record<string, string> = {
+  facturas: 'Facturación', compras: 'Compras', pagos_empleados: 'Pagos a empleados', caja_sesiones: 'Caja',
+  factura_abonos: 'Cobros a crédito', compra_abonos: 'Pagos a proveedor', gastos: 'Gastos', articulos: 'Artículos',
+  clientes: 'Clientes', servicios: 'Servicios', empleados: 'Empleados', proveedores: 'Proveedores', perfiles: 'Usuarios',
+}
 
 interface UsuarioRow {
   id: string
@@ -22,7 +30,8 @@ interface UsuarioRow {
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
   const { recargarNegocio } = useNegocio()
-  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'categorias'>('usuarios')
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'categorias' | 'auditoria'>('usuarios')
+  const [auditoria, setAuditoria] = useState<Auditoria[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -75,6 +84,8 @@ export default function Configuracion() {
     setCategorias((cats as any) ?? [])
     const { data: prov } = await supabase.from('proveedores').select('*').order('nombre')
     setProveedores((prov as any) ?? [])
+    const { data: aud } = await supabase.from('auditoria').select('id,fecha,usuario,modulo,accion,descripcion,registro_id').order('fecha', { ascending: false }).limit(1000)
+    setAuditoria((aud as any) ?? [])
     setLoading(false)
   }
 
@@ -249,6 +260,11 @@ export default function Configuracion() {
         <button onClick={() => setTab('categorias')} className={tab === 'categorias' ? 'btn-primary' : 'btn-ghost'}>
           <Tags size={16} /> Categorías
         </button>
+        {perfil?.es_admin && (
+          <button onClick={() => setTab('auditoria')} className={tab === 'auditoria' ? 'btn-primary' : 'btn-ghost'}>
+            <ScrollText size={16} /> Auditoría
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -416,6 +432,26 @@ export default function Configuracion() {
             </div>
           </div>
         </div>
+      ) : tab === 'auditoria' ? (
+        <DataTable
+          rows={auditoria}
+          rowKey={(a) => a.id}
+          searchText={(a) => `${a.usuario ?? ''} ${MODULO_LABEL[a.modulo] ?? a.modulo} ${a.accion} ${a.descripcion ?? ''}`}
+          searchPlaceholder="Buscar por usuario, módulo, acción o detalle…"
+          emptyText="Sin movimientos registrados."
+          pageSize={15}
+          columns={[
+            { header: 'Fecha y hora', cell: (a) => <span className="text-slate-600">{fechaHora(a.fecha)}</span>, sortValue: (a) => a.fecha },
+            { header: 'Usuario', cell: (a) => <span className="font-medium text-slate-800">{a.usuario || '—'}</span>, sortValue: (a) => a.usuario ?? '' },
+            { header: 'Módulo', cell: (a) => <span className="badge bg-slate-100 text-slate-600">{MODULO_LABEL[a.modulo] ?? a.modulo}</span>, sortValue: (a) => MODULO_LABEL[a.modulo] ?? a.modulo },
+            {
+              header: 'Acción', sortValue: (a) => a.accion, cell: (a) => (
+                <span className={`badge ${a.accion === 'CREÓ' ? 'bg-emerald-50 text-emerald-700' : a.accion === 'ELIMINÓ' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>{a.accion}</span>
+              ),
+            },
+            { header: 'Detalle', cell: (a) => <span className="text-slate-600">{a.descripcion}</span>, sortValue: (a) => a.descripcion ?? '' },
+          ]}
+        />
       ) : (
         <div className="max-w-2xl space-y-4">
           <div className="card space-y-3">
