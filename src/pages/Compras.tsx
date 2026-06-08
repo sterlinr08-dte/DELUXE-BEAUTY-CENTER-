@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Search, X, Printer } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, X, Printer, History } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Compra, Articulo, Proveedor } from '../types'
 import { money, fechaCorta, fechaHora, hoyISO, codigoArticulo } from '../lib/format'
@@ -244,9 +244,14 @@ export default function Compras() {
               <h2 className="font-display text-2xl font-bold uppercase text-slate-800">{editId ? 'Editar compra' : 'Nueva compra'}</h2>
               <p className="text-sm text-slate-400">Registra la compra y, si aplica, súmala al inventario.</p>
             </div>
-            <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>
-              <X size={16} /> Cerrar
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button className="btn-ghost" onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}>
+                <History size={16} /> Historial de compras
+              </button>
+              <button className="btn-ghost" onClick={() => setOpen(false)}>
+                <X size={16} /> Cerrar
+              </button>
+            </div>
           </div>
           <div className="card space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -365,16 +370,6 @@ export default function Compras() {
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
           </div>
-          </div>
-
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
-              className="text-xs font-semibold text-brand-600 hover:underline"
-            >
-              Ver historial de compras
-            </button>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
