@@ -475,7 +475,7 @@ export default function Facturacion() {
                           <span className="truncate text-slate-700">{r.nombre}</span>
                           {r.tipo === 'a' && (
                             <span className={`text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
-                              {(r.stock ?? 0) <= 0 ? 'sin existencia' : `existencia: ${r.stock}`}
+                              {(r.stock ?? 0) <= 0 ? 'Sin existencia' : `Existencia: ${r.stock}`}
                             </span>
                           )}
                         </span>

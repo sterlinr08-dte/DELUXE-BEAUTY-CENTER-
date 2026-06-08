@@ -58,7 +58,7 @@ export default function Dashboard() {
     { label: 'Por cobrar', valor: money(stats.porCobrar), icon: HandCoins, to: '/caja', color: 'text-amber-600 bg-amber-50' },
     { label: 'Citas hoy', valor: stats.citasHoy, icon: CalendarDays, to: '/citas', color: 'text-brand-600 bg-brand-50' },
     { label: 'Clientes', valor: stats.clientes, icon: Users, to: '/clientes', color: 'text-sky-600 bg-sky-50' },
-    { label: 'Stock bajo', valor: stats.stockBajo, icon: PackageX, to: '/articulos', color: stats.stockBajo > 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-500 bg-slate-100' },
+    { label: 'Existencia baja', valor: stats.stockBajo, icon: PackageX, to: '/articulos', color: stats.stockBajo > 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-500 bg-slate-100' },
   ]
 
   return (
@@ -91,7 +91,7 @@ export default function Dashboard() {
       {stats.stockBajo > 0 && (
         <Link to="/articulos" className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100">
           <PackageX size={20} />
-          <span><strong>{stats.stockBajo}</strong> artículo(s) con stock bajo (en o por debajo de su mínimo). Toca para revisar el inventario.</span>
+          <span><strong>{stats.stockBajo}</strong> artículo(s) con existencia baja (en o por debajo de su mínimo). Toca para revisar el inventario.</span>
         </Link>
       )}
 

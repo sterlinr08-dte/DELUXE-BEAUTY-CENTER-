@@ -132,7 +132,7 @@ export default function Articulos() {
                 <th className="px-5 py-3">Categoría</th>
                 <th className="px-5 py-3 text-right">Costo</th>
                 <th className="px-5 py-3 text-right">Precio</th>
-                <th className="px-5 py-3 text-right">Stock</th>
+                <th className="px-5 py-3 text-right">Existencia</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -189,12 +189,12 @@ export default function Articulos() {
               </select>
             </div>
             <div>
-              <label className="label">Stock</label>
+              <label className="label">Existencia</label>
               <input type="number" min={0} className="input" value={form.stock || ''} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
             </div>
           </div>
           <div>
-            <label className="label">Stock mínimo (alerta de bajo inventario)</label>
+            <label className="label">Existencia mínima (alerta de bajo inventario)</label>
             <input type="number" min={0} className="input" value={form.stock_min || ''} onChange={(e) => setForm({ ...form, stock_min: Number(e.target.value) })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
