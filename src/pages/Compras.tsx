@@ -10,20 +10,19 @@ import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
 
-interface ReciboCompra { numero: number | null; proveedor: string; descripcion: string; categoria: string; fecha: string; subtotal: number; itbis: number; total: number; metodo: string; hora: string }
+interface LineaCompra { articulo_id: string; descripcion: string; cantidad: number; costo_unit: number }
+const lineaCompraVacia: LineaCompra = { articulo_id: '', descripcion: '', cantidad: 1, costo_unit: 0 }
+
+interface ReciboCompra { numero: number | null; proveedor: string; categoria: string; fecha: string; subtotal: number; itbis: number; total: number; metodo: string; hora: string; items: LineaCompra[] }
 
 const vacio = {
   fecha: hoyISO(),
   proveedor: '',
   descripcion: '',
   categoria: 'Insumos',
-  subtotal: 0,
   aplicaItbis: false,
   tipo_pago: 'CONTADO' as 'CONTADO' | 'CREDITO',
   metodo_pago: 'Efectivo',
-  articulo_id: '',
-  cantidad: 0,
-  costo_unit: 0,
   notas: '',
 }
 
@@ -40,6 +39,7 @@ export default function Compras() {
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
+  const [lineas, setLineas] = useState<LineaCompra[]>([])
   const [saving, setSaving] = useState(false)
   // catálogo de artículos / historial de compras (lupa)
   const [catalogoOpen, setCatalogoOpen] = useState(false)
@@ -67,9 +67,7 @@ export default function Compras() {
     .filter((c) => c.fecha.slice(0, 7) === hoyISO().slice(0, 7))
     .reduce((s, c) => s + Number(c.total), 0)
 
-  // Si hay artículo + cantidad + costo, el subtotal se calcula (cantidad × costo); si no, es manual
-  const vinculaArticulo = !!form.articulo_id && form.cantidad > 0
-  const subtotal = vinculaArticulo ? form.cantidad * form.costo_unit : form.subtotal
+  const subtotal = lineas.reduce((s, l) => s + l.cantidad * l.costo_unit, 0)
   const itbis = form.aplicaItbis ? subtotal * ITBIS_RATE : 0
   const total = subtotal + itbis
 
@@ -77,77 +75,108 @@ export default function Compras() {
     setEditId(null)
     setEditCompra(null)
     setForm(vacio)
+    setLineas([])
     setOpen(true)
   }
 
-  function abrirEditar(c: Compra) {
+  async function abrirEditar(c: Compra) {
     setEditId(c.id)
     setEditCompra(c)
-    const cant = Number(c.cantidad ?? 0)
     setForm({
       fecha: c.fecha,
       proveedor: c.proveedor ?? '',
       descripcion: c.descripcion,
       categoria: c.categoria,
-      subtotal: Number(c.subtotal),
       aplicaItbis: Number(c.itbis) > 0,
       tipo_pago: c.tipo_pago ?? 'CONTADO',
       metodo_pago: c.metodo_pago ?? 'Efectivo',
-      articulo_id: c.articulo_id ?? '',
-      cantidad: cant,
-      costo_unit: cant > 0 ? Number(c.subtotal) / cant : 0,
       notas: c.notas ?? '',
     })
+    const { data } = await supabase.from('compra_items').select('*').eq('compra_id', c.id).order('created_at')
+    if (data && data.length) {
+      setLineas((data as any[]).map((it) => ({ articulo_id: it.articulo_id ?? '', descripcion: it.descripcion, cantidad: Number(it.cantidad), costo_unit: Number(it.costo_unit) })))
+    } else {
+      // Compra antigua (un solo artículo guardado en la fila)
+      const cant = Number(c.cantidad ?? 0)
+      setLineas([{ articulo_id: c.articulo_id ?? '', descripcion: c.descripcion, cantidad: cant > 0 ? cant : 1, costo_unit: cant > 0 ? Number(c.subtotal) / cant : Number(c.subtotal) }])
+    }
     setOpen(true)
   }
 
-  // Al elegir un artículo, precarga su costo y nombre como descripción
-  function elegirArticulo(id: string) {
-    const a = articulos.find((x) => x.id === id)
-    setForm((f) => ({
-      ...f,
-      articulo_id: id,
-      costo_unit: a ? Number(a.costo) || f.costo_unit : f.costo_unit,
-      descripcion: f.descripcion.trim() || (a ? a.nombre : ''),
-    }))
+  // Agrega un artículo del catálogo como renglón (suma cantidad si ya está)
+  function agregarArticulo(a: Articulo) {
+    setLineas((prev) => {
+      const i = prev.findIndex((l) => l.articulo_id === a.id)
+      if (i >= 0) return prev.map((l, idx) => (idx === i ? { ...l, cantidad: l.cantidad + 1 } : l))
+      return [...prev, { articulo_id: a.id, descripcion: a.nombre, cantidad: 1, costo_unit: Number(a.costo) || 0 }]
+    })
+  }
+  function agregarManual() {
+    setLineas((prev) => [...prev, { ...lineaCompraVacia }])
+  }
+  function setLinea(i: number, patch: Partial<LineaCompra>) {
+    setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
+  }
+
+  // Devuelve a la existencia los artículos de una compra (al editar o eliminar)
+  async function restaurarExistencia(compraId: string, compra: Compra | null) {
+    const { data } = await supabase.from('compra_items').select('articulo_id, cantidad').eq('compra_id', compraId)
+    if (data && data.length) {
+      for (const it of data as any[]) {
+        if (it.articulo_id) await supabase.rpc('ajustar_stock', { p_articulo: it.articulo_id, p_delta: -Number(it.cantidad) })
+      }
+    } else if (compra?.articulo_id && compra.cantidad) {
+      await supabase.rpc('ajustar_stock', { p_articulo: compra.articulo_id, p_delta: -Number(compra.cantidad) })
+    }
   }
 
   async function guardar(imprimir = false) {
-    if (form.articulo_id && form.cantidad <= 0) return alert('Indica la cantidad comprada')
-    if (vinculaArticulo && form.costo_unit <= 0) return alert('Indica el costo unitario')
-    if (!form.descripcion.trim()) return alert('La descripción es obligatoria')
-    if (subtotal <= 0) return alert('El monto debe ser mayor que 0')
+    const its = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0)
+    if (its.length === 0) return alert('Agrega al menos un artículo o concepto')
+    const subt = its.reduce((s, l) => s + l.cantidad * l.costo_unit, 0)
+    if (subt <= 0) return alert('El monto debe ser mayor que 0')
     setSaving(true)
+    const itb = form.aplicaItbis ? subt * ITBIS_RATE : 0
+    const desc = form.descripcion.trim() || (its.length === 1 ? its[0].descripcion : `${its[0].descripcion} y ${its.length - 1} más`)
     const payload = {
       fecha: form.fecha,
       proveedor: form.proveedor || null,
-      descripcion: form.descripcion,
+      descripcion: desc,
       categoria: form.categoria,
-      subtotal,
-      itbis,
-      total,
+      subtotal: subt,
+      itbis: itb,
+      total: subt + itb,
       tipo_pago: form.tipo_pago,
       metodo_pago: form.metodo_pago,
-      articulo_id: vinculaArticulo ? form.articulo_id : null,
-      cantidad: vinculaArticulo ? form.cantidad : null,
+      articulo_id: null,
+      cantidad: null,
       notas: form.notas || null,
     }
+    let compraId = editId
     let numero: number | null = editCompra?.numero ?? null
     if (editId) {
+      await restaurarExistencia(editId, editCompra)
       const { error } = await supabase.from('compras').update(payload).eq('id', editId)
       if (error) { setSaving(false); return alert('Error al guardar: ' + error.message) }
+      await supabase.from('compra_items').delete().eq('compra_id', editId)
     } else {
       const { data, error } = await supabase.from('compras').insert(payload).select().single()
       if (error) { setSaving(false); return alert('Error al guardar: ' + error.message) }
-      numero = (data as any)?.numero ?? null
-      // Compra nueva vinculada a un artículo: sumar a la existencia y actualizar su costo
-      if (vinculaArticulo) {
-        await supabase.rpc('ajustar_stock', { p_articulo: form.articulo_id, p_delta: form.cantidad })
-        await supabase.from('articulos').update({ costo: form.costo_unit }).eq('id', form.articulo_id)
+      compraId = (data as any).id
+      numero = (data as any).numero ?? null
+    }
+    await supabase.from('compra_items').insert(
+      its.map((l) => ({ compra_id: compraId, articulo_id: l.articulo_id || null, descripcion: l.descripcion, cantidad: l.cantidad, costo_unit: l.costo_unit, importe: l.cantidad * l.costo_unit })),
+    )
+    // Sumar a la existencia y actualizar el costo de cada artículo del inventario
+    for (const l of its) {
+      if (l.articulo_id) {
+        await supabase.rpc('ajustar_stock', { p_articulo: l.articulo_id, p_delta: l.cantidad })
+        await supabase.from('articulos').update({ costo: l.costo_unit }).eq('id', l.articulo_id)
       }
     }
     if (imprimir) {
-      setRecibo({ numero, proveedor: form.proveedor || 'Sin proveedor', descripcion: form.descripcion, categoria: form.categoria, fecha: form.fecha, subtotal, itbis, total, metodo: form.metodo_pago, hora: new Date().toISOString() })
+      setRecibo({ numero, proveedor: form.proveedor || 'Sin proveedor', categoria: form.categoria, fecha: form.fecha, subtotal: subt, itbis: itb, total: subt + itb, metodo: form.metodo_pago, hora: new Date().toISOString(), items: its })
       setTimeout(() => window.print(), 400)
     }
     setSaving(false)
@@ -157,10 +186,7 @@ export default function Compras() {
 
   async function eliminar(c: Compra) {
     if (!confirm(`¿Eliminar la compra "${c.descripcion}"?`)) return
-    // Si sumaba stock, descontarlo al eliminar
-    if (c.articulo_id && c.cantidad) {
-      await supabase.rpc('ajustar_stock', { p_articulo: c.articulo_id, p_delta: -Number(c.cantidad) })
-    }
+    await restaurarExistencia(c.id, c)
     const { error } = await supabase.from('compras').delete().eq('id', c.id)
     if (error) return alert('Error al eliminar: ' + error.message)
     cargar()
@@ -250,59 +276,69 @@ export default function Compras() {
             )}
           </div>
 
-          {/* Compra de un artículo de inventario: artículo + cantidad + costo */}
-          <div className="rounded-xl border border-pink-100 bg-pink-50/40 p-3">
-            <label className="label">Artículo de inventario {editId ? '' : '(suma a la existencia)'}</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <button
-                  type="button"
-                  onClick={() => { setBuscarCat(''); setCatTab('articulos'); setCatalogoOpen(true) }}
-                  title="Ver artículos e historial de compras"
-                  disabled={!!editId}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40"
-                >
-                  <Search size={16} />
-                </button>
-                <select className="input pl-9" value={form.articulo_id} onChange={(e) => elegirArticulo(e.target.value)} disabled={!!editId}>
-                  <option value="">— Compra sin inventario —</option>
-                  {articulos.map((a) => <option key={a.id} value={a.id}>#{codigoArticulo(a.codigo)} {a.nombre} (existencia {a.stock})</option>)}
-                </select>
+          {/* Renglones: artículos del inventario y/o conceptos manuales */}
+          <div>
+            <label className="label">Artículos y conceptos comprados</label>
+            {lineas.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400">
+                Usa la lupa para agregar artículos del inventario, o «Concepto manual» para algo sin inventario.
               </div>
-            </div>
-            {form.articulo_id && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div>
-                  <label className="label">Cantidad</label>
-                  <input type="number" min={0} className="input" placeholder="Cantidad" value={form.cantidad || ''} onChange={(e) => setForm({ ...form, cantidad: Number(e.target.value) })} disabled={!!editId} />
-                </div>
-                <div>
-                  <label className="label">Costo unitario (RD$)</label>
-                  <input type="number" min={0} step={5} className="input" placeholder="Costo c/u" value={form.costo_unit || ''} onChange={(e) => setForm({ ...form, costo_unit: Number(e.target.value) })} disabled={!!editId} />
-                </div>
+            ) : (
+              <div className="space-y-3">
+                {lineas.map((l, i) => {
+                  const esManual = !l.articulo_id
+                  return (
+                    <div key={i} className="rounded-xl border-2 border-slate-200 bg-white p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        {esManual ? (
+                          <input className="input flex-1" placeholder="Concepto (ej: flete, empaque…)" value={l.descripcion} onChange={(e) => setLinea(i, { descripcion: e.target.value })} />
+                        ) : (
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-slate-800">
+                            <span className="badge bg-amber-50 text-amber-700">Artículo</span>
+                            <span className="truncate">{l.descripcion}</span>
+                          </span>
+                        )}
+                        <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><X size={16} /></button>
+                      </div>
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        <div>
+                          <span className="text-xs text-slate-400">Cant.</span>
+                          <input type="number" min={0} className="input" value={l.cantidad || ''} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-400">Costo c/u</span>
+                          <input type="number" min={0} step={5} className="input" value={l.costo_unit || ''} onChange={(e) => setLinea(i, { costo_unit: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-400">Importe</span>
+                          <input className="input bg-slate-50" value={money(l.cantidad * l.costo_unit)} readOnly />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
-            {form.articulo_id && !editId && <p className="mt-1 text-xs text-slate-400">Subtotal = cantidad × costo. Se suma al stock y se actualiza el costo del artículo.</p>}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className="btn-ghost" onClick={() => { setBuscarCat(''); setCatTab('articulos'); setCatalogoOpen(true) }}>
+                <Search size={14} /> Agregar artículo
+              </button>
+              <button type="button" className="btn-ghost" onClick={agregarManual}>
+                <Plus size={14} /> Concepto manual
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="label">Descripción</label>
-            <input className="input" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Esmaltes, tintes…" />
+            <label className="label">Descripción general (opcional)</label>
+            <input className="input" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Resumen de la compra (si lo dejas vacío se arma solo)" />
           </div>
-
-          {!vinculaArticulo && (
-            <div>
-              <label className="label">Subtotal (RD$)</label>
-              <input type="number" min={0} step={50} className="input" value={form.subtotal || ''} onChange={(e) => setForm({ ...form, subtotal: Number(e.target.value) })} />
-            </div>
-          )}
 
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={form.aplicaItbis} onChange={(e) => setForm({ ...form, aplicaItbis: e.target.checked })} />
             Incluir ITBIS (18%)
           </label>
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
-            {vinculaArticulo && <div className="flex justify-between text-slate-500"><span>{form.cantidad} × {money(form.costo_unit)}</span><span></span></div>}
             <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(subtotal)}</span></div>
             {form.aplicaItbis && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(itbis)}</span></div>}
             <div className="mt-1 flex justify-between border-t border-slate-200 pt-1 font-bold text-slate-800"><span>Total</span><span>{money(total)}</span></div>
@@ -356,7 +392,16 @@ export default function Compras() {
               </div>
               <p className="text-slate-600"><span className="font-medium">Proveedor:</span> {recibo.proveedor}</p>
               <p className="text-slate-600"><span className="font-medium">Categoría:</span> {recibo.categoria}</p>
-              <p className="text-slate-600"><span className="font-medium">Detalle:</span> {recibo.descripcion}</p>
+              <table className="w-full border-t pt-1 text-xs">
+                <tbody>
+                  {recibo.items.map((it, idx) => (
+                    <tr key={idx} className="border-b border-slate-50 text-slate-600">
+                      <td className="py-1">{it.cantidad}× {it.descripcion}</td>
+                      <td className="py-1 text-right">{money(it.cantidad * it.costo_unit)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               <div className="space-y-0.5 border-t pt-1">
                 <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(recibo.subtotal)}</span></div>
                 {recibo.itbis > 0 && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(recibo.itbis)}</span></div>}
@@ -421,7 +466,7 @@ export default function Compras() {
                     <button
                       key={a.id}
                       type="button"
-                      onClick={() => { elegirArticulo(a.id); setCatalogoOpen(false) }}
+                      onClick={() => agregarArticulo(a)}
                       className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-pink-50"
                     >
                       <span className="flex min-w-0 flex-col">
@@ -438,7 +483,10 @@ export default function Compras() {
                   ))
                 )}
               </div>
-              <p className="text-xs text-slate-400">Toca un artículo para elegirlo en la compra.</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-400">Toca para agregar; puedes añadir varios.</p>
+                <button type="button" className="btn-primary" onClick={() => setCatalogoOpen(false)}>Listo</button>
+              </div>
             </>
           ) : (
             <DataTable
