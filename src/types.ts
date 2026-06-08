@@ -64,6 +64,7 @@ export interface CitaConRelaciones extends Cita {
 // ===================== FACTURACIÓN Y CONTABILIDAD =====================
 
 export type EstadoFactura = 'PENDIENTE' | 'PAGADA' | 'ANULADA'
+export type TipoVenta = 'CONTADO' | 'CREDITO'
 export type TipoPagoEmpleado = 'SALARIO' | 'COMISION' | 'ADELANTO' | 'BONO'
 
 export interface FacturaItem {
@@ -82,6 +83,8 @@ export interface FacturaItem {
 export interface Factura {
   id: string
   numero: number
+  tipo_venta: TipoVenta
+  serie: number | null
   cliente_id: string | null
   cliente_nombre: string | null
   cita_id: string | null

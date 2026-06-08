@@ -56,3 +56,10 @@ export function hoyISO(): string {
 export function codigoArticulo(n: number | null | undefined): string {
   return String(n ?? 0).padStart(4, '0')
 }
+
+// Código de factura según el tipo de venta: contado -> CO000001, crédito -> CR000001
+export function codigoFactura(f: { tipo_venta?: string | null; serie?: number | null; numero?: number | null }): string {
+  const prefijo = f.tipo_venta === 'CREDITO' ? 'CR' : 'CO'
+  const n = f.serie ?? f.numero ?? 0
+  return `${prefijo}${String(n).padStart(6, '0')}`
+}

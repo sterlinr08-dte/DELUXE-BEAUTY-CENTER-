@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Empleado, PagoEmpleado, TipoPagoEmpleado } from '../types'
-import { money, fechaCorta, hoyISO } from '../lib/format'
+import { money, fechaCorta, hoyISO, codigoFactura } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
@@ -69,7 +69,7 @@ export default function Nomina() {
       setComLoading(true)
       const { data } = await supabase
         .from('factura_items')
-        .select('descripcion,cantidad,importe, facturas!inner(numero,fecha,estado)')
+        .select('descripcion,cantidad,importe, facturas!inner(numero,tipo_venta,serie,fecha,estado)')
         .eq('empleado_id', form.empleado_id)
         .eq('facturas.estado', 'PAGADA')
         .gte('facturas.fecha', comDesde)
@@ -267,7 +267,7 @@ export default function Nomina() {
                       <tbody className="divide-y divide-slate-100">
                         {comItems.map((it, idx) => (
                           <tr key={idx}>
-                            <td className="px-2 py-1 text-slate-400">{fechaCorta(it.facturas?.fecha)} · #{it.facturas?.numero}</td>
+                            <td className="px-2 py-1 text-slate-400">{fechaCorta(it.facturas?.fecha)} · {it.facturas ? codigoFactura(it.facturas) : ''}</td>
                             <td className="px-2 py-1 text-slate-700">{it.descripcion}{it.cantidad > 1 ? ` ×${it.cantidad}` : ''}</td>
                             <td className="px-2 py-1 text-right font-medium text-slate-700">{money(it.importe)}</td>
                           </tr>

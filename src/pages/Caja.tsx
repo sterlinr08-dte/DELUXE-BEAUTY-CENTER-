@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt, HandCoins, Printer, FileText, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CajaSesion, CajaMovimiento, Factura, FacturaItem } from '../types'
-import { money, fechaHora } from '../lib/format'
+import { money, fechaHora, codigoFactura } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
@@ -198,7 +198,7 @@ export default function Caja() {
       await supabase.from('caja_movimientos').insert({
         caja_id: sesion.id,
         tipo: 'ENTRADA',
-        concepto: `Factura #${cobrarFactura.numero} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
+        concepto: `Factura ${codigoFactura(cobrarFactura)} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
         monto: cobrarFactura.total,
         factura_id: cobrarFactura.id,
       })
@@ -367,7 +367,7 @@ export default function Caja() {
                 <ul className="divide-y divide-slate-100">
                   {pendientes.map((f) => (
                     <li key={f.id} className="flex items-center gap-3 py-3">
-                      <span className="font-mono font-semibold text-slate-500">#{f.numero}</span>
+                      <span className="font-mono font-semibold text-slate-500">{codigoFactura(f)}</span>
                       <div className="flex-1">
                         <p className="font-medium text-slate-800">{f.cliente_nombre ?? 'Cliente'}</p>
                         <p className="text-xs text-slate-400">{fechaHora(f.created_at)}</p>
@@ -521,7 +521,7 @@ export default function Caja() {
       {/* Modal cobrar factura (mini-POS) */}
       <Modal
         open={!!cobrarFactura}
-        title={cobroOk ? 'Cobro realizado' : `Cobrar factura #${cobrarFactura?.numero ?? ''}`}
+        title={cobroOk ? 'Cobro realizado' : `Cobrar factura ${cobrarFactura ? codigoFactura(cobrarFactura) : ''}`}
         onClose={() => setCobrarFactura(null)}
         footer={
           cobroOk ? null : (
@@ -549,7 +549,7 @@ export default function Caja() {
                 {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
                 <p className="text-xs text-slate-500">Tel/WhatsApp: {negocio.telefono}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
-                <p className="text-xs text-slate-400">Factura #{cobrarFactura?.numero} · {fechaHora(cobroHora)}</p>
+                <p className="text-xs text-slate-400">Factura {cobrarFactura ? codigoFactura(cobrarFactura) : ''} · {fechaHora(cobroHora)}</p>
               </div>
               <p className="text-slate-600"><span className="font-medium">Cliente:</span> {cobrarFactura?.cliente_nombre ?? 'Cliente'}</p>
               <table className="w-full">

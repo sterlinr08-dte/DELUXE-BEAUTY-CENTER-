@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura } from '../types'
-import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
+import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
+import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
@@ -48,6 +48,7 @@ export default function Facturacion() {
   const [clienteId, setClienteId] = useState('')
   const [clienteNombre, setClienteNombre] = useState('')
   const [fecha, setFecha] = useState(hoyISO())
+  const [tipoVenta, setTipoVenta] = useState<TipoVenta>('CONTADO')
   const [aplicaItbis, setAplicaItbis] = useState(false)
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
@@ -138,6 +139,7 @@ export default function Facturacion() {
     setClienteId('')
     setClienteNombre('')
     setFecha(hoyISO())
+    setTipoVenta('CONTADO')
     setAplicaItbis(false)
     setDescuento(0)
     setNotas('')
@@ -159,6 +161,7 @@ export default function Facturacion() {
     setClienteId(f.cliente_id ?? '')
     setClienteNombre(f.cliente_nombre ?? '')
     setFecha(f.fecha)
+    setTipoVenta(f.tipo_venta ?? 'CONTADO')
     setAplicaItbis(Number(f.itbis) > 0)
     setDescuento(Number(f.descuento))
     setNotas(f.notas ?? '')
@@ -188,6 +191,7 @@ export default function Facturacion() {
       cliente_id: clienteId || null,
       cliente_nombre: clienteId ? clientes.find((c) => c.id === clienteId)?.nombre : clienteNombre || 'Cliente de contado',
       fecha,
+      tipo_venta: tipoVenta,
       subtotal,
       descuento,
       itbis,
@@ -265,7 +269,7 @@ export default function Facturacion() {
   }
 
   async function eliminar(f: Factura) {
-    if (!confirm(`¿Eliminar la factura #${f.numero}?`)) return
+    if (!confirm(`¿Eliminar la factura ${codigoFactura(f)}?`)) return
     // Si no estaba anulada, devolver el stock antes de borrar
     if (f.estado !== 'ANULADA') {
       await restaurarStock(f.id)
@@ -318,7 +322,7 @@ export default function Facturacion() {
             <tbody className="divide-y divide-slate-50">
               {facturas.map((f) => (
                 <tr key={f.id} className="hover:bg-slate-50/50">
-                  <td className="px-5 py-3 font-mono font-semibold text-slate-700">#{f.numero}</td>
+                  <td className="px-5 py-3 font-mono font-semibold text-slate-700">{codigoFactura(f)}</td>
                   <td className="px-5 py-3">
                     <button className="font-medium text-brand-700 hover:underline" onClick={() => verDetalle(f)}>
                       {f.cliente_nombre || 'Cliente'}
@@ -397,6 +401,27 @@ export default function Facturacion() {
               <input className="input" value={clienteNombre} onChange={(e) => setClienteNombre(e.target.value)} placeholder="Opcional" />
             </div>
           )}
+
+          <div>
+            <label className="label">Tipo de venta</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTipoVenta('CONTADO')}
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${tipoVenta === 'CONTADO' ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+              >
+                Contado <span className="font-mono text-xs opacity-70">CO</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTipoVenta('CREDITO')}
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${tipoVenta === 'CREDITO' ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+              >
+                Crédito <span className="font-mono text-xs opacity-70">CR</span>
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">El número será {tipoVenta === 'CREDITO' ? 'CR000001, CR000002…' : 'CO000001, CO000002…'} según el tipo.</p>
+          </div>
 
           <div>
             <label className="label">Buscar servicio o artículo</label>
@@ -533,7 +558,7 @@ export default function Facturacion() {
       </Modal>
 
       {/* Modal VER / IMPRIMIR */}
-      <Modal open={!!verId} title={`Factura #${facturaVista?.numero ?? ''}`} onClose={() => setVerId(null)}>
+      <Modal open={!!verId} title={`Factura ${facturaVista ? codigoFactura(facturaVista) : ''}`} onClose={() => setVerId(null)}>
         {facturaVista && (
           <div id="factura-print" className="print-area space-y-3">
             <div className="text-center">
@@ -542,7 +567,7 @@ export default function Facturacion() {
               {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
               <p className="text-xs text-slate-500">{negocio.direccion} · {negocio.referencia}</p>
               <p className="text-xs text-slate-500">Tel {negocio.telefono} · WhatsApp {negocio.whatsapp} · {negocio.instagram}</p>
-              <p className="mt-1 text-xs font-medium text-slate-400">Factura #{facturaVista.numero} · {fechaCorta(facturaVista.fecha)}</p>
+              <p className="mt-1 text-xs font-medium text-slate-400">Factura {codigoFactura(facturaVista)} · {facturaVista.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · {fechaCorta(facturaVista.fecha)}</p>
             </div>
             <div className="text-sm text-slate-600">
               <p><span className="font-medium">Cliente:</span> {facturaVista.cliente_nombre}</p>

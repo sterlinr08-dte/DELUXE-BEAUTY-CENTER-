@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, CalendarDays, Clock, Receipt } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones, Cliente, Empleado, EstadoCita, Servicio } from '../types'
-import { hora, money, fechaLarga, hoyISO } from '../lib/format'
+import { hora, money, fechaLarga, hoyISO, codigoFactura } from '../lib/format'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -153,8 +153,8 @@ export default function Citas() {
   // Genera una factura (PENDIENTE) a partir de la cita, lista para cobrar en Caja
   async function facturar(c: CitaConRelaciones) {
     // Evitar doble facturación
-    const { data: existente } = await supabase.from('facturas').select('id,numero').eq('cita_id', c.id).maybeSingle()
-    if (existente) return alert(`Esta cita ya tiene la factura #${(existente as any).numero}. Cóbrala en Caja.`)
+    const { data: existente } = await supabase.from('facturas').select('id,numero,tipo_venta,serie').eq('cita_id', c.id).maybeSingle()
+    if (existente) return alert(`Esta cita ya tiene la factura ${codigoFactura(existente as any)}. Cóbrala en Caja.`)
     if (!confirm(`¿Generar factura de ${money(c.precio)} para ${c.cliente?.nombre ?? 'el cliente'}? Luego se cobra en Caja.`)) return
 
     const { data: factura, error } = await supabase
@@ -186,7 +186,7 @@ export default function Citas() {
     })
     // Marcar la cita como completada
     if (c.estado !== 'COMPLETADA') await supabase.from('citas').update({ estado: 'COMPLETADA' }).eq('id', c.id)
-    alert(`Factura #${factura.numero} generada. Ahora cóbrala en Caja.`)
+    alert(`Factura ${codigoFactura(factura)} generada. Ahora cóbrala en Caja.`)
     cargar()
   }
 
