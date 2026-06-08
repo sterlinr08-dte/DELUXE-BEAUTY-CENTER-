@@ -573,6 +573,16 @@ export default function Facturacion() {
           </div>
           </div>
 
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
+              className="text-xs font-semibold text-brand-600 hover:underline"
+            >
+              Ver historial de facturas
+            </button>
+          </div>
+
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
             <div className="flex flex-wrap gap-2">
@@ -588,27 +598,9 @@ export default function Facturacion() {
         </div>
       )}
 
-      {/* VENTANA DE LA LUPA: catálogo (servicios/artículos) e historial de facturas */}
-      <Modal open={catalogoOpen} title="Buscar" onClose={() => setCatalogoOpen(false)}>
+      {/* VENTANA DE LA LUPA: catálogo de servicios/artículos (o historial, según se abra) */}
+      <Modal open={catalogoOpen} title={catTab === 'historial' ? 'Historial de facturas' : 'Buscar servicio o artículo'} onClose={() => setCatalogoOpen(false)}>
         <div className="space-y-3">
-          {/* Pestañas */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setCatTab('catalogo')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'catalogo' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            >
-              Servicios y artículos
-            </button>
-            <button
-              type="button"
-              onClick={() => setCatTab('historial')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'historial' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            >
-              Historial de facturas
-            </button>
-          </div>
-
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
