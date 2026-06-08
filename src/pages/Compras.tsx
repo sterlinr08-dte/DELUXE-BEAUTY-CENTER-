@@ -241,7 +241,7 @@ export default function Compras() {
         <div className="mx-auto max-w-2xl">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="font-display text-2xl font-bold text-slate-800">{editId ? 'Editar compra' : 'Nueva compra'}</h2>
+              <h2 className="font-display text-2xl font-bold uppercase text-slate-800">{editId ? 'Editar compra' : 'Nueva compra'}</h2>
               <p className="text-sm text-slate-400">Registra la compra y, si aplica, súmala al inventario.</p>
             </div>
             <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>

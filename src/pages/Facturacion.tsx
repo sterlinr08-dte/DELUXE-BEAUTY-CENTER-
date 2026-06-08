@@ -33,6 +33,7 @@ export default function Facturacion() {
   const puedeAnular = puedeAccion('facturas.anular')
   const puedeEliminar = puedeAccion('facturas.eliminar')
   const puedeEditar = puedeAccion('facturas.editar')
+  const puedeVenderSinExistencia = puedeAccion('facturas.vender_sin_existencia')
 
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [verEstado, setVerEstado] = useState<'ABIERTAS' | 'PAGADAS' | 'TODAS'>('ABIERTAS')
@@ -57,6 +58,8 @@ export default function Facturacion() {
   const [lineas, setLineas] = useState<LineaTmp[]>([])
   const [buscarItem, setBuscarItem] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
+  // Cantidad por artículo que ya tenía la factura al editar (para no bloquear de más la existencia)
+  const [cantOriginal, setCantOriginal] = useState<Record<string, number>>({})
   // Catálogo completo (ventana de la lupa)
   const [catalogoOpen, setCatalogoOpen] = useState(false)
   const [catTab, setCatTab] = useState<'catalogo' | 'historial'>('catalogo')
@@ -88,6 +91,10 @@ export default function Facturacion() {
 
   function agregarDesdeBusqueda(r: { tipo: 's' | 'a'; id: string; nombre: string; precio: number; stock?: number | null }) {
     if (r.tipo === 'a' && (r.stock ?? 0) <= 0) {
+      if (!puedeVenderSinExistencia) {
+        alert(`"${r.nombre}" no tiene existencia. Solo administración puede facturar sin existencia.`)
+        return
+      }
       if (!confirm(`"${r.nombre}" no tiene existencia (0). ¿Agregar de todos modos?`)) return
     }
     setLineas((prev) => {
@@ -157,6 +164,7 @@ export default function Facturacion() {
     setDescuento(0)
     setNotas('')
     setLineas([])
+    setCantOriginal({})
     setBuscarItem('')
     setOpen(true)
   }
@@ -189,6 +197,12 @@ export default function Facturacion() {
         empleado_id: it.empleado_id ?? '',
       })),
     )
+    // Guarda cuánto de cada artículo ya tenía esta factura (esa cantidad ya está descontada)
+    const orig: Record<string, number> = {}
+    for (const it of (data ?? []) as any[]) {
+      if (it.articulo_id) orig[it.articulo_id] = (orig[it.articulo_id] ?? 0) + Number(it.cantidad)
+    }
+    setCantOriginal(orig)
     setOpen(true)
   }
 
@@ -199,6 +213,18 @@ export default function Facturacion() {
   async function guardar(imprimir = false) {
     const items = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0)
     if (items.length === 0) return alert('Agrega al menos un ítem con descripción')
+    // No permitir dejar la existencia en negativo (salvo administración)
+    if (!puedeVenderSinExistencia) {
+      for (const l of items) {
+        if (!l.articulo_id) continue
+        const art = articulos.find((a) => a.id === l.articulo_id)
+        if (!art) continue
+        const disponible = Number(art.stock) + (cantOriginal[l.articulo_id] ?? 0)
+        if (l.cantidad > disponible) {
+          return alert(`No hay suficiente existencia de "${l.descripcion}" (disponible: ${disponible}). Solo administración puede facturar dejándolo en negativo.`)
+        }
+      }
+    }
     setSaving(true)
     const datos = {
       cliente_id: clienteId || null,
@@ -403,7 +429,7 @@ export default function Facturacion() {
         <div className="mx-auto max-w-2xl">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="font-display text-2xl font-bold text-slate-800">{editId ? 'Editar factura' : 'Nueva venta'}</h2>
+              <h2 className="font-display text-2xl font-bold uppercase text-slate-800">{editId ? 'Editar factura' : 'Nueva venta'}</h2>
               <p className="text-sm text-slate-400">Registra los servicios y productos a cobrar.</p>
             </div>
             <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>
@@ -504,7 +530,7 @@ export default function Facturacion() {
           </div>
 
           <div>
-            <label className="label">Lo que se cobra</label>
+            <label className="label">Artículos o servicios agregados</label>
             {lineas.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400">
                 Busca arriba y toca un servicio o producto para agregarlo aquí.

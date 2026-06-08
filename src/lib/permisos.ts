@@ -40,6 +40,7 @@ export const ACCIONES: Accion[] = [
   { key: 'facturas.editar', label: 'Editar facturas ya guardadas', modulo: 'facturacion' },
   { key: 'facturas.anular', label: 'Anular facturas', modulo: 'facturacion' },
   { key: 'facturas.eliminar', label: 'Eliminar facturas', modulo: 'facturacion' },
+  { key: 'facturas.vender_sin_existencia', label: 'Facturar artículos sin existencia (dejar en negativo)', modulo: 'facturacion' },
   { key: 'caja.abrir', label: 'Abrir y cerrar caja', modulo: 'caja' },
   { key: 'caja.movimiento', label: 'Registrar entradas / salidas de efectivo', modulo: 'caja' },
   { key: 'caja.cerrar_descuadre', label: 'Cerrar caja aunque haya descuadre (diferencia)', modulo: 'caja' },
