@@ -302,15 +302,15 @@ export default function Compras() {
                       </div>
                       <div className="mt-2 grid grid-cols-3 gap-2">
                         <div>
-                          <span className="text-xs text-slate-400">Cant.</span>
+                          <span className="text-xs font-medium text-slate-600">Cant.</span>
                           <input type="number" min={0} className="input" value={l.cantidad || ''} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
                         </div>
                         <div>
-                          <span className="text-xs text-slate-400">Costo c/u</span>
+                          <span className="text-xs font-medium text-slate-600">Costo c/u</span>
                           <input type="number" min={0} step={5} className="input" value={l.costo_unit || ''} onChange={(e) => setLinea(i, { costo_unit: Number(e.target.value) })} />
                         </div>
                         <div>
-                          <span className="text-xs text-slate-400">Importe</span>
+                          <span className="text-xs font-medium text-slate-600">Importe</span>
                           <input className="input bg-slate-50" value={money(l.cantidad * l.costo_unit)} readOnly />
                         </div>
                       </div>
