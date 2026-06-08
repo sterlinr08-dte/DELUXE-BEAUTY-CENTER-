@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Empleado } from '../types'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 
 const vacio = {
@@ -187,7 +188,7 @@ export default function Empleados() {
       )}
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : items.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <UserCog className="text-brand-300" size={40} />

@@ -5,6 +5,7 @@ import { Cliente } from '../types'
 import { fechaCorta } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
 
@@ -95,7 +96,7 @@ export default function Clientes() {
       />
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : (
         <DataTable
           rows={items}

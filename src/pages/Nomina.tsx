@@ -6,6 +6,7 @@ import { money, fechaCorta, fechaHora, hoyISO, codigoFactura } from '../lib/form
 import { METODOS_PAGO } from '../lib/constants'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 
 interface ReciboPago { empleado: string; tipo: string; periodo: string; monto: number; metodo: string; fecha: string; hora: string }
@@ -167,7 +168,7 @@ export default function Nomina() {
       />
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : items.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Users className="text-brand-300" size={40} />

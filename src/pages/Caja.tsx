@@ -7,6 +7,7 @@ import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 
 // Denominaciones de pesos dominicanos (billetes y monedas) para el arqueo
@@ -318,7 +319,7 @@ export default function Caja() {
       />
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : !sesion ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Wallet className="text-brand-300" size={40} />

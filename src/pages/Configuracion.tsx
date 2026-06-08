@@ -7,6 +7,7 @@ import { fechaHora } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
 
@@ -268,7 +269,7 @@ export default function Configuracion() {
       </div>
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : tab === 'usuarios' ? (
         <div>
           <div className="mb-4 flex justify-end">

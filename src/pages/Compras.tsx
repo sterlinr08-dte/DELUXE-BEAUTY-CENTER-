@@ -7,6 +7,7 @@ import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
 
@@ -206,7 +207,7 @@ export default function Compras() {
       />
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : (
         <DataTable
           rows={items}

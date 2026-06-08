@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Receipt, ShoppingCart, Wallet, Users, Scale, 
 import { supabase } from '../lib/supabase'
 import { money } from '../lib/format'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 
 interface Resumen {
   ingresos: number
@@ -90,7 +91,7 @@ export default function Contabilidad() {
       />
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : (
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-3">

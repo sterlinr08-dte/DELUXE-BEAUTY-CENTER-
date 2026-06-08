@@ -6,6 +6,7 @@ import { money, fechaCorta, hoyISO } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_GASTO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 
 const vacio = {
@@ -110,7 +111,7 @@ export default function Gastos() {
       )}
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : items.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Wallet className="text-brand-300" size={40} />

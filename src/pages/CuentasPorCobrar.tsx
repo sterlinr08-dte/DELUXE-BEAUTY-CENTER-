@@ -7,6 +7,7 @@ import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
 
@@ -145,7 +146,7 @@ export default function CuentasPorCobrar() {
       </div>
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : (
         <DataTable
           rows={listaVisible}

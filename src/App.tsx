@@ -19,6 +19,7 @@ import Contabilidad from './pages/Contabilidad'
 import Reportes from './pages/Reportes'
 import Configuracion from './pages/Configuracion'
 import Login from './pages/Login'
+import Cargando from './components/Cargando'
 import { useAuth } from './lib/auth'
 import { MODULOS } from './lib/permisos'
 
@@ -52,7 +53,7 @@ export default function App() {
   }, [])
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-slate-400">Cargando…</div>
+    return <div className="flex h-full items-center justify-center"><Cargando texto="Cargando…" /></div>
   }
 
   if (!session) {

@@ -7,6 +7,7 @@ import { useNegocio } from '../lib/negocio'
 import { useAuth } from '../lib/auth'
 import { descargarCSV, imprimirTabla } from '../lib/reportes'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 
 type Tab = 'inventario' | 'fisico' | 'ventas' | 'compras' | 'cuadres'
@@ -263,7 +264,7 @@ export default function Reportes() {
         <h2 className="font-display text-lg font-bold text-slate-800">{rep.titulo}</h2>
         <p className="mb-3 text-sm text-slate-600">{rep.subtitulo}</p>
         {loading ? (
-          <p className="py-8 text-center text-slate-600">Cargando…</p>
+          <Cargando />
         ) : rep.filas.length === 0 ? (
           <p className="py-8 text-center text-slate-600">Sin datos para este reporte.</p>
         ) : (

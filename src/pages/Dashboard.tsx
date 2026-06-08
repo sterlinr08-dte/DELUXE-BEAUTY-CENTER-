@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { CitaConRelaciones } from '../types'
 import { hora, money, hoyISO, fechaLarga } from '../lib/format'
 import { useNegocio } from '../lib/negocio'
+import Cargando from '../components/Cargando'
 
 interface Stats {
   clientes: number
@@ -101,7 +102,7 @@ export default function Dashboard() {
           <Link to="/citas" className="text-sm font-semibold text-brand-600 hover:underline">Ver todo →</Link>
         </div>
         {loading ? (
-          <p className="text-slate-500">Cargando…</p>
+          <Cargando />
         ) : agenda.length === 0 ? (
           <p className="py-6 text-center text-slate-600">No hay citas agendadas para hoy.</p>
         ) : (
