@@ -13,6 +13,7 @@ import {
   Settings,
   Package,
   HandCoins,
+  FileBarChart,
   X,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -32,6 +33,7 @@ const grupos: { titulo: string; links: Link[] }[] = [
       { to: '/gastos', label: 'Gastos', icon: Wallet, modulo: 'gastos' },
       { to: '/nomina', label: 'Pagos a empleados', icon: Users, modulo: 'nomina' },
       { to: '/contabilidad', label: 'Contabilidad', icon: Calculator, modulo: 'contabilidad' },
+      { to: '/reportes', label: 'Reportes', icon: FileBarChart, modulo: 'reportes' },
       { to: '/citas', label: 'Citas / Agenda', icon: CalendarDays, modulo: 'citas' },
       { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
       { to: '/servicios', label: 'Servicios y precios', icon: Scissors, modulo: 'servicios' },

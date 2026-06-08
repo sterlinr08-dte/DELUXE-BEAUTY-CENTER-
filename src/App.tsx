@@ -16,6 +16,7 @@ import CuentasPorPagar from './pages/CuentasPorPagar'
 import Gastos from './pages/Gastos'
 import Nomina from './pages/Nomina'
 import Contabilidad from './pages/Contabilidad'
+import Reportes from './pages/Reportes'
 import Configuracion from './pages/Configuracion'
 import Login from './pages/Login'
 import { useAuth } from './lib/auth'
@@ -91,6 +92,7 @@ export default function App() {
               <Route path="/gastos" element={<Protegido modulo="gastos"><Gastos /></Protegido>} />
               <Route path="/nomina" element={<Protegido modulo="nomina"><Nomina /></Protegido>} />
               <Route path="/contabilidad" element={<Protegido modulo="contabilidad"><Contabilidad /></Protegido>} />
+              <Route path="/reportes" element={<Protegido modulo="reportes"><Reportes /></Protegido>} />
               <Route path="/configuracion" element={<Protegido modulo="configuracion"><Configuracion /></Protegido>} />
             </Routes>
           </div>
