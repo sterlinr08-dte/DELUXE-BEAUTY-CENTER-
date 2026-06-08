@@ -12,6 +12,7 @@ import {
   Calculator,
   Settings,
   Package,
+  HandCoins,
   X,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -25,6 +26,7 @@ const grupos: { titulo: string; links: Link[] }[] = [
       { to: '/', label: 'Panel', icon: LayoutDashboard, modulo: 'panel', end: true },
       { to: '/facturacion', label: 'Facturación', icon: Receipt, modulo: 'facturacion' },
       { to: '/caja', label: 'Caja', icon: Wallet, modulo: 'caja' },
+      { to: '/cuentas', label: 'Cuentas por cobrar', icon: HandCoins, modulo: 'cuentas' },
       { to: '/compras', label: 'Compras', icon: ShoppingCart, modulo: 'compras' },
       { to: '/gastos', label: 'Gastos', icon: Wallet, modulo: 'gastos' },
       { to: '/nomina', label: 'Pagos a empleados', icon: Users, modulo: 'nomina' },

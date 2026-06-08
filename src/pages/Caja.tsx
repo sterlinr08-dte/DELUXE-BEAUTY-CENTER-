@@ -55,6 +55,8 @@ export default function Caja() {
   const [cobroItems, setCobroItems] = useState<FacturaItem[]>([])
   const [metodoCobro, setMetodoCobro] = useState('Efectivo')
   const [efectivoRecibido, setEfectivoRecibido] = useState(0)
+  const [cobroAbonado, setCobroAbonado] = useState(0)   // abonos previos (crédito)
+  const [abonoCredito, setAbonoCredito] = useState(0)   // monto a abonar ahora (crédito)
   const [cobroOk, setCobroOk] = useState(false)
   const [cobroHora, setCobroHora] = useState('')
 
@@ -124,10 +126,17 @@ export default function Caja() {
   const cobrosOtros = cobros.filter((f) => (f.metodo_pago ?? 'Efectivo') !== 'Efectivo').reduce((s, f) => s + Number(f.total), 0)
 
   // Derivados del cobro en curso (mini-POS)
-  const cobroTotal = Number(cobrarFactura?.total ?? 0)
+  const esCredito = cobrarFactura?.tipo_venta === 'CREDITO'
+  const cobroFull = Number(cobrarFactura?.total ?? 0)
+  const cobroSaldoPrevio = Math.max(0, cobroFull - cobroAbonado)
+  // Monto a pagar AHORA: en crédito es el abono; en contado es el total completo
+  const cobroTotal = esCredito ? abonoCredito : cobroFull
   const cobroEsEfectivo = metodoCobro === 'Efectivo'
   const cobroCambio = efectivoRecibido - cobroTotal
-  const cobroPuede = !cobroEsEfectivo || efectivoRecibido >= cobroTotal
+  const cobroPuede =
+    cobroTotal > 0 &&
+    (!cobroEsEfectivo || efectivoRecibido >= cobroTotal) &&
+    (!esCredito || cobroTotal <= cobroSaldoPrevio + 0.01)
 
   const esperado = (sesion ? Number(sesion.monto_inicial) : 0) + entradas - salidas
   const contado = DENOMS.reduce((s, d) => s + d * (conteo[d] || 0), 0)
@@ -177,31 +186,69 @@ export default function Caja() {
     setEfectivoRecibido(0)
     setCobroOk(false)
     setCobroItems([])
+    setCobroAbonado(0)
+    setAbonoCredito(0)
     const { data } = await supabase.from('factura_items').select('*').eq('factura_id', f.id)
     setCobroItems(data ?? [])
+    // Si es a crédito, traer los abonos previos para calcular el saldo
+    if (f.tipo_venta === 'CREDITO') {
+      const { data: ab } = await supabase.from('factura_abonos').select('monto').eq('factura_id', f.id)
+      const abonado = (ab ?? []).reduce((s, a) => s + Number((a as any).monto), 0)
+      setCobroAbonado(abonado)
+      setAbonoCredito(Math.max(0, Number(f.total) - abonado))
+    }
   }
 
   async function confirmarCobro() {
     if (!cobrarFactura || !sesion) return
     setSaving(true)
-    // 1) Marcar la factura como pagada y vincularla a esta caja
-    const { error: e1 } = await supabase
-      .from('facturas')
-      .update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id })
-      .eq('id', cobrarFactura.id)
-    if (e1) {
-      setSaving(false)
-      return alert('Error al cobrar: ' + e1.message)
-    }
-    // 2) Si fue en efectivo, registrar la entrada en la caja
-    if (metodoCobro === 'Efectivo') {
-      await supabase.from('caja_movimientos').insert({
-        caja_id: sesion.id,
-        tipo: 'ENTRADA',
-        concepto: `Factura ${codigoFactura(cobrarFactura)} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
-        monto: cobrarFactura.total,
+
+    if (esCredito) {
+      // VENTA A CRÉDITO: registrar un abono (parcial o total)
+      const monto = abonoCredito
+      const { error: ea } = await supabase.from('factura_abonos').insert({
         factura_id: cobrarFactura.id,
+        monto,
+        metodo_pago: metodoCobro,
+        caja_id: sesion.id,
+        registrado_por: usuario,
       })
+      if (ea) {
+        setSaving(false)
+        return alert('Error al registrar el abono: ' + ea.message)
+      }
+      // Si el abono salda la deuda, marcar la factura como PAGADA
+      if (cobroSaldoPrevio - monto <= 0.01) {
+        await supabase.from('facturas').update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id }).eq('id', cobrarFactura.id)
+      }
+      if (metodoCobro === 'Efectivo') {
+        await supabase.from('caja_movimientos').insert({
+          caja_id: sesion.id,
+          tipo: 'ENTRADA',
+          concepto: `Abono ${codigoFactura(cobrarFactura)} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
+          monto,
+          factura_id: cobrarFactura.id,
+        })
+      }
+    } else {
+      // VENTA DE CONTADO: cobro total (marca PAGADA y la vincula a esta caja)
+      const { error: e1 } = await supabase
+        .from('facturas')
+        .update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id })
+        .eq('id', cobrarFactura.id)
+      if (e1) {
+        setSaving(false)
+        return alert('Error al cobrar: ' + e1.message)
+      }
+      if (metodoCobro === 'Efectivo') {
+        await supabase.from('caja_movimientos').insert({
+          caja_id: sesion.id,
+          tipo: 'ENTRADA',
+          concepto: `Factura ${codigoFactura(cobrarFactura)} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
+          monto: cobrarFactura.total,
+          factura_id: cobrarFactura.id,
+        })
+      }
     }
     setSaving(false)
     setCobroHora(new Date().toISOString())
@@ -369,12 +416,15 @@ export default function Caja() {
                     <li key={f.id} className="flex items-center gap-3 py-3">
                       <span className="font-mono font-semibold text-slate-500">{codigoFactura(f)}</span>
                       <div className="flex-1">
-                        <p className="font-medium text-slate-800">{f.cliente_nombre ?? 'Cliente'}</p>
+                        <p className="flex items-center gap-2 font-medium text-slate-800">
+                          {f.cliente_nombre ?? 'Cliente'}
+                          {f.tipo_venta === 'CREDITO' && <span className="badge bg-amber-50 text-amber-700">Crédito</span>}
+                        </p>
                         <p className="text-xs text-slate-400">{fechaHora(f.created_at)}</p>
                       </div>
                       <span className="font-semibold text-slate-800">{money(f.total)}</span>
                       <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={() => iniciarCobro(f)}>
-                        <HandCoins size={14} /> Cobrar
+                        <HandCoins size={14} /> {f.tipo_venta === 'CREDITO' ? 'Abonar' : 'Cobrar'}
                       </button>
                     </li>
                   ))}
@@ -528,7 +578,7 @@ export default function Caja() {
             <>
               <button className="btn-ghost" onClick={() => setCobrarFactura(null)}>Cancelar</button>
               <button className="btn-primary" onClick={confirmarCobro} disabled={saving || !cobroPuede}>
-                {saving ? 'Cobrando…' : `Cobrar ${money(cobroTotal)}`}
+                {saving ? 'Guardando…' : `${esCredito ? 'Abonar' : 'Cobrar'} ${money(cobroTotal)}`}
               </button>
             </>
           )
@@ -563,7 +613,10 @@ export default function Caja() {
                 </tbody>
               </table>
               <div className="space-y-0.5 border-t pt-1">
-                <div className="flex justify-between text-base font-bold text-slate-800"><span>Total</span><span>{money(cobroTotal)}</span></div>
+                <div className="flex justify-between text-base font-bold text-slate-800"><span>{esCredito ? 'Abono' : 'Total'}</span><span>{money(cobroTotal)}</span></div>
+                {esCredito && (cobroSaldoPrevio - cobroTotal) > 0.01 && (
+                  <div className="flex justify-between font-semibold text-rose-600"><span>Saldo pendiente</span><span>{money(cobroSaldoPrevio - cobroTotal)}</span></div>
+                )}
                 <div className="flex justify-between text-slate-600"><span>Método</span><span>{metodoCobro}</span></div>
                 {cobroEsEfectivo && (
                   <>
@@ -602,9 +655,21 @@ export default function Caja() {
               </ul>
             </div>
 
-            {/* Total grande */}
+            {/* Venta a crédito: saldo + monto a abonar */}
+            {esCredito && (
+              <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-sm">
+                <div className="flex justify-between text-slate-600"><span>Total factura</span><span>{money(cobroFull)}</span></div>
+                {cobroAbonado > 0 && <div className="flex justify-between text-slate-600"><span>Abonado antes</span><span className="text-emerald-600">{money(cobroAbonado)}</span></div>}
+                <div className="flex justify-between font-semibold text-slate-800"><span>Saldo pendiente</span><span>{money(cobroSaldoPrevio)}</span></div>
+                <label className="label !mb-0 pt-1">Monto a abonar ahora</label>
+                <input type="number" min={0} step={50} className="input" value={abonoCredito || ''} onChange={(e) => setAbonoCredito(Number(e.target.value))} />
+                <button type="button" className="text-xs font-semibold text-brand-600 hover:underline" onClick={() => setAbonoCredito(cobroSaldoPrevio)}>Pagar todo el saldo ({money(cobroSaldoPrevio)})</button>
+              </div>
+            )}
+
+            {/* Total grande (monto a pagar ahora) */}
             <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-500 px-5 py-4 text-center text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_14px_30px_-12px_rgba(236,72,153,0.6)]">
-              <p className="text-xs uppercase tracking-widest text-white/80">Total a cobrar</p>
+              <p className="text-xs uppercase tracking-widest text-white/80">{esCredito ? 'A pagar ahora' : 'Total a cobrar'}</p>
               <p className="text-3xl font-extrabold">{money(cobroTotal)}</p>
             </div>
 

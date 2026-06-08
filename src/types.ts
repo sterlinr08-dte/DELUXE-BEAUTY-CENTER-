@@ -134,6 +134,18 @@ export interface Compra {
   created_at: string
 }
 
+export interface FacturaAbono {
+  id: string
+  factura_id: string
+  fecha: string
+  monto: number
+  metodo_pago: string | null
+  caja_id: string | null
+  registrado_por: string | null
+  notas: string | null
+  created_at: string
+}
+
 export interface Proveedor {
   id: string
   nombre: string
