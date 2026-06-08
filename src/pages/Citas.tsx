@@ -234,7 +234,7 @@ export default function Citas() {
                   {c.servicio?.nombre ?? 'Servicio'} · {money(c.precio)}
                 </p>
                 {c.empleado && (
-                  <span className="mt-1 inline-flex items-center gap-1 text-xs text-slate-400">
+                  <span className="mt-1 inline-flex items-center gap-1 text-xs text-slate-600">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.empleado.color ?? '#d946ef' }} />
                     {c.empleado.nombre}
                   </span>
@@ -255,15 +255,15 @@ export default function Citas() {
 
               <div className="flex gap-1">
                 {c.estado !== 'CANCELADA' && (
-                  <button onClick={() => facturar(c)} title="Generar factura" className="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600">
+                  <button onClick={() => facturar(c)} title="Generar factura" className="rounded-lg p-2 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600">
                     <Receipt size={16} />
                   </button>
                 )}
-                <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600">
                   <Pencil size={16} />
                 </button>
                 {puedeEliminar && (
-                  <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                  <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
                     <Trash2 size={16} />
                   </button>
                 )}

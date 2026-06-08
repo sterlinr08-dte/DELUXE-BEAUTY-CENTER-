@@ -402,15 +402,15 @@ export default function Facturacion() {
                     </button>
                   )}
                   {f.estado !== 'ANULADA' && puedeAnular && (
-                    <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
+                    <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-600 hover:bg-amber-50 hover:text-amber-600">
                       <Ban size={16} />
                     </button>
                   )}
-                  <button title="Ver / imprimir" onClick={() => verDetalle(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                  <button title="Ver / imprimir" onClick={() => verDetalle(f)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600">
                     <Printer size={16} />
                   </button>
                   {puedeEliminar && (
-                    <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                    <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
                       <Trash2 size={16} />
                     </button>
                   )}
@@ -429,7 +429,7 @@ export default function Facturacion() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-2xl font-bold uppercase text-slate-800">{editId ? 'Editar factura' : 'Nueva venta'}</h2>
-              <p className="text-sm text-slate-400">Registra los servicios y productos a cobrar.</p>
+              <p className="text-sm text-slate-600">Registra los servicios y productos a cobrar.</p>
             </div>
             <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>
               <X size={16} /> Cerrar
@@ -476,7 +476,7 @@ export default function Facturacion() {
                 Crédito <span className="font-mono text-xs opacity-70">CR</span>
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-400">Un solo correlativo; solo cambia la letra: {tipoVenta === 'CREDITO' ? 'CR (crédito)' : 'CO (contado)'}.</p>
+            <p className="mt-1 text-xs text-slate-600">Un solo correlativo; solo cambia la letra: {tipoVenta === 'CREDITO' ? 'CR (crédito)' : 'CO (contado)'}.</p>
           </div>
 
           <div>
@@ -486,7 +486,7 @@ export default function Facturacion() {
                 type="button"
                 onClick={() => { setBuscarCat(''); setCatTab('catalogo'); setCatalogoOpen(true) }}
                 title="Ver catálogo e historial de facturas"
-                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600"
+                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-600 transition hover:bg-brand-50 hover:text-brand-600"
               >
                 <Search size={16} />
               </button>
@@ -499,7 +499,7 @@ export default function Facturacion() {
               {q && (
                 <div className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-pink-100 bg-white shadow-card">
                   {resultados.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-slate-400">Sin coincidencias</p>
+                    <p className="px-3 py-2 text-sm text-slate-600">Sin coincidencias</p>
                   ) : (
                     resultados.map((r) => (
                       <button
@@ -514,7 +514,7 @@ export default function Facturacion() {
                           </span>
                           <span className="truncate text-slate-700">{r.nombre}</span>
                           {r.tipo === 'a' && (
-                            <span className={`text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                            <span className={`text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-600'}`}>
                               {(r.stock ?? 0) <= 0 ? 'Sin existencia' : `Existencia: ${r.stock}`}
                             </span>
                           )}
@@ -531,7 +531,7 @@ export default function Facturacion() {
           <div>
             <label className="label">Artículos o servicios agregados</label>
             {lineas.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400">
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">
                 Busca arriba y toca un servicio o producto para agregarlo aquí.
               </div>
             ) : (
@@ -556,7 +556,7 @@ export default function Facturacion() {
                             <span className="truncate">{l.descripcion}</span>
                           </span>
                         )}
-                        <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                        <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
                           <X size={16} />
                         </button>
                       </div>
@@ -603,7 +603,7 @@ export default function Facturacion() {
           <div>
             <label className="label">Descuento (RD$)</label>
             <input type="number" min={0} step={50} className="input w-32" value={descuento || ''} onChange={(e) => setDescuento(Number(e.target.value))} />
-            <p className="mt-1 text-xs text-slate-400">El método de pago se elige al cobrar en Caja.</p>
+            <p className="mt-1 text-xs text-slate-600">El método de pago se elige al cobrar en Caja.</p>
           </div>
 
           <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -651,7 +651,7 @@ export default function Facturacion() {
         <div className="space-y-3">
           {catTab === 'catalogo' && (
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
               <input
                 className="input pl-9"
                 placeholder="Filtrar por nombre, categoría o código…"
@@ -666,7 +666,7 @@ export default function Facturacion() {
             <>
               <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
                 {catalogo.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-slate-400">Sin coincidencias</p>
+                  <p className="px-3 py-6 text-center text-slate-600">Sin coincidencias</p>
                 ) : (
                   catalogo.map((r) => (
                     <button
@@ -683,7 +683,7 @@ export default function Facturacion() {
                           <span className="truncate font-medium text-slate-800">{r.nombre}</span>
                         </span>
                         {r.tipo === 'a' && (
-                          <span className={`mt-0.5 text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                          <span className={`mt-0.5 text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-600'}`}>
                             {(r.stock ?? 0) <= 0 ? 'Sin existencia' : `Existencia: ${r.stock}`}
                           </span>
                         )}
@@ -693,7 +693,7 @@ export default function Facturacion() {
                   ))
                 )}
               </div>
-              <p className="text-xs text-slate-400">Toca un servicio o artículo y se agrega a la factura.</p>
+              <p className="text-xs text-slate-600">Toca un servicio o artículo y se agrega a la factura.</p>
             </>
           ) : (
             <DataTable
@@ -731,7 +731,7 @@ export default function Facturacion() {
               {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
               <p className="text-xs text-slate-500">{negocio.direccion} · {negocio.referencia}</p>
               <p className="text-xs text-slate-500">Tel {negocio.telefono} · WhatsApp {negocio.whatsapp} · {negocio.instagram}</p>
-              <p className="mt-1 text-xs font-medium text-slate-400">Factura {codigoFactura(facturaVista)} · {facturaVista.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · {fechaCorta(facturaVista.fecha)}</p>
+              <p className="mt-1 text-xs font-medium text-slate-600">Factura {codigoFactura(facturaVista)} · {facturaVista.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · {fechaCorta(facturaVista.fecha)}</p>
             </div>
             <div className="text-sm text-slate-600">
               <p><span className="font-medium">Cliente:</span> {facturaVista.cliente_nombre}</p>
@@ -739,7 +739,7 @@ export default function Facturacion() {
               <p><span className="font-medium">Pago:</span> {facturaVista.metodo_pago}</p>
             </div>
             <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs text-slate-400">
+              <thead className="border-b text-left text-xs text-slate-600">
                 <tr><th className="py-1">Descripción</th><th className="py-1 text-center">Cant.</th><th className="py-1 text-right">Importe</th></tr>
               </thead>
               <tbody>
@@ -747,7 +747,7 @@ export default function Facturacion() {
                   <tr key={it.id} className="border-b border-slate-50">
                     <td className="py-1">
                       {it.descripcion}
-                      {(it as any).empleado?.nombre && <span className="block text-xs text-slate-400">por {(it as any).empleado.nombre}</span>}
+                      {(it as any).empleado?.nombre && <span className="block text-xs text-slate-600">por {(it as any).empleado.nombre}</span>}
                     </td>
                     <td className="py-1 text-center">{it.cantidad}</td>
                     <td className="py-1 text-right">{money(it.importe)}</td>

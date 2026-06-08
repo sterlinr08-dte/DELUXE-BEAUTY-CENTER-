@@ -196,8 +196,8 @@ export default function Nomina() {
                   <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(p.monto)}</td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => abrirEditar(p)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                      <button onClick={() => eliminar(p)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                      <button onClick={() => abrirEditar(p)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                      <button onClick={() => eliminar(p)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -257,11 +257,11 @@ export default function Nomina() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-xs text-slate-400">Desde</span>
+                  <span className="text-xs text-slate-600">Desde</span>
                   <input type="date" className="input" value={comDesde} onChange={(e) => setComDesde(e.target.value)} />
                 </div>
                 <div>
-                  <span className="text-xs text-slate-400">Hasta</span>
+                  <span className="text-xs text-slate-600">Hasta</span>
                   <input type="date" className="input" value={comHasta} onChange={(e) => setComHasta(e.target.value)} />
                 </div>
               </div>
@@ -277,7 +277,7 @@ export default function Nomina() {
                       <tbody className="divide-y divide-slate-100">
                         {comItems.map((it, idx) => (
                           <tr key={idx}>
-                            <td className="px-2 py-1 text-slate-400">{fechaCorta(it.facturas?.fecha)} · {it.facturas ? codigoFactura(it.facturas) : ''}</td>
+                            <td className="px-2 py-1 text-slate-600">{fechaCorta(it.facturas?.fecha)} · {it.facturas ? codigoFactura(it.facturas) : ''}</td>
                             <td className="px-2 py-1 text-slate-700">{it.descripcion}{it.cantidad > 1 ? ` ×${it.cantidad}` : ''}</td>
                             <td className="px-2 py-1 text-right font-medium text-slate-700">{money(it.importe)}</td>
                           </tr>
@@ -295,7 +295,7 @@ export default function Nomina() {
                   >
                     Usar comisión como monto ({money(comMonto)})
                   </button>
-                  <p className="mt-1 text-xs text-slate-400">Para un incentivo/bono extra, cambia el tipo a BONO y ajusta el monto.</p>
+                  <p className="mt-1 text-xs text-slate-600">Para un incentivo/bono extra, cambia el tipo a BONO y ajusta el monto.</p>
                 </>
               )}
             </div>
@@ -324,7 +324,7 @@ export default function Nomina() {
                 <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
                 {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
                 <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
-                <p className="text-xs text-slate-400">{fechaHora(recibo.hora)}</p>
+                <p className="text-xs text-slate-600">{fechaHora(recibo.hora)}</p>
               </div>
               <p className="text-slate-600"><span className="font-medium">Empleado:</span> {recibo.empleado}</p>
               <p className="text-slate-600"><span className="font-medium">Concepto:</span> {recibo.tipo}{recibo.periodo ? ` · ${recibo.periodo}` : ''}</p>

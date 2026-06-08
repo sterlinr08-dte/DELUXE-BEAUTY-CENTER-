@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Search, X, Printer, History } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, X, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Compra, Articulo, Proveedor } from '../types'
 import { money, fechaCorta, fechaHora, hoyISO, codigoArticulo } from '../lib/format'
@@ -224,9 +224,9 @@ export default function Compras() {
             {
               header: '', align: 'right', cell: (c) => (
                 <div className="flex justify-end gap-1">
-                  <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                  <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
                   {puedeEliminar && (
-                    <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                    <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
                   )}
                 </div>
               ),
@@ -242,16 +242,11 @@ export default function Compras() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-2xl font-bold uppercase text-slate-800">{editId ? 'Editar compra' : 'Nueva compra'}</h2>
-              <p className="text-sm text-slate-400">Registra la compra y, si aplica, súmala al inventario.</p>
+              <p className="text-sm text-slate-600">Registra la compra y, si aplica, súmala al inventario.</p>
             </div>
-            <div className="flex shrink-0 gap-2">
-              <button className="btn-ghost" onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}>
-                <History size={16} /> Historial de compras
-              </button>
-              <button className="btn-ghost" onClick={() => setOpen(false)}>
-                <X size={16} /> Cerrar
-              </button>
-            </div>
+            <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>
+              <X size={16} /> Cerrar
+            </button>
           </div>
           <div className="card space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -285,7 +280,7 @@ export default function Compras() {
           <div>
             <label className="label">Artículos y conceptos comprados</label>
             {lineas.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400">
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">
                 Usa la lupa para agregar artículos del inventario, o «Concepto manual» para algo sin inventario.
               </div>
             ) : (
@@ -303,7 +298,7 @@ export default function Compras() {
                             <span className="truncate">{l.descripcion}</span>
                           </span>
                         )}
-                        <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><X size={16} /></button>
+                        <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><X size={16} /></button>
                       </div>
                       <div className="mt-2 grid grid-cols-3 gap-2">
                         <div>
@@ -393,7 +388,7 @@ export default function Compras() {
                 <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
                 {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
                 <p className="mt-1 text-xs font-semibold text-slate-600">COMPROBANTE DE COMPRA</p>
-                <p className="text-xs text-slate-400">{recibo.numero != null ? `Compra ${recibo.numero} · ` : ''}{fechaHora(recibo.hora)}</p>
+                <p className="text-xs text-slate-600">{recibo.numero != null ? `Compra ${recibo.numero} · ` : ''}{fechaHora(recibo.hora)}</p>
               </div>
               <p className="text-slate-600"><span className="font-medium">Proveedor:</span> {recibo.proveedor}</p>
               <p className="text-slate-600"><span className="font-medium">Categoría:</span> {recibo.categoria}</p>
@@ -430,7 +425,7 @@ export default function Compras() {
         <div className="space-y-3">
           {catTab === 'articulos' && (
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
               <input
                 className="input pl-9"
                 placeholder="Filtrar por nombre, categoría o código…"
@@ -445,7 +440,7 @@ export default function Compras() {
             <>
               <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
                 {articulos.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-slate-400">No hay artículos en el inventario.</p>
+                  <p className="px-3 py-6 text-center text-slate-600">No hay artículos en el inventario.</p>
                 ) : (
                   articulos.filter((a) => {
                     const f = buscarCat.trim().toLowerCase()
@@ -459,10 +454,10 @@ export default function Compras() {
                     >
                       <span className="flex min-w-0 flex-col">
                         <span className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-slate-400">{codigoArticulo(a.codigo)}</span>
+                          <span className="font-mono text-xs text-slate-600">{codigoArticulo(a.codigo)}</span>
                           <span className="truncate font-medium text-slate-800">{a.nombre}</span>
                         </span>
-                        <span className={`mt-0.5 text-xs ${Number(a.stock) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                        <span className={`mt-0.5 text-xs ${Number(a.stock) <= 0 ? 'text-rose-500' : 'text-slate-600'}`}>
                           {Number(a.stock) <= 0 ? 'Sin existencia' : `Existencia: ${a.stock}`}
                         </span>
                       </span>
@@ -472,7 +467,7 @@ export default function Compras() {
                 )}
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-400">Toca para agregar; puedes añadir varios.</p>
+                <p className="text-xs text-slate-600">Toca para agregar; puedes añadir varios.</p>
                 <button type="button" className="btn-primary" onClick={() => setCatalogoOpen(false)}>Listo</button>
               </div>
             </>

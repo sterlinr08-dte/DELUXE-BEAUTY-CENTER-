@@ -103,7 +103,7 @@ export default function Dashboard() {
         {loading ? (
           <p className="text-slate-500">Cargando…</p>
         ) : agenda.length === 0 ? (
-          <p className="py-6 text-center text-slate-400">No hay citas agendadas para hoy.</p>
+          <p className="py-6 text-center text-slate-600">No hay citas agendadas para hoy.</p>
         ) : (
           <ul className="divide-y divide-slate-50">
             {agenda.map((c) => (
@@ -113,7 +113,7 @@ export default function Dashboard() {
                 </span>
                 <div className="flex-1">
                   <p className="font-medium text-slate-800">{c.cliente?.nombre ?? 'Cliente'}</p>
-                  <p className="text-xs text-slate-400">{c.servicio?.nombre}</p>
+                  <p className="text-xs text-slate-600">{c.servicio?.nombre}</p>
                 </div>
                 <span className="text-sm font-semibold text-slate-700">{money(c.precio)}</span>
               </li>

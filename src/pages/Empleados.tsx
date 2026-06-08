@@ -181,7 +181,7 @@ export default function Empleados() {
 
       {items.length > 0 && (
         <div className="relative mb-4 max-w-md">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
           <input className="input pl-9" placeholder="Buscar por nombre, puesto o especialidad…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
       )}
@@ -212,7 +212,7 @@ export default function Empleados() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-slate-800">{e.nombre}</p>
                   <p className="text-sm text-brand-600">{e.puesto}</p>
-                  {e.especialidad && <p className="mt-0.5 truncate text-xs text-slate-400">{e.especialidad}</p>}
+                  {e.especialidad && <p className="mt-0.5 truncate text-xs text-slate-600">{e.especialidad}</p>}
                 </div>
               </div>
               <div className="mt-4 space-y-1 text-sm text-slate-500">
@@ -225,7 +225,7 @@ export default function Empleados() {
                       🔑 {perfilesByEmp[e.id].username}{perfilesByEmp[e.id].activo ? '' : ' (sin acceso)'}
                     </p>
                   ) : (
-                    <p className="text-slate-400">🔒 Sin usuario para iniciar sesión</p>
+                    <p className="text-slate-600">🔒 Sin usuario para iniciar sesión</p>
                   )
                 )}
               </div>
@@ -234,15 +234,15 @@ export default function Empleados() {
                   <button
                     title={perfilesByEmp[e.id] ? 'Gestionar acceso' : 'Dar usuario y contraseña'}
                     onClick={() => abrirAcceso(e)}
-                    className="rounded-lg p-2 text-slate-400 hover:bg-brand-50 hover:text-brand-600"
+                    className="rounded-lg p-2 text-slate-600 hover:bg-brand-50 hover:text-brand-600"
                   >
                     <KeyRound size={16} />
                   </button>
                 )}
-                <button onClick={() => abrirEditar(e)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                <button onClick={() => abrirEditar(e)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600">
                   <Pencil size={16} />
                 </button>
-                <button onClick={() => eliminar(e)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                <button onClick={() => eliminar(e)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -339,7 +339,7 @@ export default function Empleados() {
               onChange={(ev) => setFormA({ ...formA, usuario: ev.target.value.trim().toLowerCase() })}
               placeholder="ej: maria"
             />
-            {accesoPerfil && <p className="mt-1 text-xs text-slate-400">El nombre de usuario no se puede cambiar.</p>}
+            {accesoPerfil && <p className="mt-1 text-xs text-slate-600">El nombre de usuario no se puede cambiar.</p>}
           </div>
           <div>
             <label className="label">{accesoPerfil ? 'Nueva contraseña (opcional)' : 'Contraseña'}</label>

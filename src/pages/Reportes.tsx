@@ -261,11 +261,11 @@ export default function Reportes() {
 
       <div className="card">
         <h2 className="font-display text-lg font-bold text-slate-800">{rep.titulo}</h2>
-        <p className="mb-3 text-sm text-slate-400">{rep.subtitulo}</p>
+        <p className="mb-3 text-sm text-slate-600">{rep.subtitulo}</p>
         {loading ? (
-          <p className="py-8 text-center text-slate-400">Cargando…</p>
+          <p className="py-8 text-center text-slate-600">Cargando…</p>
         ) : rep.filas.length === 0 ? (
-          <p className="py-8 text-center text-slate-400">Sin datos para este reporte.</p>
+          <p className="py-8 text-center text-slate-600">Sin datos para este reporte.</p>
         ) : (
           <div className="max-h-[60vh] overflow-auto rounded-xl border border-slate-100">
             <table className="min-w-full divide-y divide-slate-100 text-sm">
@@ -281,7 +281,7 @@ export default function Reportes() {
                 {rep.filas.map((f, ri) => (
                   <tr key={ri}>
                     {f.ver.map((v, ci) => (
-                      <td key={ci} className={`px-4 py-2 ${rep.columnas[ci]?.align === 'right' ? 'text-right' : rep.columnas[ci]?.align === 'center' ? 'text-center text-slate-300' : 'text-slate-700'}`}>
+                      <td key={ci} className={`px-4 py-2 ${rep.columnas[ci]?.align === 'right' ? 'text-right' : rep.columnas[ci]?.align === 'center' ? 'text-center text-slate-500' : 'text-slate-700'}`}>
                         {v === '' && rep.columnas[ci]?.align === 'center' ? '—' : v}
                       </td>
                     ))}

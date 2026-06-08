@@ -95,7 +95,7 @@ export default function DataTable<T>({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>{toolbar}</div>
         <div className="relative w-full max-w-xs">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
           <input className="input pl-9" placeholder={searchPlaceholder} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function DataTable<T>({
                     {c.sortValue && (
                       sort?.index === i
                         ? (sort.dir === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />)
-                        : <ChevronsUpDown size={13} className="text-slate-300" />
+                        : <ChevronsUpDown size={13} className="text-slate-500" />
                     )}
                   </span>
                 </th>
@@ -124,7 +124,7 @@ export default function DataTable<T>({
           </thead>
           <tbody className="divide-y divide-slate-50">
             {visibles.length === 0 ? (
-              <tr><td colSpan={columns.length} className="px-5 py-8 text-center text-slate-400">{emptyText}</td></tr>
+              <tr><td colSpan={columns.length} className="px-5 py-8 text-center text-slate-600">{emptyText}</td></tr>
             ) : (
               visibles.map((row) => (
                 <tr
@@ -151,7 +151,7 @@ export default function DataTable<T>({
             </button>
             {paginas.map((p, idx) =>
               p === '…' ? (
-                <span key={`e${idx}`} className="px-2 text-slate-400">…</span>
+                <span key={`e${idx}`} className="px-2 text-slate-600">…</span>
               ) : (
                 <button
                   key={p}

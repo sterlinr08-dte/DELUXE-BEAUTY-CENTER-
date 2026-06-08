@@ -328,7 +328,7 @@ export default function Caja() {
               <Unlock size={16} /> Abrir caja
             </button>
           ) : (
-            <p className="text-xs text-slate-400">No tienes permiso para abrir la caja.</p>
+            <p className="text-xs text-slate-600">No tienes permiso para abrir la caja.</p>
           )}
         </div>
       ) : (
@@ -355,7 +355,7 @@ export default function Caja() {
             )}
           </div>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-600">
             Caja {sesion.numero} · abierta por {sesion.abierta_por} · {fechaHora(sesion.abierta_at)}
           </p>
 
@@ -366,19 +366,19 @@ export default function Caja() {
                 <HandCoins size={18} /> Cobros de esta caja
               </h2>
               <div className="text-right">
-                <p className="text-xs text-slate-400">{cobros.length} factura(s)</p>
+                <p className="text-xs text-slate-600">{cobros.length} factura(s)</p>
                 <p className="text-lg font-bold text-brand-700">{money(totalCobrado)}</p>
               </div>
             </div>
             {porMetodo.length === 0 ? (
-              <p className="py-3 text-center text-slate-400">Aún no se ha cobrado ninguna factura en esta caja.</p>
+              <p className="py-3 text-center text-slate-600">Aún no se ha cobrado ninguna factura en esta caja.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {porMetodo.map((x) => (
                   <div key={x.metodo} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
                     <div>
                       <p className="text-sm font-medium text-slate-700">{x.metodo}</p>
-                      <p className="text-xs text-slate-400">{x.cantidad} factura(s)</p>
+                      <p className="text-xs text-slate-600">{x.cantidad} factura(s)</p>
                     </div>
                     <p className="font-bold text-slate-800">{money(x.total)}</p>
                   </div>
@@ -395,7 +395,7 @@ export default function Caja() {
                 {pendientes.length > 0 && <span className="badge bg-amber-50 text-amber-700">{pendientes.length}</span>}
               </h2>
               {pendientes.length === 0 ? (
-                <p className="py-4 text-center text-slate-400">No hay facturas pendientes de cobro.</p>
+                <p className="py-4 text-center text-slate-600">No hay facturas pendientes de cobro.</p>
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {pendientes.map((f) => (
@@ -406,7 +406,7 @@ export default function Caja() {
                           {f.cliente_nombre ?? 'Cliente'}
                           {f.tipo_venta === 'CREDITO' && <span className="badge bg-amber-50 text-amber-700">Crédito</span>}
                         </p>
-                        <p className="text-xs text-slate-400">{fechaHora(f.created_at)}</p>
+                        <p className="text-xs text-slate-600">{fechaHora(f.created_at)}</p>
                       </div>
                       <span className="font-semibold text-slate-800">{money(f.total)}</span>
                       <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={() => iniciarCobro(f)}>
@@ -435,7 +435,7 @@ export default function Caja() {
               )}
             </div>
             {movs.length === 0 ? (
-              <p className="py-6 text-center text-slate-400">Aún no hay movimientos en esta caja.</p>
+              <p className="py-6 text-center text-slate-600">Aún no hay movimientos en esta caja.</p>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {movs.map((m) => (
@@ -447,7 +447,7 @@ export default function Caja() {
                     )}
                     <div className="flex-1">
                       <p className="font-medium text-slate-800">{m.concepto}</p>
-                      <p className="text-xs text-slate-400">{fechaHora(m.created_at)}</p>
+                      <p className="text-xs text-slate-600">{fechaHora(m.created_at)}</p>
                     </div>
                     <span className={`font-semibold ${m.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {m.tipo === 'ENTRADA' ? '+' : '−'}{money(m.monto)}
@@ -536,7 +536,7 @@ export default function Caja() {
                 {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
                 <p className="text-xs text-slate-500">Tel/WhatsApp: {negocio.telefono}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
-                <p className="text-xs text-slate-400">Factura {cobrarFactura ? codigoFactura(cobrarFactura) : ''} · {fechaHora(cobroHora)}</p>
+                <p className="text-xs text-slate-600">Factura {cobrarFactura ? codigoFactura(cobrarFactura) : ''} · {fechaHora(cobroHora)}</p>
               </div>
               <p className="text-slate-600"><span className="font-medium">Cliente:</span> {cobrarFactura?.cliente_nombre ?? 'Cliente'}</p>
               <table className="w-full">
@@ -562,7 +562,7 @@ export default function Caja() {
                   </>
                 )}
               </div>
-              <p className="text-xs text-slate-400">Atendido por: {usuario}</p>
+              <p className="text-xs text-slate-600">Atendido por: {usuario}</p>
               <div className="border-t pt-1 text-center text-xs text-slate-500">
                 <p>{negocio.direccion} · {negocio.referencia}</p>
                 <p>WhatsApp {negocio.whatsapp} · {negocio.instagram}</p>
@@ -660,7 +660,7 @@ export default function Caja() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600">
                 Pago no en efectivo: se marca la factura como pagada y se registra en esta caja, sin afectar el efectivo del arqueo.
               </p>
             )}
@@ -691,7 +691,7 @@ export default function Caja() {
               <div className="mt-1 flex justify-between border-t border-slate-200 pt-2"><span className="font-semibold text-slate-700">Efectivo esperado</span><span className="font-bold text-slate-900">{money(esperado)}</span></div>
             )}
             {cobrosOtros > 0 && (
-              <p className="mt-2 text-xs text-slate-400">Nota: {money(cobrosOtros)} cobrados por tarjeta/transferencia no entran al arqueo de efectivo.</p>
+              <p className="mt-2 text-xs text-slate-600">Nota: {money(cobrosOtros)} cobrados por tarjeta/transferencia no entran al arqueo de efectivo.</p>
             )}
           </div>
           <div>
@@ -700,7 +700,7 @@ export default function Caja() {
               {DENOMS.map((d) => (
                 <div key={d} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5">
                   <span className="w-16 shrink-0 text-right text-xs font-semibold text-slate-600">RD${d}</span>
-                  <span className="text-slate-300">×</span>
+                  <span className="text-slate-500">×</span>
                   <input
                     type="number"
                     min={0}
@@ -753,7 +753,7 @@ export default function Caja() {
               <div className="text-center">
                 <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-2 h-16 rounded-lg bg-black object-contain" />
                 <p className="font-display text-lg font-bold text-brand-800">{negocio.nombre}</p>
-                <p className="text-xs font-medium text-slate-400">Comprobante de cierre de caja {verCierre.numero}</p>
+                <p className="text-xs font-medium text-slate-600">Comprobante de cierre de caja {verCierre.numero}</p>
               </div>
               <div className="text-sm text-slate-600">
                 <p><span className="font-medium">Abierta:</span> {fechaHora(verCierre.abierta_at)} · {verCierre.abierta_por}</p>
@@ -761,16 +761,16 @@ export default function Caja() {
               </div>
 
               <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Cobros por método</p>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-600">Cobros por método</p>
                 {desg.length === 0 ? (
-                  <p className="text-sm text-slate-400">Sin cobros registrados.</p>
+                  <p className="text-sm text-slate-600">Sin cobros registrados.</p>
                 ) : (
                   <table className="w-full text-sm">
                     <tbody>
                       {desg.map((x) => (
                         <tr key={x.metodo} className="border-b border-slate-50">
                           <td className="py-1">{x.metodo}</td>
-                          <td className="py-1 text-center text-xs text-slate-400">{x.cantidad}</td>
+                          <td className="py-1 text-center text-xs text-slate-600">{x.cantidad}</td>
                           <td className="py-1 text-right">{money(x.total)}</td>
                         </tr>
                       ))}

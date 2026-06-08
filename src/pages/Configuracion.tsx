@@ -300,8 +300,8 @@ export default function Configuracion() {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => editarUsuario(u)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                        <button onClick={() => eliminarUsuario(u)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                        <button onClick={() => editarUsuario(u)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                        <button onClick={() => eliminarUsuario(u)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -327,10 +327,10 @@ export default function Configuracion() {
                   </div>
                   <div className="flex gap-1">
                     {!r.es_admin && (
-                      <button onClick={() => editarRol(r)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                      <button onClick={() => editarRol(r)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
                     )}
                     {!r.protegido && (
-                      <button onClick={() => eliminarRol(r)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                      <button onClick={() => eliminarRol(r)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
                     )}
                   </div>
                 </div>
@@ -380,8 +380,8 @@ export default function Configuracion() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-1">
-                          <button onClick={() => editarProveedor(p)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                          <button onClick={() => eliminarProveedor(p)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                          <button onClick={() => editarProveedor(p)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                          <button onClick={() => eliminarProveedor(p)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
                         </div>
                       </td>
                     </tr>
@@ -426,7 +426,7 @@ export default function Configuracion() {
               <label className="label">Referencia</label>
               <input className="input" value={formNeg.referencia} onChange={(e) => setFormNeg({ ...formNeg, referencia: e.target.value })} placeholder="Ej: Frente a Banco Popular" />
             </div>
-            <p className="text-xs text-slate-400">Estos datos aparecen en los tickets de cobro, facturas, comprobantes de cierre, el panel y el inicio de sesión.</p>
+            <p className="text-xs text-slate-600">Estos datos aparecen en los tickets de cobro, facturas, comprobantes de cierre, el panel y el inicio de sesión.</p>
             <div className="flex justify-end">
               <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar cambios'}</button>
             </div>
@@ -472,10 +472,10 @@ export default function Configuracion() {
                 {categorias.filter((c) => c.tipo === t).map((c) => (
                   <span key={c.id} className="badge flex items-center gap-1 bg-slate-100 text-slate-600">
                     {c.nombre}
-                    <button onClick={() => eliminarCategoria(c.id)} className="text-slate-400 hover:text-rose-600"><Trash2 size={12} /></button>
+                    <button onClick={() => eliminarCategoria(c.id)} className="text-slate-600 hover:text-rose-600"><Trash2 size={12} /></button>
                   </span>
                 ))}
-                {categorias.filter((c) => c.tipo === t).length === 0 && <p className="text-sm text-slate-400">Sin categorías.</p>}
+                {categorias.filter((c) => c.tipo === t).length === 0 && <p className="text-sm text-slate-600">Sin categorías.</p>}
               </div>
             </div>
           ))}
@@ -510,7 +510,7 @@ export default function Configuracion() {
           <div>
             <label className="label">Usuario (para iniciar sesión)</label>
             <input type="text" className="input lowercase disabled:bg-slate-100" value={formU.usuario} disabled={!!editU} autoCapitalize="none" autoCorrect="off" onChange={(e) => setFormU({ ...formU, usuario: e.target.value })} placeholder="ej: maria" />
-            {editU ? <p className="mt-1 text-xs text-slate-400">El usuario no se puede cambiar.</p> : <p className="mt-1 text-xs text-slate-400">Sin espacios. No importa mayúsculas/minúsculas.</p>}
+            {editU ? <p className="mt-1 text-xs text-slate-600">El usuario no se puede cambiar.</p> : <p className="mt-1 text-xs text-slate-600">Sin espacios. No importa mayúsculas/minúsculas.</p>}
           </div>
           <div>
             <label className="label">{editU ? 'Nueva contraseña (opcional)' : 'Contraseña'}</label>
@@ -562,7 +562,7 @@ export default function Configuracion() {
           </div>
           <div>
             <label className="label">Funciones permitidas (control de acciones)</label>
-            <p className="mb-2 text-xs text-slate-400">Activa solo lo que este rol está autorizado a hacer. Lo demás queda bloqueado.</p>
+            <p className="mb-2 text-xs text-slate-600">Activa solo lo que este rol está autorizado a hacer. Lo demás queda bloqueado.</p>
             <div className="space-y-2">
               {ACCIONES.map((a) => (
                 <label key={a.key} className="flex items-center gap-2 rounded-lg border border-pink-100 bg-pink-50/30 px-3 py-2 text-sm text-slate-600">

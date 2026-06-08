@@ -102,7 +102,7 @@ export default function Servicios() {
 
       {items.length > 0 && (
         <div className="relative mb-4 max-w-md">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
           <input className="input pl-9" placeholder="Buscar por nombre, categoría o descripción…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
       )}
@@ -136,7 +136,7 @@ export default function Servicios() {
                 <tr key={s.id} className={s.activo ? '' : 'opacity-50'}>
                   <td className="px-5 py-3">
                     <p className="font-medium text-slate-800">{s.nombre}</p>
-                    {s.descripcion && <p className="text-xs text-slate-400">{s.descripcion}</p>}
+                    {s.descripcion && <p className="text-xs text-slate-600">{s.descripcion}</p>}
                   </td>
                   <td className="px-5 py-3">
                     <span className="badge bg-brand-50 text-brand-700">{s.categoria}</span>
@@ -145,11 +145,11 @@ export default function Servicios() {
                   <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(s.precio)}</td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => abrirEditar(s)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                      <button onClick={() => abrirEditar(s)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600">
                         <Pencil size={16} />
                       </button>
                       {puedeEliminar && (
-                        <button onClick={() => eliminar(s)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                        <button onClick={() => eliminar(s)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
                           <Trash2 size={16} />
                         </button>
                       )}

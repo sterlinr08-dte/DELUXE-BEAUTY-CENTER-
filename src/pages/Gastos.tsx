@@ -104,7 +104,7 @@ export default function Gastos() {
 
       {items.length > 0 && (
         <div className="relative mb-4 max-w-md">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
           <input className="input pl-9" placeholder="Buscar por concepto, categoría o fecha…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
       )}
@@ -140,16 +140,16 @@ export default function Gastos() {
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(g.fecha)}</td>
                   <td className="px-5 py-3">
                     <p className="font-medium text-slate-800">{g.concepto}</p>
-                    {g.beneficiario && <p className="text-xs text-slate-400">{g.beneficiario}</p>}
+                    {g.beneficiario && <p className="text-xs text-slate-600">{g.beneficiario}</p>}
                   </td>
                   <td className="px-5 py-3"><span className="badge bg-slate-100 text-slate-600">{g.categoria}</span></td>
                   <td className="px-5 py-3 text-slate-600">{g.metodo_pago}</td>
                   <td className="px-5 py-3 text-right font-semibold text-rose-600">{money(g.monto)}</td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => abrirEditar(g)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                      <button onClick={() => abrirEditar(g)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
                       {puedeEliminar && (
-                        <button onClick={() => eliminar(g)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                        <button onClick={() => eliminar(g)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
                       )}
                     </div>
                   </td>

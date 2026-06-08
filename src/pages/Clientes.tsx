@@ -111,11 +111,11 @@ export default function Clientes() {
             {
               header: '', align: 'right', cell: (c) => (
                 <div className="flex justify-end gap-1">
-                  <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                  <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600">
                     <Pencil size={16} />
                   </button>
                   {puedeEliminar && (
-                    <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                    <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
                       <Trash2 size={16} />
                     </button>
                   )}

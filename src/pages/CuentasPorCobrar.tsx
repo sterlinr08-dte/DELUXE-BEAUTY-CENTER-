@@ -131,14 +131,14 @@ export default function CuentasPorCobrar() {
         <div className="card flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-600"><Wallet size={20} /></div>
           <div>
-            <p className="text-xs text-slate-400">Total por cobrar</p>
+            <p className="text-xs text-slate-600">Total por cobrar</p>
             <p className="text-xl font-bold text-slate-800">{money(totalAdeudado)}</p>
           </div>
         </div>
         <div className="card flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600"><HandCoins size={20} /></div>
           <div>
-            <p className="text-xs text-slate-400">Clientes que deben</p>
+            <p className="text-xs text-slate-600">Clientes que deben</p>
             <p className="text-xl font-bold text-slate-800">{clientesConDeuda}</p>
           </div>
         </div>
@@ -249,7 +249,7 @@ export default function CuentasPorCobrar() {
                 {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
                 <p className="text-xs text-slate-500">Tel/WhatsApp: {negocio.telefono}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE ABONO</p>
-                <p className="text-xs text-slate-400">Factura {codigoFactura(recibo.factura)} · {fechaHora(recibo.hora)}</p>
+                <p className="text-xs text-slate-600">Factura {codigoFactura(recibo.factura)} · {fechaHora(recibo.hora)}</p>
               </div>
               <p className="text-slate-600"><span className="font-medium">Cliente:</span> {recibo.factura.cliente_nombre ?? 'Cliente'}</p>
               <div className="space-y-0.5 border-t pt-1">
@@ -259,7 +259,7 @@ export default function CuentasPorCobrar() {
                 <div className="flex justify-between text-slate-600"><span>Método</span><span>{recibo.metodo}</span></div>
                 <div className="flex justify-between font-semibold text-rose-600"><span>Saldo pendiente</span><span>{money(recibo.saldoRestante)}</span></div>
               </div>
-              <p className="text-xs text-slate-400">Recibido por: {perfil?.nombre || perfil?.username || '—'}</p>
+              <p className="text-xs text-slate-600">Recibido por: {perfil?.nombre || perfil?.username || '—'}</p>
               <div className="border-t pt-1 text-center text-xs text-slate-500">
                 <p>{negocio.direccion} · {negocio.referencia}</p>
               </div>
