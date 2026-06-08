@@ -328,7 +328,7 @@ export default function Facturacion() {
           emptyText={facturas.length === 0 ? 'Aún no hay facturas.' : 'No hay facturas que coincidan.'}
           initialSort={{ index: 0, dir: 'desc' }}
           columns={[
-            { header: '#', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+            { header: 'Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
             {
               header: 'Cliente', sortValue: (f) => f.cliente_nombre ?? '', cell: (f) => (
                 <button className="font-medium text-brand-700 hover:underline" onClick={() => verDetalle(f)}>
@@ -655,7 +655,7 @@ export default function Facturacion() {
               initialSort={{ index: 0, dir: 'desc' }}
               onRowClick={(f) => { setCatalogoOpen(false); verDetalle(f) }}
               columns={[
-                { header: '# Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+                { header: 'Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
                 { header: 'Cliente', cell: (f) => <span className="text-slate-600">{f.cliente_nombre || 'Cliente'}</span>, sortValue: (f) => f.cliente_nombre ?? '' },
                 { header: 'Fecha', cell: (f) => <span className="text-slate-500">{fechaCorta(f.fecha)}</span>, sortValue: (f) => f.fecha },
                 { header: 'Total', align: 'right', cell: (f) => money(f.total), sortValue: (f) => f.total },

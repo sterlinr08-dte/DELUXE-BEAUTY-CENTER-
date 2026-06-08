@@ -153,7 +153,7 @@ export default function CuentasPorPagar() {
             </label>
           }
           columns={[
-            { header: '#', cell: (c) => <span className="font-mono font-semibold text-brand-700">#{c.numero}</span>, sortValue: (c) => c.numero },
+            { header: 'No.', cell: (c) => <span className="font-mono font-semibold text-brand-700">{c.numero}</span>, sortValue: (c) => c.numero },
             { header: 'Proveedor', cell: (c) => <span className="font-medium text-slate-800">{c.proveedor || 'Sin proveedor'}</span>, sortValue: (c) => c.proveedor ?? '' },
             { header: 'Descripción', cell: (c) => <span className="text-slate-600">{c.descripcion}</span>, sortValue: (c) => c.descripcion },
             { header: 'Fecha', cell: (c) => <span className="text-slate-500">{fechaCorta(c.fecha)}</span>, sortValue: (c) => c.fecha },
@@ -181,7 +181,7 @@ export default function CuentasPorPagar() {
       {/* MODAL PAGO A PROVEEDOR */}
       <Modal
         open={!!pagoCompra}
-        title={`Registrar pago · Compra #${pagoCompra?.numero ?? ''}`}
+        title={`Registrar pago · Compra ${pagoCompra?.numero ?? ''}`}
         onClose={() => setPagoCompra(null)}
         footer={
           <>
@@ -241,7 +241,7 @@ export default function CuentasPorPagar() {
                 <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
                 {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
                 <p className="mt-1 text-xs font-semibold text-slate-600">COMPROBANTE DE PAGO A PROVEEDOR</p>
-                <p className="text-xs text-slate-400">Compra #{recibo.compra.numero} · {fechaHora(recibo.hora)}</p>
+                <p className="text-xs text-slate-400">Compra {recibo.compra.numero} · {fechaHora(recibo.hora)}</p>
               </div>
               <p className="text-slate-600"><span className="font-medium">Proveedor:</span> {recibo.compra.proveedor ?? 'Sin proveedor'}</p>
               <p className="text-slate-600"><span className="font-medium">Detalle:</span> {recibo.compra.descripcion}</p>

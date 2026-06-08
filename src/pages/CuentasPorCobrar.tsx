@@ -161,7 +161,7 @@ export default function CuentasPorCobrar() {
             </label>
           }
           columns={[
-            { header: '# Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+            { header: 'Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
             { header: 'Cliente', cell: (f) => <span className="font-medium text-slate-800">{f.cliente_nombre || 'Cliente'}</span>, sortValue: (f) => f.cliente_nombre ?? '' },
             { header: 'Fecha', cell: (f) => <span className="text-slate-500">{fechaCorta(f.fecha)}</span>, sortValue: (f) => f.fecha },
             { header: 'Total', align: 'right', cell: (f) => money(f.total), sortValue: (f) => f.total },

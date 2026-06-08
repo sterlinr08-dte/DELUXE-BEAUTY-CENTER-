@@ -215,7 +215,7 @@ export default function Compras() {
           searchPlaceholder="Buscar por descripción, proveedor, categoría, # o fecha…"
           emptyText={items.length === 0 ? 'Aún no hay compras registradas.' : 'No hay compras que coincidan.'}
           columns={[
-            { header: '#', cell: (c) => <span className="font-mono font-semibold text-brand-700">#{c.numero}</span>, sortValue: (c) => c.numero },
+            { header: 'No.', cell: (c) => <span className="font-mono font-semibold text-brand-700">{c.numero}</span>, sortValue: (c) => c.numero },
             { header: 'Fecha', cell: (c) => <span className="text-slate-600">{fechaCorta(c.fecha)}</span>, sortValue: (c) => c.fecha },
             { header: 'Descripción', cell: (c) => <span className="font-medium text-slate-800">{c.descripcion}</span>, sortValue: (c) => c.descripcion },
             { header: 'Proveedor', cell: (c) => <span className="text-slate-600">{c.proveedor || '—'}</span>, sortValue: (c) => c.proveedor ?? '' },
@@ -388,7 +388,7 @@ export default function Compras() {
                 <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
                 {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
                 <p className="mt-1 text-xs font-semibold text-slate-600">COMPROBANTE DE COMPRA</p>
-                <p className="text-xs text-slate-400">{recibo.numero != null ? `Compra #${recibo.numero} · ` : ''}{fechaHora(recibo.hora)}</p>
+                <p className="text-xs text-slate-400">{recibo.numero != null ? `Compra ${recibo.numero} · ` : ''}{fechaHora(recibo.hora)}</p>
               </div>
               <p className="text-slate-600"><span className="font-medium">Proveedor:</span> {recibo.proveedor}</p>
               <p className="text-slate-600"><span className="font-medium">Categoría:</span> {recibo.categoria}</p>
@@ -471,7 +471,7 @@ export default function Compras() {
                     >
                       <span className="flex min-w-0 flex-col">
                         <span className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-slate-400">#{codigoArticulo(a.codigo)}</span>
+                          <span className="font-mono text-xs text-slate-400">{codigoArticulo(a.codigo)}</span>
                           <span className="truncate font-medium text-slate-800">{a.nombre}</span>
                         </span>
                         <span className={`mt-0.5 text-xs ${Number(a.stock) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
@@ -498,7 +498,7 @@ export default function Compras() {
               pageSize={8}
               initialSort={{ index: 0, dir: 'desc' }}
               columns={[
-                { header: '#', cell: (c) => <span className="font-mono font-semibold text-brand-700">#{c.numero}</span>, sortValue: (c) => c.numero },
+                { header: 'No.', cell: (c) => <span className="font-mono font-semibold text-brand-700">{c.numero}</span>, sortValue: (c) => c.numero },
                 { header: 'Fecha', cell: (c) => <span className="text-slate-500">{fechaCorta(c.fecha)}</span>, sortValue: (c) => c.fecha },
                 { header: 'Descripción', cell: (c) => <span className="font-medium text-slate-800">{c.descripcion}</span>, sortValue: (c) => c.descripcion },
                 { header: 'Proveedor', cell: (c) => <span className="text-slate-600">{c.proveedor || '—'}</span>, sortValue: (c) => c.proveedor ?? '' },

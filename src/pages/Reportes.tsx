@@ -65,7 +65,7 @@ export default function Reportes() {
       const filas = articulos.map((a) => {
         const valor = Number(a.stock) * Number(a.costo)
         return {
-          ver: [`#${codigoArticulo(a.codigo)}`, a.nombre, a.categoria, a.stock, money(a.costo), money(a.precio), money(valor)],
+          ver: [`${codigoArticulo(a.codigo)}`, a.nombre, a.categoria, a.stock, money(a.costo), money(a.precio), money(valor)],
           csv: [codigoArticulo(a.codigo), a.nombre, a.categoria, Number(a.stock), Number(a.costo), Number(a.precio), valor],
         }
       })
@@ -87,7 +87,7 @@ export default function Reportes() {
     }
     if (tab === 'fisico') {
       const filas = articulos.map((a) => ({
-        ver: [`#${codigoArticulo(a.codigo)}`, a.nombre, a.categoria, a.stock, '', ''],
+        ver: [`${codigoArticulo(a.codigo)}`, a.nombre, a.categoria, a.stock, '', ''],
         csv: [codigoArticulo(a.codigo), a.nombre, a.categoria, Number(a.stock), '', ''],
       }))
       return {
@@ -117,7 +117,7 @@ export default function Reportes() {
         titulo: 'Reporte de ventas',
         subtitulo: `${periodo} · ${facturas.length} factura(s) · Pagado: ${money(pagadas)} · Pendiente: ${money(pendientes)}`,
         columnas: [
-          { label: '# Factura' }, { label: 'Fecha' }, { label: 'Cliente' },
+          { label: 'Factura' }, { label: 'Fecha' }, { label: 'Cliente' },
           { label: 'Tipo' }, { label: 'Estado' }, { label: 'Total', align: 'right' as const },
         ],
         filas,
@@ -128,7 +128,7 @@ export default function Reportes() {
     }
     if (tab === 'compras') {
       const filas = compras.map((c) => ({
-        ver: [`#${c.numero}`, fechaCorta(c.fecha), c.proveedor || '—', c.categoria, c.tipo_pago === 'CREDITO' ? 'Crédito' : 'Contado', money(c.total)],
+        ver: [`${c.numero}`, fechaCorta(c.fecha), c.proveedor || '—', c.categoria, c.tipo_pago === 'CREDITO' ? 'Crédito' : 'Contado', money(c.total)],
         csv: [c.numero, c.fecha, c.proveedor || '', c.categoria, c.tipo_pago === 'CREDITO' ? 'Crédito' : 'Contado', Number(c.total)],
       }))
       const total = compras.reduce((s, c) => s + Number(c.total), 0)
@@ -136,7 +136,7 @@ export default function Reportes() {
         titulo: 'Reporte de compras',
         subtitulo: `${periodo} · ${compras.length} compra(s) · Total: ${money(total)}`,
         columnas: [
-          { label: '#' }, { label: 'Fecha' }, { label: 'Proveedor' },
+          { label: 'No.' }, { label: 'Fecha' }, { label: 'Proveedor' },
           { label: 'Categoría' }, { label: 'Pago' }, { label: 'Total', align: 'right' as const },
         ],
         filas,
@@ -151,7 +151,7 @@ export default function Reportes() {
       const dif = Number(s.diferencia ?? 0)
       const estado = dif === 0 ? 'Cuadrada' : dif > 0 ? 'Sobrante' : 'Faltante'
       return {
-        ver: [`#${s.numero}`, fechaHora(s.cerrada_at), s.cerrada_por || '—', money(s.monto_inicial), esperado != null ? money(esperado) : '—', money(s.monto_contado), `${estado} ${dif !== 0 ? money(Math.abs(dif)) : ''}`],
+        ver: [`${s.numero}`, fechaHora(s.cerrada_at), s.cerrada_por || '—', money(s.monto_inicial), esperado != null ? money(esperado) : '—', money(s.monto_contado), `${estado} ${dif !== 0 ? money(Math.abs(dif)) : ''}`],
         csv: [s.numero, fechaHora(s.cerrada_at), s.cerrada_por || '', Number(s.monto_inicial), esperado ?? '', Number(s.monto_contado ?? 0), dif],
       }
     })
@@ -160,7 +160,7 @@ export default function Reportes() {
       titulo: 'Reporte de cuadres de caja',
       subtitulo: `${periodo} · ${cuadres.length} cierre(s) · Diferencia acumulada: ${money(totalDif)}`,
       columnas: [
-        { label: '#' }, { label: 'Cerrada' }, { label: 'Cerró' },
+        { label: 'No.' }, { label: 'Cerrada' }, { label: 'Cerró' },
         { label: 'Inicial', align: 'right' as const }, { label: 'Esperado', align: 'right' as const },
         { label: 'Contado', align: 'right' as const }, { label: 'Resultado', align: 'right' as const },
       ],

@@ -375,7 +375,7 @@ export default function Caja() {
           </div>
 
           <p className="text-xs text-slate-400">
-            Caja #{sesion.numero} · abierta por {sesion.abierta_por} · {fechaHora(sesion.abierta_at)}
+            Caja {sesion.numero} · abierta por {sesion.abierta_por} · {fechaHora(sesion.abierta_at)}
           </p>
 
           {/* Resumen de cobros por método de pago */}
@@ -489,7 +489,7 @@ export default function Caja() {
             <table className="min-w-full divide-y divide-slate-100 text-sm">
               <thead className="thead-3d">
                 <tr>
-                  <th className="px-5 py-3">#</th>
+                  <th className="px-5 py-3">No.</th>
                   <th className="px-5 py-3">Cerrada</th>
                   <th className="px-5 py-3 text-right">Inicial</th>
                   {puedeVerDescuadre && <th className="px-5 py-3 text-right">Esperado</th>}
@@ -504,7 +504,7 @@ export default function Caja() {
                   const dif = Number(s.diferencia ?? 0)
                   return (
                     <tr key={s.id}>
-                      <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{s.numero}</td>
+                      <td className="px-5 py-3 font-mono font-semibold text-brand-700">{s.numero}</td>
                       <td className="px-5 py-3 text-slate-600">{fechaHora(s.cerrada_at)}</td>
                       <td className="px-5 py-3 text-right text-slate-600">{money(s.monto_inicial)}</td>
                       {puedeVerDescuadre && <td className="px-5 py-3 text-right text-slate-600">{esp != null ? money(esp) : '—'}</td>}
@@ -810,7 +810,7 @@ export default function Caja() {
       </Modal>
 
       {/* Comprobante de cierre (imprimible) */}
-      <Modal open={!!verCierre} title={`Cierre de caja #${verCierre?.numero ?? ''}`} onClose={() => setVerCierre(null)}>
+      <Modal open={!!verCierre} title={`Cierre de caja ${verCierre?.numero ?? ''}`} onClose={() => setVerCierre(null)}>
         {verCierre && (() => {
           const ent = cierreMovs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
           const sal = cierreMovs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
@@ -823,7 +823,7 @@ export default function Caja() {
               <div className="text-center">
                 <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-2 h-16 rounded-lg bg-black object-contain" />
                 <p className="font-display text-lg font-bold text-brand-800">{negocio.nombre}</p>
-                <p className="text-xs font-medium text-slate-400">Comprobante de cierre de caja #{verCierre.numero}</p>
+                <p className="text-xs font-medium text-slate-400">Comprobante de cierre de caja {verCierre.numero}</p>
               </div>
               <div className="text-sm text-slate-600">
                 <p><span className="font-medium">Abierta:</span> {fechaHora(verCierre.abierta_at)} · {verCierre.abierta_por}</p>

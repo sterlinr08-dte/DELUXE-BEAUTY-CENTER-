@@ -107,7 +107,7 @@ export default function Articulos() {
           searchPlaceholder="Buscar por nombre, categoría o código…"
           emptyText={items.length === 0 ? 'Aún no hay artículos.' : 'No hay artículos que coincidan.'}
           columns={[
-            { header: 'Código', cell: (a) => <span className="font-mono font-semibold text-brand-700">#{codigoArticulo(a.codigo)}</span>, sortValue: (a) => a.codigo },
+            { header: 'Código', cell: (a) => <span className="font-mono font-semibold text-brand-700">{codigoArticulo(a.codigo)}</span>, sortValue: (a) => a.codigo },
             {
               header: 'Artículo', sortValue: (a) => a.nombre, cell: (a) => (
                 <>
