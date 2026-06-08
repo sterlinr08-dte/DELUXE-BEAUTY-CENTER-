@@ -51,8 +51,7 @@ export default function Facturacion() {
   const [aplicaItbis, setAplicaItbis] = useState(false)
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
-  const [lineas, setLineas] = useState<LineaTmp[]>([{ ...lineaVacia }])
-  const [empleadoDefault, setEmpleadoDefault] = useState('')
+  const [lineas, setLineas] = useState<LineaTmp[]>([])
   const [buscarItem, setBuscarItem] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
 
@@ -73,29 +72,35 @@ export default function Facturacion() {
     if (r.tipo === 'a' && (r.stock ?? 0) <= 0) {
       if (!confirm(`"${r.nombre}" no tiene existencia (stock 0). ¿Agregar de todos modos?`)) return
     }
-    const linea: LineaTmp = {
-      servicio_id: r.tipo === 's' ? r.id : '',
-      articulo_id: r.tipo === 'a' ? r.id : '',
-      descripcion: r.nombre,
-      cantidad: 1,
-      precio_unit: r.precio,
-      empleado_id: empleadoDefault,
-    }
     setLineas((prev) => {
-      // Si el mismo servicio/artículo ya está, suma la cantidad en vez de duplicar el renglón
+      // Si el mismo servicio/artículo ya está, suma la cantidad en vez de duplicar
       const existe = prev.findIndex((l) =>
         r.tipo === 's' ? l.servicio_id === r.id : l.articulo_id === r.id,
       )
       if (existe >= 0) {
         return prev.map((l, idx) => (idx === existe ? { ...l, cantidad: l.cantidad + 1 } : l))
       }
-      const last = prev[prev.length - 1]
-      if (last && !last.descripcion && !last.servicio_id && !last.articulo_id) {
-        return [...prev.slice(0, -1), linea]
+      // El empleado nuevo hereda al del último ítem (lo más común es la misma persona)
+      const ultimoEmpleado = [...prev].reverse().find((l) => l.empleado_id)?.empleado_id ?? ''
+      const linea: LineaTmp = {
+        servicio_id: r.tipo === 's' ? r.id : '',
+        articulo_id: r.tipo === 'a' ? r.id : '',
+        descripcion: r.nombre,
+        cantidad: 1,
+        precio_unit: r.precio,
+        empleado_id: ultimoEmpleado,
       }
       return [...prev, linea]
     })
     setBuscarItem('')
+  }
+
+  // Agrega un concepto manual (algo que no está en el catálogo)
+  function agregarManual() {
+    setLineas((prev) => {
+      const ultimoEmpleado = [...prev].reverse().find((l) => l.empleado_id)?.empleado_id ?? ''
+      return [...prev, { ...lineaVacia, empleado_id: ultimoEmpleado }]
+    })
   }
 
   async function cargar() {
@@ -136,8 +141,7 @@ export default function Facturacion() {
     setAplicaItbis(false)
     setDescuento(0)
     setNotas('')
-    setLineas([{ ...lineaVacia }])
-    setEmpleadoDefault('')
+    setLineas([])
     setBuscarItem('')
     setOpen(true)
   }
@@ -158,7 +162,6 @@ export default function Facturacion() {
     setAplicaItbis(Number(f.itbis) > 0)
     setDescuento(Number(f.descuento))
     setNotas(f.notas ?? '')
-    setEmpleadoDefault('')
     setBuscarItem('')
     setLineas(
       (data ?? []).map((it: any) => ({
@@ -175,19 +178,6 @@ export default function Facturacion() {
 
   function setLinea(i: number, patch: Partial<LineaTmp>) {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
-  }
-
-  // value: 's:<id>' para servicio, 'a:<id>' para artículo
-  function elegirItem(i: number, value: string) {
-    if (value.startsWith('s:')) {
-      const s = servicios.find((x) => x.id === value.slice(2))
-      setLinea(i, { servicio_id: s?.id ?? '', articulo_id: '', descripcion: s?.nombre ?? '', precio_unit: s ? Number(s.precio) : 0 })
-    } else if (value.startsWith('a:')) {
-      const a = articulos.find((x) => x.id === value.slice(2))
-      setLinea(i, { articulo_id: a?.id ?? '', servicio_id: '', descripcion: a?.nombre ?? '', precio_unit: a ? Number(a.precio) : 0 })
-    } else {
-      setLinea(i, { servicio_id: '', articulo_id: '' })
-    }
   }
 
   async function guardar() {
@@ -232,7 +222,7 @@ export default function Facturacion() {
       factura_id: facturaId,
       servicio_id: l.servicio_id || null,
       articulo_id: l.articulo_id || null,
-      empleado_id: l.empleado_id || empleadoDefault || null,
+      empleado_id: l.empleado_id || null,
       descripcion: l.descripcion,
       cantidad: l.cantidad,
       precio_unit: l.precio_unit,
@@ -451,93 +441,69 @@ export default function Facturacion() {
           </div>
 
           <div>
-            <label className="label">Empleado que atiende</label>
-            <select
-              className="input"
-              value={empleadoDefault}
-              onChange={(e) => {
-                const val = e.target.value
-                // Aplica a los renglones que aún no tengan empleado asignado
-                setLineas((prev) => prev.map((l) => (l.empleado_id ? l : { ...l, empleado_id: val })))
-                setEmpleadoDefault(val)
-              }}
-            >
-              <option value="">— Sin asignar —</option>
-              {empleados.map((e) => (
-                <option key={e.id} value={e.id}>{e.nombre}{e.puesto ? ` (${e.puesto})` : ''}</option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-400">Se aplica a los ítems; si hay varios servicios puedes cambiar quién hizo cada uno abajo.</p>
-          </div>
+            <label className="label">Lo que se cobra</label>
+            {lineas.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-400">
+                Busca arriba y toca un servicio o producto para agregarlo aquí.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {lineas.map((l, i) => {
+                  const esManual = !l.servicio_id && !l.articulo_id
+                  return (
+                    <div key={i} className="rounded-xl border border-slate-200 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        {esManual ? (
+                          <input
+                            className="input flex-1"
+                            placeholder="Concepto (ej: ajuste, recargo…)"
+                            value={l.descripcion}
+                            onChange={(e) => setLinea(i, { descripcion: e.target.value })}
+                          />
+                        ) : (
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-slate-800">
+                            <span className={`badge ${l.servicio_id ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
+                              {l.servicio_id ? 'Servicio' : 'Producto'}
+                            </span>
+                            <span className="truncate">{l.descripcion}</span>
+                          </span>
+                        )}
+                        <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                          <X size={16} />
+                        </button>
+                      </div>
 
-          <div>
-            <label className="label">Ítems</label>
-            <div className="space-y-2">
-              {lineas.map((l, i) => (
-                <div key={i} className="rounded-lg border border-slate-200 p-2">
-                  <div className="flex gap-2">
-                    <select
-                      className="input flex-1"
-                      value={l.servicio_id ? `s:${l.servicio_id}` : l.articulo_id ? `a:${l.articulo_id}` : ''}
-                      onChange={(e) => elegirItem(i, e.target.value)}
-                    >
-                      <option value="">Elegir / escribir manual…</option>
-                      <optgroup label="Servicios">
-                        {servicios.map((s) => (
-                          <option key={s.id} value={`s:${s.id}`}>{s.nombre} · {money(s.precio)}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Artículos">
-                        {articulos.map((a) => (
-                          <option key={a.id} value={`a:${a.id}`}>{a.nombre} · {money(a.precio)}</option>
-                        ))}
-                      </optgroup>
-                    </select>
-                    {lineas.length > 1 && (
-                      <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg px-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    className={`input mt-2 ${l.articulo_id ? 'bg-slate-50 text-slate-500' : ''}`}
-                    placeholder="Descripción"
-                    value={l.descripcion}
-                    onChange={(e) => setLinea(i, { descripcion: e.target.value })}
-                    readOnly={!!l.articulo_id}
-                    title={l.articulo_id ? 'El nombre del artículo no se puede modificar' : undefined}
-                  />
-                  <div className="mt-2">
-                    <span className="text-xs text-slate-400">Realizado por</span>
-                    <select className="input" value={l.empleado_id} onChange={(e) => setLinea(i, { empleado_id: e.target.value })}>
-                      <option value="">— Sin asignar —</option>
-                      {empleados.map((e) => (
-                        <option key={e.id} value={e.id}>{e.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    <div>
-                      <span className="text-xs text-slate-400">Cant.</span>
-                      <input type="number" min={1} className="input" value={l.cantidad || ''} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
+                      <div className="mt-2">
+                        <span className="text-xs text-slate-400">Realizado por</span>
+                        <select className="input" value={l.empleado_id} onChange={(e) => setLinea(i, { empleado_id: e.target.value })}>
+                          <option value="">— Sin asignar —</option>
+                          {empleados.map((e) => (
+                            <option key={e.id} value={e.id}>{e.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        <div>
+                          <span className="text-xs text-slate-400">Cant.</span>
+                          <input type="number" min={1} className="input" value={l.cantidad || ''} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-400">Precio</span>
+                          <input type="number" min={0} step={50} className="input" value={l.precio_unit || ''} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-400">Importe</span>
+                          <input className="input bg-slate-50" value={money(l.cantidad * l.precio_unit)} readOnly />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-xs text-slate-400">Precio</span>
-                      <input type="number" min={0} step={50} className="input" value={l.precio_unit || ''} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400">Importe</span>
-                      <input className="input bg-slate-50" value={money(l.cantidad * l.precio_unit)} readOnly />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              className="btn-ghost mt-2"
-              onClick={() => setLineas([...lineas, { ...lineaVacia }])}
-            >
-              <Plus size={14} /> Agregar ítem
+                  )
+                })}
+              </div>
+            )}
+            <button className="btn-ghost mt-2" onClick={agregarManual}>
+              <Plus size={14} /> Cobrar algo manual
             </button>
           </div>
 
