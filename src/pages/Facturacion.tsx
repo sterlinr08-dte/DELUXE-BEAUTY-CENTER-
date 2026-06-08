@@ -559,7 +559,7 @@ export default function Facturacion() {
 
           <div>
             <label className="label">Descuento (RD$)</label>
-            <input type="number" min={0} step={50} className="input" value={descuento || ''} onChange={(e) => setDescuento(Number(e.target.value))} />
+            <input type="number" min={0} step={50} className="input w-32" value={descuento || ''} onChange={(e) => setDescuento(Number(e.target.value))} />
             <p className="mt-1 text-xs text-slate-400">El método de pago se elige al cobrar en Caja.</p>
           </div>
 
