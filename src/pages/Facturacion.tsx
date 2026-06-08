@@ -96,15 +96,14 @@ export default function Facturacion() {
       if (existe >= 0) {
         return prev.map((l, idx) => (idx === existe ? { ...l, cantidad: l.cantidad + 1 } : l))
       }
-      // El empleado nuevo hereda al del último ítem (lo más común es la misma persona)
-      const ultimoEmpleado = [...prev].reverse().find((l) => l.empleado_id)?.empleado_id ?? ''
+      // Cada ítem nuevo entra SIN asignar; el usuario elige quién lo hizo
       const linea: LineaTmp = {
         servicio_id: r.tipo === 's' ? r.id : '',
         articulo_id: r.tipo === 'a' ? r.id : '',
         descripcion: r.nombre,
         cantidad: 1,
         precio_unit: r.precio,
-        empleado_id: ultimoEmpleado,
+        empleado_id: '',
       }
       return [...prev, linea]
     })
@@ -113,10 +112,7 @@ export default function Facturacion() {
 
   // Agrega un concepto manual (algo que no está en el catálogo)
   function agregarManual() {
-    setLineas((prev) => {
-      const ultimoEmpleado = [...prev].reverse().find((l) => l.empleado_id)?.empleado_id ?? ''
-      return [...prev, { ...lineaVacia, empleado_id: ultimoEmpleado }]
-    })
+    setLineas((prev) => [...prev, { ...lineaVacia }])
   }
 
   async function cargar() {
