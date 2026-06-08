@@ -354,13 +354,12 @@ export default function Facturacion() {
         }
       />
 
-      {/* Resumen de cuentas abiertas */}
-      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><Receipt size={18} /></span>
-        <div>
-          <p className="text-sm font-semibold text-slate-800">{abiertas.length} cuenta(s) abierta(s)</p>
-          <p className="text-xs text-slate-500">Total acumulado sin cobrar: <b>{money(totalAbiertas)}</b></p>
-        </div>
+      {/* Resumen de cuentas abiertas (compacto) */}
+      <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-2.5 py-1 text-xs">
+        <Receipt size={13} className="text-amber-600" />
+        <span className="font-semibold text-slate-700">{abiertas.length} cuenta(s) abierta(s)</span>
+        <span className="text-amber-300">·</span>
+        <span className="text-slate-500">Sin cobrar: <b className="text-slate-700">{money(totalAbiertas)}</b></span>
       </div>
 
       {/* Filtro de estado */}
