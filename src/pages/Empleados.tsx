@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserCog, KeyRound } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserCog, KeyRound, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Empleado } from '../types'
 import { useAuth } from '../lib/auth'
@@ -33,11 +33,17 @@ export default function Empleados() {
   const esAdmin = !!perfil?.es_admin
 
   const [items, setItems] = useState<Empleado[]>([])
+  const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
+
+  const q = busqueda.trim().toLowerCase()
+  const filtrados = q
+    ? items.filter((e) => e.nombre.toLowerCase().includes(q) || e.puesto.toLowerCase().includes(q) || (e.especialidad ?? '').toLowerCase().includes(q))
+    : items
 
   // Acceso al sistema (usuario y contraseña) por empleado
   const [perfilesByEmp, setPerfilesByEmp] = useState<Record<string, PerfilEmp>>({})
@@ -173,6 +179,13 @@ export default function Empleados() {
         }
       />
 
+      {items.length > 0 && (
+        <div className="relative mb-4 max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input className="input pl-9" placeholder="Buscar por nombre, puesto o especialidad…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+        </div>
+      )}
+
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
       ) : items.length === 0 ? (
@@ -180,9 +193,14 @@ export default function Empleados() {
           <UserCog className="text-brand-300" size={40} />
           <p className="text-slate-500">Aún no hay empleados registrados.</p>
         </div>
+      ) : filtrados.length === 0 ? (
+        <div className="card flex flex-col items-center gap-3 py-12 text-center">
+          <Search className="text-brand-300" size={40} />
+          <p className="text-slate-500">No hay empleados que coincidan con «{busqueda}».</p>
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((e) => (
+          {filtrados.map((e) => (
             <div key={e.id} className={`card ${e.activo ? '' : 'opacity-60'}`}>
               <div className="flex items-start gap-3">
                 <div

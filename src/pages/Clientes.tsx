@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente } from '../types'
 import { fechaCorta } from '../lib/format'
+import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -15,6 +16,8 @@ const vacio = {
 }
 
 export default function Clientes() {
+  const { puedeAccion } = useAuth()
+  const puedeEliminar = puedeAccion('clientes.eliminar')
   const [items, setItems] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -143,9 +146,11 @@ export default function Clientes() {
                       <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
                         <Pencil size={16} />
                       </button>
-                      <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                        <Trash2 size={16} />
-                      </button>
+                      {puedeEliminar && (
+                        <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

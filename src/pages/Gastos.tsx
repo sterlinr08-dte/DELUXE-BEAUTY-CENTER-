@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
+import { Plus, Pencil, Trash2, Wallet, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Gasto } from '../types'
 import { money, fechaCorta, hoyISO } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_GASTO } from '../lib/constants'
+import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -18,12 +19,20 @@ const vacio = {
 }
 
 export default function Gastos() {
+  const { puedeAccion } = useAuth()
+  const puedeEliminar = puedeAccion('gastos.eliminar')
   const [items, setItems] = useState<Gasto[]>([])
+  const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
+
+  const q = busqueda.trim().toLowerCase()
+  const filtrados = q
+    ? items.filter((g) => g.concepto.toLowerCase().includes(q) || g.categoria.toLowerCase().includes(q) || g.fecha.includes(q))
+    : items
 
   async function cargar() {
     setLoading(true)
@@ -93,12 +102,24 @@ export default function Gastos() {
         }
       />
 
+      {items.length > 0 && (
+        <div className="relative mb-4 max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input className="input pl-9" placeholder="Buscar por concepto, categoría o fecha…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+        </div>
+      )}
+
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
       ) : items.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Wallet className="text-brand-300" size={40} />
           <p className="text-slate-500">Aún no hay gastos registrados.</p>
+        </div>
+      ) : filtrados.length === 0 ? (
+        <div className="card flex flex-col items-center gap-3 py-12 text-center">
+          <Search className="text-brand-300" size={40} />
+          <p className="text-slate-500">No hay gastos que coincidan con «{busqueda}».</p>
         </div>
       ) : (
         <div className="overflow-x-auto panel-3d">
@@ -114,7 +135,7 @@ export default function Gastos() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {items.map((g) => (
+              {filtrados.map((g) => (
                 <tr key={g.id}>
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(g.fecha)}</td>
                   <td className="px-5 py-3">
@@ -127,7 +148,9 @@ export default function Gastos() {
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => abrirEditar(g)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                      <button onClick={() => eliminar(g)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                      {puedeEliminar && (
+                        <button onClick={() => eliminar(g)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                      )}
                     </div>
                   </td>
                 </tr>

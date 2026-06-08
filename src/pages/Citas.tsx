@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, CalendarDays, Clock, Receipt } from 'lucide-react
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones, Cliente, Empleado, EstadoCita, Servicio } from '../types'
 import { hora, money, fechaLarga, hoyISO, codigoFactura } from '../lib/format'
+import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -42,6 +43,8 @@ const vacio = {
 }
 
 export default function Citas() {
+  const { puedeAccion } = useAuth()
+  const puedeEliminar = puedeAccion('citas.eliminar')
   const [items, setItems] = useState<CitaConRelaciones[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -259,9 +262,11 @@ export default function Citas() {
                 <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
                   <Pencil size={16} />
                 </button>
-                <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                  <Trash2 size={16} />
-                </button>
+                {puedeEliminar && (
+                  <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ))}

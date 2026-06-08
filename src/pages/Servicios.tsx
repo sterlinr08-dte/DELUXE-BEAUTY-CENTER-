@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Scissors } from 'lucide-react'
+import { Plus, Pencil, Trash2, Scissors, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Servicio } from '../types'
 import { money } from '../lib/format'
+import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -16,13 +17,21 @@ const vacio = {
 }
 
 export default function Servicios() {
+  const { puedeAccion } = useAuth()
+  const puedeEliminar = puedeAccion('servicios.eliminar')
   const [items, setItems] = useState<Servicio[]>([])
   const [categorias, setCategorias] = useState<string[]>(['General'])
+  const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
+
+  const q = busqueda.trim().toLowerCase()
+  const filtrados = q
+    ? items.filter((s) => s.nombre.toLowerCase().includes(q) || s.categoria.toLowerCase().includes(q) || (s.descripcion ?? '').toLowerCase().includes(q))
+    : items
 
   async function cargar() {
     setLoading(true)
@@ -91,12 +100,24 @@ export default function Servicios() {
         }
       />
 
+      {items.length > 0 && (
+        <div className="relative mb-4 max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input className="input pl-9" placeholder="Buscar por nombre, categoría o descripción…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+        </div>
+      )}
+
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
       ) : items.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Scissors className="text-brand-300" size={40} />
           <p className="text-slate-500">Aún no hay servicios. Agrega el primero.</p>
+        </div>
+      ) : filtrados.length === 0 ? (
+        <div className="card flex flex-col items-center gap-3 py-12 text-center">
+          <Search className="text-brand-300" size={40} />
+          <p className="text-slate-500">No hay servicios que coincidan con «{busqueda}».</p>
         </div>
       ) : (
         <div className="overflow-x-auto panel-3d">
@@ -111,7 +132,7 @@ export default function Servicios() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {items.map((s) => (
+              {filtrados.map((s) => (
                 <tr key={s.id} className={s.activo ? '' : 'opacity-50'}>
                   <td className="px-5 py-3">
                     <p className="font-medium text-slate-800">{s.nombre}</p>
@@ -127,9 +148,11 @@ export default function Servicios() {
                       <button onClick={() => abrirEditar(s)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
                         <Pencil size={16} />
                       </button>
-                      <button onClick={() => eliminar(s)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                        <Trash2 size={16} />
-                      </button>
+                      {puedeEliminar && (
+                        <button onClick={() => eliminar(s)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

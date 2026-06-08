@@ -40,6 +40,13 @@ export const ACCIONES: Accion[] = [
   { key: 'caja.abrir', label: 'Abrir y cerrar caja', modulo: 'caja' },
   { key: 'caja.movimiento', label: 'Registrar entradas / salidas de efectivo', modulo: 'caja' },
   { key: 'caja.cerrar_descuadre', label: 'Cerrar caja aunque haya descuadre (diferencia)', modulo: 'caja' },
+  { key: 'creditos.cobrar', label: 'Registrar abonos de ventas a crédito', modulo: 'caja' },
+  { key: 'clientes.eliminar', label: 'Eliminar clientes', modulo: 'clientes' },
+  { key: 'servicios.eliminar', label: 'Eliminar servicios', modulo: 'servicios' },
+  { key: 'articulos.eliminar', label: 'Eliminar artículos', modulo: 'articulos' },
+  { key: 'compras.eliminar', label: 'Eliminar compras', modulo: 'compras' },
+  { key: 'gastos.eliminar', label: 'Eliminar gastos', modulo: 'gastos' },
+  { key: 'citas.eliminar', label: 'Eliminar citas', modulo: 'citas' },
 ]
 
 export function etiquetaPermiso(key: string): string {

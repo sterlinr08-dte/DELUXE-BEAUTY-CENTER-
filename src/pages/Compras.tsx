@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Compra, Articulo, Proveedor } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
+import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -22,6 +23,8 @@ const vacio = {
 }
 
 export default function Compras() {
+  const { puedeAccion } = useAuth()
+  const puedeEliminar = puedeAccion('compras.eliminar')
   const [items, setItems] = useState<Compra[]>([])
   const [articulos, setArticulos] = useState<Articulo[]>([])
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
@@ -220,7 +223,9 @@ export default function Compras() {
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                      <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                      {puedeEliminar && (
+                        <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                      )}
                     </div>
                   </td>
                 </tr>
