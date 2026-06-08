@@ -31,8 +31,9 @@ export default function Compras() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
-  // catálogo de artículos (lupa)
+  // catálogo de artículos / historial de compras (lupa)
   const [catalogoOpen, setCatalogoOpen] = useState(false)
+  const [catTab, setCatTab] = useState<'articulos' | 'historial'>('articulos')
   const [buscarCat, setBuscarCat] = useState('')
 
   async function cargar() {
@@ -277,8 +278,8 @@ export default function Compras() {
               <div className="relative flex-1">
                 <button
                   type="button"
-                  onClick={() => { setBuscarCat(''); setCatalogoOpen(true) }}
-                  title="Ver todos los artículos"
+                  onClick={() => { setBuscarCat(''); setCatTab('articulos'); setCatalogoOpen(true) }}
+                  title="Ver artículos e historial de compras"
                   disabled={!!editId}
                   className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40"
                 >
@@ -349,61 +350,94 @@ export default function Compras() {
         </div>
       )}
 
-      {/* VENTANA DEL CATÁLOGO DE ARTÍCULOS (lupa) */}
-      <Modal open={catalogoOpen} title="Artículos del inventario" onClose={() => setCatalogoOpen(false)}>
+      {/* VENTANA DE LA LUPA: artículos del inventario e historial de compras */}
+      <Modal open={catalogoOpen} title="Buscar" onClose={() => setCatalogoOpen(false)}>
         <div className="space-y-3">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setCatTab('articulos')}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'articulos' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+              Artículos
+            </button>
+            <button
+              type="button"
+              onClick={() => setCatTab('historial')}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'historial' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+              Historial de compras
+            </button>
+          </div>
+
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               className="input pl-9"
-              placeholder="Filtrar por nombre, categoría o código…"
+              placeholder={catTab === 'articulos' ? 'Filtrar por nombre, categoría o código…' : 'Filtrar por #, descripción, proveedor o fecha…'}
               value={buscarCat}
               onChange={(e) => setBuscarCat(e.target.value)}
               autoFocus
             />
           </div>
-          <div className="max-h-[60vh] overflow-y-auto rounded-xl border border-slate-100">
-            <table className="min-w-full divide-y divide-slate-100 text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-3 py-2">Código</th>
-                  <th className="px-3 py-2">Nombre</th>
-                  <th className="px-3 py-2">Existencia</th>
-                  <th className="px-3 py-2 text-right">Costo</th>
-                  <th className="px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {articulos.filter((a) => {
-                  const f = buscarCat.trim().toLowerCase()
-                  return !f || a.nombre.toLowerCase().includes(f) || a.categoria.toLowerCase().includes(f) || codigoArticulo(a.codigo).includes(f)
-                }).map((a) => (
-                  <tr key={a.id} className="hover:bg-pink-50/40">
-                    <td className="px-3 py-2 font-mono text-slate-500">#{codigoArticulo(a.codigo)}</td>
-                    <td className="px-3 py-2 font-medium text-slate-800">{a.nombre}</td>
-                    <td className="px-3 py-2">
-                      <span className={Number(a.stock) <= 0 ? 'font-semibold text-rose-500' : 'text-slate-600'}>
-                        {Number(a.stock) <= 0 ? 'Sin existencia' : a.stock}
+
+          {catTab === 'articulos' ? (
+            <>
+              <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
+                {articulos.length === 0 ? (
+                  <p className="px-3 py-6 text-center text-slate-400">No hay artículos en el inventario.</p>
+                ) : (
+                  articulos.filter((a) => {
+                    const f = buscarCat.trim().toLowerCase()
+                    return !f || a.nombre.toLowerCase().includes(f) || a.categoria.toLowerCase().includes(f) || codigoArticulo(a.codigo).includes(f)
+                  }).map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => { elegirArticulo(a.id); setCatalogoOpen(false) }}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-pink-50"
+                    >
+                      <span className="flex min-w-0 flex-col">
+                        <span className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-slate-400">#{codigoArticulo(a.codigo)}</span>
+                          <span className="truncate font-medium text-slate-800">{a.nombre}</span>
+                        </span>
+                        <span className={`mt-0.5 text-xs ${Number(a.stock) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
+                          {Number(a.stock) <= 0 ? 'Sin existencia' : `Existencia: ${a.stock}`}
+                        </span>
                       </span>
-                    </td>
-                    <td className="px-3 py-2 text-right text-slate-600">{money(a.costo)}</td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => { elegirArticulo(a.id); setCatalogoOpen(false) }}
-                        className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
-                      >
-                        Elegir
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {articulos.length === 0 && (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">No hay artículos en el inventario.</td></tr>
+                      <span className="shrink-0 text-slate-600">{money(a.costo)}</span>
+                    </button>
+                  ))
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+              <p className="text-xs text-slate-400">Toca un artículo para elegirlo en la compra.</p>
+            </>
+          ) : (
+            <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
+              {(() => {
+                const f = buscarCat.trim().toLowerCase()
+                const lista = items.filter((c) =>
+                  !f || String(c.numero).includes(f) || c.descripcion.toLowerCase().includes(f) || (c.proveedor ?? '').toLowerCase().includes(f) || c.categoria.toLowerCase().includes(f) || c.fecha.includes(f),
+                )
+                if (lista.length === 0) {
+                  return <p className="px-3 py-6 text-center text-slate-400">Sin compras que coincidan</p>
+                }
+                return lista.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between gap-3 px-3 py-3">
+                    <span className="flex min-w-0 flex-col">
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono font-semibold text-brand-700">#{c.numero}</span>
+                        <span className="truncate font-medium text-slate-800">{c.descripcion}</span>
+                      </span>
+                      <span className="mt-0.5 text-xs text-slate-400">{fechaCorta(c.fecha)} · {c.proveedor || 'Sin proveedor'} · {c.categoria}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold text-slate-800">{money(c.total)}</span>
+                  </div>
+                ))
+              })()}
+            </div>
+          )}
         </div>
       </Modal>
     </div>
