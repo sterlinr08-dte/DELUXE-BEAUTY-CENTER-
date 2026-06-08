@@ -553,7 +553,7 @@ export default function Facturacion() {
               </div>
             )}
             <button className="btn-ghost mt-2" onClick={agregarManual}>
-              <Plus size={14} /> Cobrar algo manual
+              <Plus size={14} /> Agregar artículo o servicio
             </button>
           </div>
 
