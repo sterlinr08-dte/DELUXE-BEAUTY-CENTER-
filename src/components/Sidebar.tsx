@@ -73,7 +73,7 @@ export default function Sidebar({ open, onClose }: Props) {
           <img
             src={`${import.meta.env.BASE_URL}deluxe-logo.png`}
             alt="DeluXe Beauty Center"
-            className="mx-auto aspect-square w-28 rounded-full object-cover ring-1 ring-pink-500/25 shadow-[0_8px_20px_-4px_rgba(236,72,153,0.5)]"
+            className="logo-glow mx-auto aspect-square w-28 rounded-full object-cover ring-1 ring-pink-500/25"
           />
           <button onClick={onClose} className="absolute right-3 top-3 rounded-lg p-1 text-brand-200 hover:bg-white/10 lg:hidden">
             <X size={22} />
