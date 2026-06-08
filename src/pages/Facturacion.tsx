@@ -55,6 +55,9 @@ export default function Facturacion() {
   const [lineas, setLineas] = useState<LineaTmp[]>([])
   const [buscarItem, setBuscarItem] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
+  // Catálogo completo (ventana de la lupa)
+  const [catalogoOpen, setCatalogoOpen] = useState(false)
+  const [buscarCat, setBuscarCat] = useState('')
 
   // Resultados del buscador (servicios + artículos)
   const q = buscarItem.trim().toLowerCase()
@@ -69,9 +72,20 @@ export default function Facturacion() {
       ].slice(0, 8)
     : []
 
+  // Lista completa para la ventana del catálogo (la lupa), con filtro propio
+  const qc = buscarCat.trim().toLowerCase()
+  const catalogo = [
+    ...servicios
+      .filter((s) => !qc || s.nombre.toLowerCase().includes(qc) || (s.categoria ?? '').toLowerCase().includes(qc))
+      .map((s) => ({ tipo: 's' as const, id: s.id, nombre: s.nombre, precio: Number(s.precio), stock: null as number | null })),
+    ...articulos
+      .filter((a) => !qc || a.nombre.toLowerCase().includes(qc) || a.categoria.toLowerCase().includes(qc) || codigoArticulo(a.codigo).includes(qc))
+      .map((a) => ({ tipo: 'a' as const, id: a.id, nombre: a.nombre, precio: Number(a.precio), stock: Number(a.stock) })),
+  ]
+
   function agregarDesdeBusqueda(r: { tipo: 's' | 'a'; id: string; nombre: string; precio: number; stock?: number | null }) {
     if (r.tipo === 'a' && (r.stock ?? 0) <= 0) {
-      if (!confirm(`"${r.nombre}" no tiene existencia (stock 0). ¿Agregar de todos modos?`)) return
+      if (!confirm(`"${r.nombre}" no tiene existencia (0). ¿Agregar de todos modos?`)) return
     }
     setLineas((prev) => {
       // Si el mismo servicio/artículo ya está, suma la cantidad en vez de duplicar
@@ -426,7 +440,8 @@ export default function Facturacion() {
 
           <div>
             <label className="label">Buscar servicio o artículo</label>
-            <div className="relative">
+            <div className="flex gap-2">
+            <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 className="input pl-9"
@@ -453,7 +468,7 @@ export default function Facturacion() {
                           <span className="truncate text-slate-700">{r.nombre}</span>
                           {r.tipo === 'a' && (
                             <span className={`text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-400'}`}>
-                              {(r.stock ?? 0) <= 0 ? 'sin stock' : `stock: ${r.stock}`}
+                              {(r.stock ?? 0) <= 0 ? 'sin existencia' : `existencia: ${r.stock}`}
                             </span>
                           )}
                         </span>
@@ -463,6 +478,15 @@ export default function Facturacion() {
                   )}
                 </div>
               )}
+            </div>
+            <button
+              type="button"
+              onClick={() => { setBuscarCat(''); setCatalogoOpen(true) }}
+              className="btn-ghost shrink-0"
+              title="Ver todo el catálogo"
+            >
+              <Search size={16} /> Ver todo
+            </button>
             </div>
           </div>
 
@@ -568,6 +592,74 @@ export default function Facturacion() {
           </div>
         </div>
       )}
+
+      {/* VENTANA DEL CATÁLOGO (lupa): todos los servicios y artículos, cada dato separado */}
+      <Modal open={catalogoOpen} title="Catálogo · servicios y artículos" onClose={() => setCatalogoOpen(false)}>
+        <div className="space-y-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              className="input pl-9"
+              placeholder="Filtrar por nombre, categoría o código…"
+              value={buscarCat}
+              onChange={(e) => setBuscarCat(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto rounded-xl border border-slate-100">
+            <table className="min-w-full divide-y divide-slate-100 text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">Tipo</th>
+                  <th className="px-3 py-2">Nombre</th>
+                  <th className="px-3 py-2">Existencia</th>
+                  <th className="px-3 py-2 text-right">Precio</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {catalogo.length === 0 ? (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">Sin coincidencias</td></tr>
+                ) : (
+                  catalogo.map((r) => (
+                    <tr key={`${r.tipo}:${r.id}`} className="hover:bg-pink-50/40">
+                      <td className="px-3 py-2">
+                        <span className={`badge ${r.tipo === 's' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {r.tipo === 's' ? 'Servicio' : 'Artículo'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 font-medium text-slate-800">{r.nombre}</td>
+                      <td className="px-3 py-2">
+                        {r.tipo === 's' ? (
+                          <span className="text-slate-300">—</span>
+                        ) : (
+                          <span className={(r.stock ?? 0) <= 0 ? 'font-semibold text-rose-500' : 'text-slate-600'}>
+                            {(r.stock ?? 0) <= 0 ? 'Sin existencia' : r.stock}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-slate-800">{money(r.precio)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => agregarDesdeBusqueda(r)}
+                          className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+                        >
+                          <Plus size={13} className="-mt-0.5 mr-0.5 inline" /> Agregar
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-slate-400">Toca «Agregar» en cada uno; puedes añadir varios y luego cerrar.</p>
+          <div className="flex justify-end">
+            <button className="btn-primary" onClick={() => setCatalogoOpen(false)}>Listo</button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal VER / IMPRIMIR */}
       <Modal open={!!verId} title={`Factura ${facturaVista ? codigoFactura(facturaVista) : ''}`} onClose={() => setVerId(null)}>
