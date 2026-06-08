@@ -57,6 +57,7 @@ export default function Facturacion() {
   const [editId, setEditId] = useState<string | null>(null)
   // Catálogo completo (ventana de la lupa)
   const [catalogoOpen, setCatalogoOpen] = useState(false)
+  const [catTab, setCatTab] = useState<'catalogo' | 'historial'>('catalogo')
   const [buscarCat, setBuscarCat] = useState('')
 
   // Resultados del buscador (servicios + artículos)
@@ -443,8 +444,8 @@ export default function Facturacion() {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => { setBuscarCat(''); setCatalogoOpen(true) }}
-                title="Ver todo el catálogo"
+                onClick={() => { setBuscarCat(''); setCatTab('catalogo'); setCatalogoOpen(true) }}
+                title="Ver catálogo e historial de facturas"
                 className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600"
               >
                 <Search size={16} />
@@ -590,68 +591,136 @@ export default function Facturacion() {
         </div>
       )}
 
-      {/* VENTANA DEL CATÁLOGO (lupa): todos los servicios y artículos, cada dato separado */}
-      <Modal open={catalogoOpen} title="Catálogo · servicios y artículos" onClose={() => setCatalogoOpen(false)}>
+      {/* VENTANA DE LA LUPA: catálogo (servicios/artículos) e historial de facturas */}
+      <Modal open={catalogoOpen} title="Buscar" onClose={() => setCatalogoOpen(false)}>
         <div className="space-y-3">
+          {/* Pestañas */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setCatTab('catalogo')}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'catalogo' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+              Servicios y artículos
+            </button>
+            <button
+              type="button"
+              onClick={() => setCatTab('historial')}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'historial' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+            >
+              Historial de facturas
+            </button>
+          </div>
+
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               className="input pl-9"
-              placeholder="Filtrar por nombre, categoría o código…"
+              placeholder={catTab === 'catalogo' ? 'Filtrar por nombre, categoría o código…' : 'Filtrar por código, cliente, fecha o estado…'}
               value={buscarCat}
               onChange={(e) => setBuscarCat(e.target.value)}
               autoFocus
             />
           </div>
-          <div className="max-h-[60vh] overflow-y-auto rounded-xl border border-slate-100">
-            <table className="min-w-full divide-y divide-slate-100 text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-3 py-2">Tipo</th>
-                  <th className="px-3 py-2">Nombre</th>
-                  <th className="px-3 py-2">Existencia</th>
-                  <th className="px-3 py-2 text-right">Precio</th>
-                  <th className="px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {catalogo.length === 0 ? (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">Sin coincidencias</td></tr>
-                ) : (
-                  catalogo.map((r) => (
-                    <tr key={`${r.tipo}:${r.id}`} className="hover:bg-pink-50/40">
-                      <td className="px-3 py-2">
-                        <span className={`badge ${r.tipo === 's' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {r.tipo === 's' ? 'Servicio' : 'Artículo'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 font-medium text-slate-800">{r.nombre}</td>
-                      <td className="px-3 py-2">
-                        {r.tipo === 's' ? (
-                          <span className="text-slate-300">—</span>
-                        ) : (
-                          <span className={(r.stock ?? 0) <= 0 ? 'font-semibold text-rose-500' : 'text-slate-600'}>
-                            {(r.stock ?? 0) <= 0 ? 'Sin existencia' : r.stock}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-800">{money(r.precio)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => agregarDesdeBusqueda(r)}
-                          className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
-                        >
-                          <Plus size={13} className="-mt-0.5 mr-0.5 inline" /> Agregar
-                        </button>
-                      </td>
+
+          {catTab === 'catalogo' ? (
+            <>
+              <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-slate-100">
+                <table className="min-w-full divide-y divide-slate-100 text-sm">
+                  <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Tipo</th>
+                      <th className="px-3 py-2">Nombre</th>
+                      <th className="px-3 py-2">Existencia</th>
+                      <th className="px-3 py-2 text-right">Precio</th>
+                      <th className="px-3 py-2"></th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-slate-400">Toca «Agregar» en cada uno; puedes añadir varios y luego cerrar.</p>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {catalogo.length === 0 ? (
+                      <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">Sin coincidencias</td></tr>
+                    ) : (
+                      catalogo.map((r) => (
+                        <tr key={`${r.tipo}:${r.id}`} className="hover:bg-pink-50/40">
+                          <td className="px-3 py-2">
+                            <span className={`badge ${r.tipo === 's' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
+                              {r.tipo === 's' ? 'Servicio' : 'Artículo'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-medium text-slate-800">{r.nombre}</td>
+                          <td className="px-3 py-2">
+                            {r.tipo === 's' ? (
+                              <span className="text-slate-300">—</span>
+                            ) : (
+                              <span className={(r.stock ?? 0) <= 0 ? 'font-semibold text-rose-500' : 'text-slate-600'}>
+                                {(r.stock ?? 0) <= 0 ? 'Sin existencia' : r.stock}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold text-slate-800">{money(r.precio)}</td>
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => agregarDesdeBusqueda(r)}
+                              className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+                            >
+                              <Plus size={13} className="-mt-0.5 mr-0.5 inline" /> Agregar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-slate-400">Toca «Agregar» en cada uno; puedes añadir varios y luego cerrar.</p>
+            </>
+          ) : (
+            <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-slate-100">
+              <table className="min-w-full divide-y divide-slate-100 text-sm">
+                <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2"># Factura</th>
+                    <th className="px-3 py-2">Cliente</th>
+                    <th className="px-3 py-2">Fecha</th>
+                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-3 py-2">Estado</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {(() => {
+                    const t = buscarCat.trim().toLowerCase()
+                    const lista = facturas.filter((f) =>
+                      !t || codigoFactura(f).toLowerCase().includes(t) || (f.cliente_nombre ?? '').toLowerCase().includes(t) || f.fecha.includes(t) || f.estado.toLowerCase().includes(t),
+                    )
+                    if (lista.length === 0) {
+                      return <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Sin facturas que coincidan</td></tr>
+                    }
+                    return lista.map((f) => (
+                      <tr key={f.id} className="hover:bg-pink-50/40">
+                        <td className="px-3 py-2 font-mono font-semibold text-slate-700">{codigoFactura(f)}</td>
+                        <td className="px-3 py-2 text-slate-700">{f.cliente_nombre || 'Cliente'}</td>
+                        <td className="px-3 py-2 text-slate-500">{fechaCorta(f.fecha)}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-800">{money(f.total)}</td>
+                        <td className="px-3 py-2"><span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span></td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => { setCatalogoOpen(false); verDetalle(f) }}
+                            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200"
+                          >
+                            Ver
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <div className="flex justify-end">
             <button className="btn-primary" onClick={() => setCatalogoOpen(false)}>Listo</button>
           </div>
