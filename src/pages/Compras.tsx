@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Search, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, X, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Compra, Articulo, Proveedor } from '../types'
-import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
+import { money, fechaCorta, fechaHora, hoyISO, codigoArticulo } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
+
+interface ReciboCompra { numero: number | null; proveedor: string; descripcion: string; categoria: string; fecha: string; subtotal: number; itbis: number; total: number; metodo: string; hora: string }
 
 const vacio = {
   fecha: hoyISO(),
@@ -25,7 +28,10 @@ const vacio = {
 
 export default function Compras() {
   const { puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const puedeEliminar = puedeAccion('compras.eliminar')
+  const [editCompra, setEditCompra] = useState<Compra | null>(null)
+  const [recibo, setRecibo] = useState<ReciboCompra | null>(null)
   const [items, setItems] = useState<Compra[]>([])
   const [articulos, setArticulos] = useState<Articulo[]>([])
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
@@ -68,12 +74,14 @@ export default function Compras() {
 
   function abrirNuevo() {
     setEditId(null)
+    setEditCompra(null)
     setForm(vacio)
     setOpen(true)
   }
 
   function abrirEditar(c: Compra) {
     setEditId(c.id)
+    setEditCompra(c)
     const cant = Number(c.cantidad ?? 0)
     setForm({
       fecha: c.fecha,
@@ -102,7 +110,7 @@ export default function Compras() {
     }))
   }
 
-  async function guardar() {
+  async function guardar(imprimir = false) {
     if (form.articulo_id && form.cantidad <= 0) return alert('Indica la cantidad comprada')
     if (vinculaArticulo && form.costo_unit <= 0) return alert('Indica el costo unitario')
     if (!form.descripcion.trim()) return alert('La descripción es obligatoria')
@@ -121,17 +129,23 @@ export default function Compras() {
       cantidad: vinculaArticulo ? form.cantidad : null,
       notas: form.notas || null,
     }
-    const { error } = editId
-      ? await supabase.from('compras').update(payload).eq('id', editId)
-      : await supabase.from('compras').insert(payload)
-    if (error) {
-      setSaving(false)
-      return alert('Error al guardar: ' + error.message)
+    let numero: number | null = editCompra?.numero ?? null
+    if (editId) {
+      const { error } = await supabase.from('compras').update(payload).eq('id', editId)
+      if (error) { setSaving(false); return alert('Error al guardar: ' + error.message) }
+    } else {
+      const { data, error } = await supabase.from('compras').insert(payload).select().single()
+      if (error) { setSaving(false); return alert('Error al guardar: ' + error.message) }
+      numero = (data as any)?.numero ?? null
+      // Compra nueva vinculada a un artículo: sumar a la existencia y actualizar su costo
+      if (vinculaArticulo) {
+        await supabase.rpc('ajustar_stock', { p_articulo: form.articulo_id, p_delta: form.cantidad })
+        await supabase.from('articulos').update({ costo: form.costo_unit }).eq('id', form.articulo_id)
+      }
     }
-    // Al registrar una compra nueva vinculada a un artículo: sumar al stock y actualizar su costo
-    if (!editId && vinculaArticulo) {
-      await supabase.rpc('ajustar_stock', { p_articulo: form.articulo_id, p_delta: form.cantidad })
-      await supabase.from('articulos').update({ costo: form.costo_unit }).eq('id', form.articulo_id)
+    if (imprimir) {
+      setRecibo({ numero, proveedor: form.proveedor || 'Sin proveedor', descripcion: form.descripcion, categoria: form.categoria, fecha: form.fecha, subtotal, itbis, total, metodo: form.metodo_pago, hora: new Date().toISOString() })
+      setTimeout(() => window.print(), 400)
     }
     setSaving(false)
     setOpen(false)
@@ -304,13 +318,47 @@ export default function Compras() {
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-              <button className="btn-primary" onClick={guardar} disabled={saving}>{saving ? 'Guardando…' : 'Guardar compra'}</button>
+              <button className="btn-ghost" onClick={() => guardar(false)} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+              <button className="btn-primary" onClick={() => guardar(true)} disabled={saving}><Printer size={16} /> Guardar e imprimir</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* COMPROBANTE DE COMPRA (imprimible) */}
+      <Modal open={!!recibo} title="Comprobante de compra" onClose={() => setRecibo(null)}>
+        {recibo && (
+          <div className="space-y-3">
+            <div id="recibo-compra" className="print-area space-y-2 rounded-xl border border-slate-100 p-3 text-sm">
+              <div className="text-center">
+                <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+                <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
+                {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+                <p className="mt-1 text-xs font-semibold text-slate-600">COMPROBANTE DE COMPRA</p>
+                <p className="text-xs text-slate-400">{recibo.numero != null ? `Compra #${recibo.numero} · ` : ''}{fechaHora(recibo.hora)}</p>
+              </div>
+              <p className="text-slate-600"><span className="font-medium">Proveedor:</span> {recibo.proveedor}</p>
+              <p className="text-slate-600"><span className="font-medium">Categoría:</span> {recibo.categoria}</p>
+              <p className="text-slate-600"><span className="font-medium">Detalle:</span> {recibo.descripcion}</p>
+              <div className="space-y-0.5 border-t pt-1">
+                <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(recibo.subtotal)}</span></div>
+                {recibo.itbis > 0 && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(recibo.itbis)}</span></div>}
+                <div className="flex justify-between text-base font-bold text-slate-800"><span>Total</span><span>{money(recibo.total)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Método</span><span>{recibo.metodo}</span></div>
+              </div>
+              <div className="border-t pt-1 text-center text-xs text-slate-500">
+                <p>{negocio.direccion} · {negocio.referencia}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 no-print">
+              <button className="btn-ghost flex-1" onClick={() => setRecibo(null)}>Cerrar</button>
+              <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir</button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* VENTANA DE LA LUPA: artículos del inventario e historial de compras */}
       <Modal open={catalogoOpen} title="Buscar" onClose={() => setCatalogoOpen(false)}>

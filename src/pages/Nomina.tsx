@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Empleado, PagoEmpleado, TipoPagoEmpleado } from '../types'
-import { money, fechaCorta, hoyISO, codigoFactura } from '../lib/format'
+import { money, fechaCorta, fechaHora, hoyISO, codigoFactura } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+
+interface ReciboPago { empleado: string; tipo: string; periodo: string; monto: number; metodo: string; fecha: string; hora: string }
 
 const tipos: TipoPagoEmpleado[] = ['SALARIO', 'COMISION', 'ADELANTO', 'BONO']
 
@@ -27,6 +30,8 @@ const vacio = {
 }
 
 export default function Nomina() {
+  const { negocio } = useNegocio()
+  const [recibo, setRecibo] = useState<ReciboPago | null>(null)
   const [items, setItems] = useState<PagoEmpleado[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,7 +119,7 @@ export default function Nomina() {
     setOpen(true)
   }
 
-  async function guardar() {
+  async function guardar(imprimir = false) {
     if (!form.empleado_id) return alert('Selecciona un empleado')
     if (form.monto <= 0) return alert('El monto debe ser mayor que 0')
     setSaving(true)
@@ -134,6 +139,10 @@ export default function Nomina() {
       : await supabase.from('pagos_empleados').insert(payload)
     setSaving(false)
     if (error) return alert('Error al guardar: ' + error.message)
+    if (imprimir) {
+      setRecibo({ empleado: emp?.nombre ?? 'Empleado', tipo: form.tipo, periodo: form.periodo, monto: form.monto, metodo: form.metodo_pago, fecha: form.fecha, hora: new Date().toISOString() })
+      setTimeout(() => window.print(), 400)
+    }
     setOpen(false)
     cargar()
   }
@@ -205,7 +214,8 @@ export default function Nomina() {
         footer={
           <>
             <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="btn-primary" onClick={guardar} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+            <button className="btn-ghost" onClick={() => guardar(false)} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+            <button className="btn-primary" onClick={() => guardar(true)} disabled={saving}><Printer size={16} /> Guardar e imprimir</button>
           </>
         }
       >
@@ -302,6 +312,41 @@ export default function Nomina() {
             <textarea className="input" rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
           </div>
         </div>
+      </Modal>
+
+      {/* RECIBO DE PAGO A EMPLEADO (imprimible) */}
+      <Modal open={!!recibo} title="Recibo de pago" onClose={() => setRecibo(null)}>
+        {recibo && (
+          <div className="space-y-3">
+            <div id="recibo-pago" className="print-area space-y-2 rounded-xl border border-slate-100 p-3 text-sm">
+              <div className="text-center">
+                <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+                <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
+                {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+                <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
+                <p className="text-xs text-slate-400">{fechaHora(recibo.hora)}</p>
+              </div>
+              <p className="text-slate-600"><span className="font-medium">Empleado:</span> {recibo.empleado}</p>
+              <p className="text-slate-600"><span className="font-medium">Concepto:</span> {recibo.tipo}{recibo.periodo ? ` · ${recibo.periodo}` : ''}</p>
+              <div className="space-y-0.5 border-t pt-1">
+                <div className="flex justify-between text-base font-bold text-slate-800"><span>Monto pagado</span><span>{money(recibo.monto)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Método</span><span>{recibo.metodo}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Fecha</span><span>{fechaCorta(recibo.fecha)}</span></div>
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-4 text-center text-xs text-slate-500">
+                <div className="border-t border-slate-300 pt-1">Firma empleado</div>
+                <div className="border-t border-slate-300 pt-1">Firma autoriza</div>
+              </div>
+              <div className="border-t pt-1 text-center text-xs text-slate-500">
+                <p>{negocio.direccion} · {negocio.referencia}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 no-print">
+              <button className="btn-ghost flex-1" onClick={() => setRecibo(null)}>Cerrar</button>
+              <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir</button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

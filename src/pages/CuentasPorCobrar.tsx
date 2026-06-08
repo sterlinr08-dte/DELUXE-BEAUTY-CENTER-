@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { HandCoins, Wallet } from 'lucide-react'
+import { HandCoins, Wallet, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Factura, FacturaAbono } from '../types'
-import { money, fechaCorta, hoyISO, codigoFactura } from '../lib/format'
+import { money, fechaCorta, fechaHora, hoyISO, codigoFactura } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
@@ -14,9 +15,20 @@ interface FilaCobro extends Factura {
   saldo: number
 }
 
+interface ReciboAbono {
+  factura: FilaCobro
+  monto: number
+  metodo: string
+  abonadoAntes: number
+  saldoRestante: number
+  hora: string
+}
+
 export default function CuentasPorCobrar() {
   const { perfil, puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const puedeCobrar = puedeAccion('creditos.cobrar')
+  const [recibo, setRecibo] = useState<ReciboAbono | null>(null)
 
   const [filas, setFilas] = useState<FilaCobro[]>([])
   const [abonosByFactura, setAbonosByFactura] = useState<Record<string, FacturaAbono[]>>({})
@@ -68,7 +80,7 @@ export default function CuentasPorCobrar() {
     setAbonoNotas('')
   }
 
-  async function guardarAbono() {
+  async function guardarAbono(imprimir = false) {
     if (!abonoFactura) return
     if (abonoMonto <= 0) return alert('El abono debe ser mayor que 0')
     if (abonoMonto > abonoFactura.saldo + 0.01) return alert(`El abono no puede ser mayor que el saldo (${money(abonoFactura.saldo)})`)
@@ -89,6 +101,17 @@ export default function CuentasPorCobrar() {
     const nuevoSaldo = abonoFactura.saldo - abonoMonto
     if (nuevoSaldo <= 0.01) {
       await supabase.from('facturas').update({ estado: 'PAGADA' }).eq('id', abonoFactura.id)
+    }
+    if (imprimir) {
+      setRecibo({
+        factura: abonoFactura,
+        monto: abonoMonto,
+        metodo: abonoMetodo,
+        abonadoAntes: abonoFactura.abonado,
+        saldoRestante: Math.max(0, nuevoSaldo),
+        hora: new Date().toISOString(),
+      })
+      setTimeout(() => window.print(), 400)
     }
     setSaving(false)
     setAbonoFactura(null)
@@ -170,7 +193,8 @@ export default function CuentasPorCobrar() {
         footer={
           <>
             <button className="btn-ghost" onClick={() => setAbonoFactura(null)}>Cancelar</button>
-            <button className="btn-primary" onClick={guardarAbono} disabled={saving}>{saving ? 'Guardando…' : 'Registrar abono'}</button>
+            <button className="btn-ghost" onClick={() => guardarAbono(false)} disabled={saving}>{saving ? 'Guardando…' : 'Registrar'}</button>
+            <button className="btn-primary" onClick={() => guardarAbono(true)} disabled={saving}><Printer size={16} /> Guardar e imprimir</button>
           </>
         }
       >
@@ -210,6 +234,41 @@ export default function CuentasPorCobrar() {
                 </ul>
               </div>
             )}
+          </div>
+        )}
+      </Modal>
+
+      {/* COMPROBANTE DE ABONO (imprimible) */}
+      <Modal open={!!recibo} title="Recibo de abono" onClose={() => setRecibo(null)}>
+        {recibo && (
+          <div className="space-y-3">
+            <div id="recibo-abono" className="print-area space-y-2 rounded-xl border border-slate-100 p-3 text-sm">
+              <div className="text-center">
+                <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+                <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
+                {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+                <p className="text-xs text-slate-500">Tel/WhatsApp: {negocio.telefono}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE ABONO</p>
+                <p className="text-xs text-slate-400">Factura {codigoFactura(recibo.factura)} · {fechaHora(recibo.hora)}</p>
+              </div>
+              <p className="text-slate-600"><span className="font-medium">Cliente:</span> {recibo.factura.cliente_nombre ?? 'Cliente'}</p>
+              <div className="space-y-0.5 border-t pt-1">
+                <div className="flex justify-between text-slate-600"><span>Total de la factura</span><span>{money(recibo.factura.total)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Abonado antes</span><span>{money(recibo.abonadoAntes)}</span></div>
+                <div className="flex justify-between text-base font-bold text-slate-800"><span>Este abono</span><span>{money(recibo.monto)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Método</span><span>{recibo.metodo}</span></div>
+                <div className="flex justify-between font-semibold text-rose-600"><span>Saldo pendiente</span><span>{money(recibo.saldoRestante)}</span></div>
+              </div>
+              <p className="text-xs text-slate-400">Recibido por: {perfil?.nombre || perfil?.username || '—'}</p>
+              <div className="border-t pt-1 text-center text-xs text-slate-500">
+                <p>{negocio.direccion} · {negocio.referencia}</p>
+              </div>
+              <p className="text-center text-xs font-medium text-brand-600">¡Gracias por su pago! 💕</p>
+            </div>
+            <div className="flex gap-2 no-print">
+              <button className="btn-ghost flex-1" onClick={() => setRecibo(null)}>Cerrar</button>
+              <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir</button>
+            </div>
           </div>
         )}
       </Modal>
