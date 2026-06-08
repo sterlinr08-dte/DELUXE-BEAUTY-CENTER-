@@ -12,6 +12,7 @@ import Facturacion from './pages/Facturacion'
 import Caja from './pages/Caja'
 import CuentasPorCobrar from './pages/CuentasPorCobrar'
 import Compras from './pages/Compras'
+import CuentasPorPagar from './pages/CuentasPorPagar'
 import Gastos from './pages/Gastos'
 import Nomina from './pages/Nomina'
 import Contabilidad from './pages/Contabilidad'
@@ -86,6 +87,7 @@ export default function App() {
               <Route path="/caja" element={<Protegido modulo="caja"><Caja /></Protegido>} />
               <Route path="/cuentas" element={<Protegido modulo="cuentas"><CuentasPorCobrar /></Protegido>} />
               <Route path="/compras" element={<Protegido modulo="compras"><Compras /></Protegido>} />
+              <Route path="/por-pagar" element={<Protegido modulo="cuentas_pagar"><CuentasPorPagar /></Protegido>} />
               <Route path="/gastos" element={<Protegido modulo="gastos"><Gastos /></Protegido>} />
               <Route path="/nomina" element={<Protegido modulo="nomina"><Nomina /></Protegido>} />
               <Route path="/contabilidad" element={<Protegido modulo="contabilidad"><Contabilidad /></Protegido>} />

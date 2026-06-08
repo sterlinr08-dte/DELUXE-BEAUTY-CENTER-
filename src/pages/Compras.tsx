@@ -19,6 +19,7 @@ const vacio = {
   categoria: 'Insumos',
   subtotal: 0,
   aplicaItbis: false,
+  tipo_pago: 'CONTADO' as 'CONTADO' | 'CREDITO',
   metodo_pago: 'Efectivo',
   articulo_id: '',
   cantidad: 0,
@@ -90,6 +91,7 @@ export default function Compras() {
       categoria: c.categoria,
       subtotal: Number(c.subtotal),
       aplicaItbis: Number(c.itbis) > 0,
+      tipo_pago: c.tipo_pago ?? 'CONTADO',
       metodo_pago: c.metodo_pago ?? 'Efectivo',
       articulo_id: c.articulo_id ?? '',
       cantidad: cant,
@@ -124,6 +126,7 @@ export default function Compras() {
       subtotal,
       itbis,
       total,
+      tipo_pago: form.tipo_pago,
       metodo_pago: form.metodo_pago,
       articulo_id: vinculaArticulo ? form.articulo_id : null,
       cantidad: vinculaArticulo ? form.cantidad : null,
@@ -304,12 +307,24 @@ export default function Compras() {
             {form.aplicaItbis && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(itbis)}</span></div>}
             <div className="mt-1 flex justify-between border-t border-slate-200 pt-1 font-bold text-slate-800"><span>Total</span><span>{money(total)}</span></div>
           </div>
-          <div>
-            <label className="label">Método de pago</label>
-            <select className="input" value={form.metodo_pago} onChange={(e) => setForm({ ...form, metodo_pago: e.target.value })}>
-              {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Tipo de pago</label>
+              <select className="input" value={form.tipo_pago} onChange={(e) => setForm({ ...form, tipo_pago: e.target.value as 'CONTADO' | 'CREDITO' })}>
+                <option value="CONTADO">Contado (pagada)</option>
+                <option value="CREDITO">Crédito (queda por pagar)</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Método de pago</label>
+              <select className="input" value={form.metodo_pago} onChange={(e) => setForm({ ...form, metodo_pago: e.target.value })}>
+                {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
+              </select>
+            </div>
           </div>
+          {form.tipo_pago === 'CREDITO' && (
+            <p className="-mt-2 text-xs text-amber-600">Esta compra quedará en <b>Cuentas por pagar</b> hasta saldarla.</p>
+          )}
           <div>
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />

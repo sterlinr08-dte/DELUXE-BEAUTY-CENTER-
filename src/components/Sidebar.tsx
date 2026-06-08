@@ -28,6 +28,7 @@ const grupos: { titulo: string; links: Link[] }[] = [
       { to: '/caja', label: 'Caja', icon: Wallet, modulo: 'caja' },
       { to: '/cuentas', label: 'Cuentas por cobrar', icon: HandCoins, modulo: 'cuentas' },
       { to: '/compras', label: 'Compras', icon: ShoppingCart, modulo: 'compras' },
+      { to: '/por-pagar', label: 'Cuentas por pagar', icon: HandCoins, modulo: 'cuentas_pagar' },
       { to: '/gastos', label: 'Gastos', icon: Wallet, modulo: 'gastos' },
       { to: '/nomina', label: 'Pagos a empleados', icon: Users, modulo: 'nomina' },
       { to: '/contabilidad', label: 'Contabilidad', icon: Calculator, modulo: 'contabilidad' },

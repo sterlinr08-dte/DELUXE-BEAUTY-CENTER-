@@ -117,9 +117,21 @@ export interface Gasto {
   created_at: string
 }
 
+export interface CompraAbono {
+  id: string
+  compra_id: string
+  fecha: string
+  monto: number
+  metodo_pago: string | null
+  registrado_por: string | null
+  notas: string | null
+  created_at: string
+}
+
 export interface Compra {
   id: string
   numero: number
+  tipo_pago: 'CONTADO' | 'CREDITO'
   fecha: string
   proveedor: string | null
   descripcion: string
