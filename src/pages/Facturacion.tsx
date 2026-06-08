@@ -289,6 +289,7 @@ export default function Facturacion() {
 
   return (
     <div>
+      {!open && (<>
       <PageHeader
         title="Facturación"
         subtitle={`${facturas.length} factura(s)`}
@@ -365,21 +366,21 @@ export default function Facturacion() {
         </div>
       )}
 
-      {/* Modal NUEVA / EDITAR FACTURA */}
-      <Modal
-        open={open}
-        title={editId ? 'Editar factura' : 'Nueva factura'}
-        onClose={() => setOpen(false)}
-        footer={
-          <>
-            <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="btn-primary" onClick={guardar} disabled={saving}>
-              {saving ? 'Guardando…' : `Guardar (${money(total)})`}
+      </>)}
+
+      {/* PANTALLA DE VENTA (a página completa, ya no es ventana emergente) */}
+      {open && (
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-slate-800">{editId ? 'Editar factura' : 'Nueva venta'}</h2>
+              <p className="text-sm text-slate-400">Registra los servicios y productos a cobrar.</p>
+            </div>
+            <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>
+              <X size={16} /> Cerrar
             </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
+          </div>
+          <div className="card space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Cliente</label>
@@ -554,8 +555,19 @@ export default function Facturacion() {
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
           </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
+            <div className="flex gap-2">
+              <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={guardar} disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar factura'}
+              </button>
+            </div>
+          </div>
         </div>
-      </Modal>
+      )}
 
       {/* Modal VER / IMPRIMIR */}
       <Modal open={!!verId} title={`Factura ${facturaVista ? codigoFactura(facturaVista) : ''}`} onClose={() => setVerId(null)}>
