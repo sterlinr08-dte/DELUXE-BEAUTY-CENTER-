@@ -550,9 +550,14 @@ export default function Facturacion() {
                 })}
               </div>
             )}
-            <button className="btn-ghost mt-2" onClick={agregarManual}>
-              <Plus size={14} /> Agregar artículo o servicio
-            </button>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button className="btn-ghost" onClick={() => { setBuscarCat(''); setCatTab('catalogo'); setCatalogoOpen(true) }}>
+                <Search size={14} /> Agregar artículo o servicio
+              </button>
+              <button className="btn-ghost" onClick={agregarManual}>
+                <Plus size={14} /> Concepto manual
+              </button>
+            </div>
           </div>
 
           <div>
