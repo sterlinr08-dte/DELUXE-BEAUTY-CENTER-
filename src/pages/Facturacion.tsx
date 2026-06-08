@@ -305,6 +305,10 @@ export default function Facturacion() {
 
   const facturaVista = facturas.find((f) => f.id === verId)
 
+  // Cliente seleccionado en la factura en curso y su historial (para "ver cómo se arregló la última vez")
+  const clienteSel = clienteId ? clientes.find((c) => c.id === clienteId) ?? null : null
+  const histRows = clienteSel ? facturas.filter((f) => f.cliente_id === clienteSel.id) : facturas
+
   // Cuentas abiertas = facturas PENDIENTES (en curso, a las que se les sigue agregando)
   const abiertas = facturas.filter((f) => f.estado === 'PENDIENTE')
   const totalAbiertas = abiertas.reduce((s, f) => s + Number(f.total), 0)
@@ -601,7 +605,7 @@ export default function Facturacion() {
               onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
               className="text-xs font-semibold text-brand-600 hover:underline"
             >
-              Ver historial de facturas
+              {clienteSel ? `Ver historial de ${clienteSel.nombre}` : 'Ver historial de facturas'}
             </button>
           </div>
 
@@ -618,7 +622,7 @@ export default function Facturacion() {
       )}
 
       {/* VENTANA DE LA LUPA: catálogo de servicios/artículos (o historial, según se abra) */}
-      <Modal open={catalogoOpen} title={catTab === 'historial' ? 'Historial de facturas' : 'Buscar servicio o artículo'} onClose={() => setCatalogoOpen(false)}>
+      <Modal open={catalogoOpen} title={catTab === 'historial' ? (clienteSel ? `Historial de ${clienteSel.nombre}` : 'Historial de facturas') : 'Buscar servicio o artículo'} onClose={() => setCatalogoOpen(false)}>
         <div className="space-y-3">
           {catTab === 'catalogo' && (
             <div className="relative">
@@ -668,11 +672,11 @@ export default function Facturacion() {
             </>
           ) : (
             <DataTable
-              rows={facturas}
+              rows={histRows}
               rowKey={(f) => f.id}
               searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.fecha} ${f.estado}`}
               searchPlaceholder="Filtrar por código, cliente, fecha o estado…"
-              emptyText="Sin facturas"
+              emptyText={clienteSel ? 'Este cliente no tiene facturas anteriores.' : 'Sin facturas'}
               pageSize={8}
               initialSort={{ index: 0, dir: 'desc' }}
               onRowClick={(f) => { setCatalogoOpen(false); verDetalle(f) }}
