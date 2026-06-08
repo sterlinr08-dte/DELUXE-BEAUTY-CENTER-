@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Printer, Ban, X, Search } from 'lucide-react'
+import { Plus, Trash2, Printer, Ban, X, Search, Receipt } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura } from '../lib/format'
@@ -35,6 +35,7 @@ export default function Facturacion() {
   const puedeEditar = puedeAccion('facturas.editar')
 
   const [facturas, setFacturas] = useState<Factura[]>([])
+  const [verEstado, setVerEstado] = useState<'ABIERTAS' | 'PAGADAS' | 'TODAS'>('ABIERTAS')
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [articulos, setArticulos] = useState<Articulo[]>([])
@@ -304,6 +305,12 @@ export default function Facturacion() {
 
   const facturaVista = facturas.find((f) => f.id === verId)
 
+  // Cuentas abiertas = facturas PENDIENTES (en curso, a las que se les sigue agregando)
+  const abiertas = facturas.filter((f) => f.estado === 'PENDIENTE')
+  const totalAbiertas = abiertas.reduce((s, f) => s + Number(f.total), 0)
+  const facturasFiltradas =
+    verEstado === 'ABIERTAS' ? abiertas : verEstado === 'PAGADAS' ? facturas.filter((f) => f.estado === 'PAGADA') : facturas
+
   return (
     <div>
       {!open && (<>
@@ -317,15 +324,33 @@ export default function Facturacion() {
         }
       />
 
+      {/* Resumen de cuentas abiertas */}
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><Receipt size={18} /></span>
+        <div>
+          <p className="text-sm font-semibold text-slate-800">{abiertas.length} cuenta(s) abierta(s)</p>
+          <p className="text-xs text-slate-500">Total acumulado sin cobrar: <b>{money(totalAbiertas)}</b></p>
+        </div>
+      </div>
+
+      {/* Filtro de estado */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {([['ABIERTAS', `Abiertas (${abiertas.length})`], ['PAGADAS', 'Pagadas'], ['TODAS', 'Todas']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setVerEstado(key)} className={verEstado === key ? 'btn-primary' : 'btn-ghost'}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
       ) : (
         <DataTable
-          rows={facturas}
+          rows={facturasFiltradas}
           rowKey={(f) => f.id}
           searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.estado} ${f.fecha}`}
           searchPlaceholder="Buscar por código, cliente, estado o fecha…"
-          emptyText={facturas.length === 0 ? 'Aún no hay facturas.' : 'No hay facturas que coincidan.'}
+          emptyText={verEstado === 'ABIERTAS' ? 'No hay cuentas abiertas.' : 'No hay facturas que coincidan.'}
           initialSort={{ index: 0, dir: 'desc' }}
           columns={[
             { header: 'Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
@@ -342,12 +367,9 @@ export default function Facturacion() {
             {
               header: '', align: 'right', cell: (f) => (
                 <div className="flex justify-end gap-1">
-                  {f.estado === 'PENDIENTE' && (
-                    <span className="badge bg-amber-50 text-amber-600">Se cobra en Caja</span>
-                  )}
                   {f.estado === 'PENDIENTE' && puedeEditar && (
-                    <button title="Editar" onClick={() => abrirEditar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
-                      <Pencil size={16} />
+                    <button title="Agregar más consumo a esta cuenta" onClick={() => abrirEditar(f)} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100">
+                      <Plus size={13} className="-mt-0.5 mr-0.5 inline" /> Agregar consumo
                     </button>
                   )}
                   {f.estado !== 'ANULADA' && puedeAnular && (
