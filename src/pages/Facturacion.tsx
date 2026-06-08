@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Receipt, Printer, Ban, X, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, Printer, Ban, X, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura } from '../lib/format'
@@ -8,6 +8,7 @@ import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+import DataTable from '../components/DataTable'
 
 interface LineaTmp {
   servicio_id: string
@@ -313,68 +314,55 @@ export default function Facturacion() {
 
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
-      ) : facturas.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 py-12 text-center">
-          <Receipt className="text-brand-300" size={40} />
-          <p className="text-slate-500">Aún no hay facturas.</p>
-        </div>
       ) : (
-        <div className="overflow-x-auto panel-3d">
-          <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="thead-3d">
-              <tr>
-                <th className="px-5 py-3">#</th>
-                <th className="px-5 py-3">Cliente</th>
-                <th className="px-5 py-3">Fecha</th>
-                <th className="px-5 py-3 text-right">Total</th>
-                <th className="px-5 py-3">Estado</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {facturas.map((f) => (
-                <tr key={f.id} className="hover:bg-slate-50/50">
-                  <td className="px-5 py-3 font-mono font-semibold text-slate-700">{codigoFactura(f)}</td>
-                  <td className="px-5 py-3">
-                    <button className="font-medium text-brand-700 hover:underline" onClick={() => verDetalle(f)}>
-                      {f.cliente_nombre || 'Cliente'}
+        <DataTable
+          rows={facturas}
+          rowKey={(f) => f.id}
+          searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.estado} ${f.fecha}`}
+          searchPlaceholder="Buscar por código, cliente, estado o fecha…"
+          emptyText={facturas.length === 0 ? 'Aún no hay facturas.' : 'No hay facturas que coincidan.'}
+          initialSort={{ index: 0, dir: 'desc' }}
+          columns={[
+            { header: '#', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+            {
+              header: 'Cliente', sortValue: (f) => f.cliente_nombre ?? '', cell: (f) => (
+                <button className="font-medium text-brand-700 hover:underline" onClick={() => verDetalle(f)}>
+                  {f.cliente_nombre || 'Cliente'}
+                </button>
+              ),
+            },
+            { header: 'Fecha', cell: (f) => <span className="text-slate-600">{fechaCorta(f.fecha)}</span>, sortValue: (f) => f.fecha },
+            { header: 'Total', align: 'right', cell: (f) => <span className="font-semibold text-slate-800">{money(f.total)}</span>, sortValue: (f) => f.total },
+            { header: 'Estado', cell: (f) => <span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span>, sortValue: (f) => f.estado },
+            {
+              header: '', align: 'right', cell: (f) => (
+                <div className="flex justify-end gap-1">
+                  {f.estado === 'PENDIENTE' && (
+                    <span className="badge bg-amber-50 text-amber-600">Se cobra en Caja</span>
+                  )}
+                  {f.estado === 'PENDIENTE' && puedeEditar && (
+                    <button title="Editar" onClick={() => abrirEditar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                      <Pencil size={16} />
                     </button>
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">{fechaCorta(f.fecha)}</td>
-                  <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(f.total)}</td>
-                  <td className="px-5 py-3">
-                    <span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end gap-1">
-                      {f.estado === 'PENDIENTE' && (
-                        <span className="badge bg-amber-50 text-amber-600">Se cobra en Caja</span>
-                      )}
-                      {f.estado === 'PENDIENTE' && puedeEditar && (
-                        <button title="Editar" onClick={() => abrirEditar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
-                          <Pencil size={16} />
-                        </button>
-                      )}
-                      {f.estado !== 'ANULADA' && puedeAnular && (
-                        <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
-                          <Ban size={16} />
-                        </button>
-                      )}
-                      <button title="Ver / imprimir" onClick={() => verDetalle(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
-                        <Printer size={16} />
-                      </button>
-                      {puedeEliminar && (
-                        <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                  {f.estado !== 'ANULADA' && puedeAnular && (
+                    <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
+                      <Ban size={16} />
+                    </button>
+                  )}
+                  <button title="Ver / imprimir" onClick={() => verDetalle(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
+                    <Printer size={16} />
+                  </button>
+                  {puedeEliminar && (
+                    <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
       )}
 
       </>)}

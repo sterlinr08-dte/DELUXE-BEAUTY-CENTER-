@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, HandCoins, Wallet } from 'lucide-react'
+import { HandCoins, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Factura, FacturaAbono } from '../types'
 import { money, fechaCorta, hoyISO, codigoFactura } from '../lib/format'
@@ -7,6 +7,7 @@ import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+import DataTable from '../components/DataTable'
 
 interface FilaCobro extends Factura {
   abonado: number
@@ -20,7 +21,6 @@ export default function CuentasPorCobrar() {
   const [filas, setFilas] = useState<FilaCobro[]>([])
   const [abonosByFactura, setAbonosByFactura] = useState<Record<string, FacturaAbono[]>>({})
   const [loading, setLoading] = useState(true)
-  const [busqueda, setBusqueda] = useState('')
   const [verSaldadas, setVerSaldadas] = useState(false)
 
   // modal de abono
@@ -95,10 +95,7 @@ export default function CuentasPorCobrar() {
     cargar()
   }
 
-  const q = busqueda.trim().toLowerCase()
-  const visibles = filas
-    .filter((f) => (verSaldadas ? true : f.saldo > 0.01))
-    .filter((f) => !q || codigoFactura(f).toLowerCase().includes(q) || (f.cliente_nombre ?? '').toLowerCase().includes(q) || f.fecha.includes(q))
+  const listaVisible = filas.filter((f) => (verSaldadas ? true : f.saldo > 0.01))
 
   const totalAdeudado = filas.reduce((s, f) => s + f.saldo, 0)
   const clientesConDeuda = new Set(filas.filter((f) => f.saldo > 0.01).map((f) => f.cliente_nombre ?? f.id)).size
@@ -124,65 +121,45 @@ export default function CuentasPorCobrar() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative max-w-md flex-1">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input className="input pl-9" placeholder="Buscar por cliente, código o fecha…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-        </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={verSaldadas} onChange={(e) => setVerSaldadas(e.target.checked)} />
-          Mostrar también las saldadas
-        </label>
-      </div>
-
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
-      ) : visibles.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 py-12 text-center">
-          <HandCoins className="text-brand-300" size={40} />
-          <p className="text-slate-500">{filas.length === 0 ? 'No hay ventas a crédito.' : 'No hay cuentas pendientes. ¡Todo cobrado!'}</p>
-        </div>
       ) : (
-        <div className="overflow-x-auto panel-3d">
-          <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="thead-3d">
-              <tr>
-                <th className="px-5 py-3"># Factura</th>
-                <th className="px-5 py-3">Cliente</th>
-                <th className="px-5 py-3">Fecha</th>
-                <th className="px-5 py-3 text-right">Total</th>
-                <th className="px-5 py-3 text-right">Abonado</th>
-                <th className="px-5 py-3 text-right">Saldo</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {visibles.map((f) => (
-                <tr key={f.id}>
-                  <td className="px-5 py-3 font-mono font-semibold text-slate-700">{codigoFactura(f)}</td>
-                  <td className="px-5 py-3 font-medium text-slate-800">{f.cliente_nombre || 'Cliente'}</td>
-                  <td className="px-5 py-3 text-slate-500">{fechaCorta(f.fecha)}</td>
-                  <td className="px-5 py-3 text-right text-slate-600">{money(f.total)}</td>
-                  <td className="px-5 py-3 text-right text-emerald-600">{money(f.abonado)}</td>
-                  <td className="px-5 py-3 text-right font-bold text-slate-800">{money(f.saldo)}</td>
-                  <td className="px-5 py-3 text-right">
-                    {f.saldo > 0.01 ? (
-                      puedeCobrar ? (
-                        <button onClick={() => abrirAbono(f)} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100">
-                          <HandCoins size={13} className="-mt-0.5 mr-0.5 inline" /> Registrar abono
-                        </button>
-                      ) : (
-                        <span className="badge bg-amber-50 text-amber-700">Pendiente</span>
-                      )
-                    ) : (
-                      <span className="badge bg-emerald-50 text-emerald-700">Saldada</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={listaVisible}
+          rowKey={(f) => f.id}
+          searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.fecha}`}
+          searchPlaceholder="Buscar por cliente, código o fecha…"
+          emptyText={filas.length === 0 ? 'No hay ventas a crédito.' : 'No hay cuentas que coincidan.'}
+          initialSort={{ index: 2, dir: 'desc' }}
+          toolbar={
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" checked={verSaldadas} onChange={(e) => setVerSaldadas(e.target.checked)} />
+              Mostrar también las saldadas
+            </label>
+          }
+          columns={[
+            { header: '# Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+            { header: 'Cliente', cell: (f) => <span className="font-medium text-slate-800">{f.cliente_nombre || 'Cliente'}</span>, sortValue: (f) => f.cliente_nombre ?? '' },
+            { header: 'Fecha', cell: (f) => <span className="text-slate-500">{fechaCorta(f.fecha)}</span>, sortValue: (f) => f.fecha },
+            { header: 'Total', align: 'right', cell: (f) => money(f.total), sortValue: (f) => f.total },
+            { header: 'Abonado', align: 'right', cell: (f) => <span className="text-emerald-600">{money(f.abonado)}</span>, sortValue: (f) => f.abonado },
+            { header: 'Saldo', align: 'right', cell: (f) => <span className="font-bold text-slate-800">{money(f.saldo)}</span>, sortValue: (f) => f.saldo },
+            {
+              header: '', align: 'right', cell: (f) =>
+                f.saldo > 0.01 ? (
+                  puedeCobrar ? (
+                    <button onClick={() => abrirAbono(f)} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100">
+                      <HandCoins size={13} className="-mt-0.5 mr-0.5 inline" /> Registrar abono
+                    </button>
+                  ) : (
+                    <span className="badge bg-amber-50 text-amber-700">Pendiente</span>
+                  )
+                ) : (
+                  <span className="badge bg-emerald-50 text-emerald-700">Saldada</span>
+                ),
+            },
+          ]}
+        />
       )}
 
       {/* MODAL ABONO */}

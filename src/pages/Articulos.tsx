@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, Package, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Articulo } from '../types'
 import { money, codigoArticulo } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+import DataTable from '../components/DataTable'
 
 const vacio = {
   nombre: '',
@@ -23,7 +24,6 @@ export default function Articulos() {
   const puedeEliminar = puedeAccion('articulos.eliminar')
   const [items, setItems] = useState<Articulo[]>([])
   const [categorias, setCategorias] = useState<string[]>(['General'])
-  const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -44,17 +44,6 @@ export default function Articulos() {
   useEffect(() => {
     cargar()
   }, [])
-
-  const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase()
-    if (!q) return items
-    return items.filter(
-      (a) =>
-        a.nombre.toLowerCase().includes(q) ||
-        a.categoria.toLowerCase().includes(q) ||
-        codigoArticulo(a.codigo).includes(q),
-    )
-  }, [items, busqueda])
 
   function abrirNuevo() {
     setEditId(null)
@@ -108,66 +97,47 @@ export default function Articulos() {
         }
       />
 
-      <div className="relative mb-4 max-w-sm">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          className="input pl-9"
-          placeholder="Buscar por nombre, categoría o código…"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
-      </div>
-
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
-      ) : filtrados.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 py-12 text-center">
-          <Package className="text-brand-300" size={40} />
-          <p className="text-slate-500">{items.length === 0 ? 'Aún no hay artículos.' : 'No hay artículos que coincidan.'}</p>
-        </div>
       ) : (
-        <div className="overflow-x-auto panel-3d">
-          <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="thead-3d">
-              <tr>
-                <th className="px-5 py-3">Código</th>
-                <th className="px-5 py-3">Artículo</th>
-                <th className="px-5 py-3">Categoría</th>
-                <th className="px-5 py-3 text-right">Costo</th>
-                <th className="px-5 py-3 text-right">Precio</th>
-                <th className="px-5 py-3 text-right">Existencia</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtrados.map((a) => (
-                <tr key={a.id} className={a.activo ? '' : 'opacity-50'}>
-                  <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{codigoArticulo(a.codigo)}</td>
-                  <td className="px-5 py-3">
-                    <p className="font-medium text-slate-800">{a.nombre}</p>
-                    {a.descripcion && <p className="text-xs text-slate-400">{a.descripcion}</p>}
-                  </td>
-                  <td className="px-5 py-3"><span className="badge bg-brand-50 text-brand-700">{a.categoria}</span></td>
-                  <td className="px-5 py-3 text-right text-slate-500">{money(a.costo)}</td>
-                  <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(a.precio)}</td>
-                  <td className="px-5 py-3 text-right">
-                    <span className={`badge ${Number(a.stock) <= 0 ? 'bg-rose-50 text-rose-700' : Number(a.stock) <= Number(a.stock_min) ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                      {Number(a.stock) <= 0 ? 'Agotado' : a.stock}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end gap-1">
-                      <button onClick={() => abrirEditar(a)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                      {puedeEliminar && (
-                        <button onClick={() => eliminar(a)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={items}
+          rowKey={(a) => a.id}
+          searchText={(a) => `${a.nombre} ${a.categoria} ${codigoArticulo(a.codigo)}`}
+          searchPlaceholder="Buscar por nombre, categoría o código…"
+          emptyText={items.length === 0 ? 'Aún no hay artículos.' : 'No hay artículos que coincidan.'}
+          columns={[
+            { header: 'Código', cell: (a) => <span className="font-mono font-semibold text-brand-700">#{codigoArticulo(a.codigo)}</span>, sortValue: (a) => a.codigo },
+            {
+              header: 'Artículo', sortValue: (a) => a.nombre, cell: (a) => (
+                <>
+                  <p className="font-medium text-slate-800">{a.nombre}</p>
+                  {a.descripcion && <p className="text-xs text-slate-400">{a.descripcion}</p>}
+                </>
+              ),
+            },
+            { header: 'Categoría', cell: (a) => <span className="badge bg-brand-50 text-brand-700">{a.categoria}</span>, sortValue: (a) => a.categoria },
+            { header: 'Costo', align: 'right', cell: (a) => <span className="text-slate-500">{money(a.costo)}</span>, sortValue: (a) => a.costo },
+            { header: 'Precio', align: 'right', cell: (a) => <span className="font-semibold text-slate-800">{money(a.precio)}</span>, sortValue: (a) => a.precio },
+            {
+              header: 'Existencia', align: 'right', sortValue: (a) => a.stock, cell: (a) => (
+                <span className={`badge ${Number(a.stock) <= 0 ? 'bg-rose-50 text-rose-700' : Number(a.stock) <= Number(a.stock_min) ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                  {Number(a.stock) <= 0 ? 'Agotado' : a.stock}
+                </span>
+              ),
+            },
+            {
+              header: '', align: 'right', cell: (a) => (
+                <div className="flex justify-end gap-1">
+                  <button onClick={() => abrirEditar(a)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                  {puedeEliminar && (
+                    <button onClick={() => eliminar(a)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
       )}
 
       <Modal

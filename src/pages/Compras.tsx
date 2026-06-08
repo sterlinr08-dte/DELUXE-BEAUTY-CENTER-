@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, ShoppingCart, Search, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Compra, Articulo, Proveedor } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
@@ -7,6 +7,7 @@ import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+import DataTable from '../components/DataTable'
 
 const vacio = {
   fecha: hoyISO(),
@@ -28,7 +29,6 @@ export default function Compras() {
   const [items, setItems] = useState<Compra[]>([])
   const [articulos, setArticulos] = useState<Articulo[]>([])
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
-  const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -59,17 +59,6 @@ export default function Compras() {
   const totalMes = items
     .filter((c) => c.fecha.slice(0, 7) === hoyISO().slice(0, 7))
     .reduce((s, c) => s + Number(c.total), 0)
-
-  const q = busqueda.trim().toLowerCase()
-  const visibles = q
-    ? items.filter((c) =>
-        c.descripcion.toLowerCase().includes(q) ||
-        (c.proveedor ?? '').toLowerCase().includes(q) ||
-        c.categoria.toLowerCase().includes(q) ||
-        String(c.numero).includes(q) ||
-        c.fecha.includes(q),
-      )
-    : items
 
   // Si hay artículo + cantidad + costo, el subtotal se calcula (cantidad × costo); si no, es manual
   const vinculaArticulo = !!form.articulo_id && form.cantidad > 0
@@ -173,66 +162,34 @@ export default function Compras() {
         }
       />
 
-      {items.length > 0 && (
-        <div className="relative mb-4 max-w-md">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            className="input pl-9"
-            placeholder="Buscar por descripción, proveedor, categoría, # o fecha…"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
-        </div>
-      )}
-
       {loading ? (
         <p className="text-slate-500">Cargando…</p>
-      ) : items.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 py-12 text-center">
-          <ShoppingCart className="text-brand-300" size={40} />
-          <p className="text-slate-500">Aún no hay compras registradas.</p>
-        </div>
-      ) : visibles.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 py-12 text-center">
-          <Search className="text-brand-300" size={40} />
-          <p className="text-slate-500">No hay compras que coincidan con «{busqueda}».</p>
-        </div>
       ) : (
-        <div className="overflow-x-auto panel-3d">
-          <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="thead-3d">
-              <tr>
-                <th className="px-5 py-3">#</th>
-                <th className="px-5 py-3">Fecha</th>
-                <th className="px-5 py-3">Descripción</th>
-                <th className="px-5 py-3">Proveedor</th>
-                <th className="px-5 py-3">Categoría</th>
-                <th className="px-5 py-3 text-right">Total</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {visibles.map((c) => (
-                <tr key={c.id}>
-                  <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{c.numero}</td>
-                  <td className="px-5 py-3 text-slate-600">{fechaCorta(c.fecha)}</td>
-                  <td className="px-5 py-3 font-medium text-slate-800">{c.descripcion}</td>
-                  <td className="px-5 py-3 text-slate-600">{c.proveedor || '—'}</td>
-                  <td className="px-5 py-3"><span className="badge bg-slate-100 text-slate-600">{c.categoria}</span></td>
-                  <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(c.total)}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end gap-1">
-                      <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                      {puedeEliminar && (
-                        <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          rows={items}
+          rowKey={(c) => c.id}
+          searchText={(c) => `${c.descripcion} ${c.proveedor ?? ''} ${c.categoria} ${c.numero} ${c.fecha}`}
+          searchPlaceholder="Buscar por descripción, proveedor, categoría, # o fecha…"
+          emptyText={items.length === 0 ? 'Aún no hay compras registradas.' : 'No hay compras que coincidan.'}
+          columns={[
+            { header: '#', cell: (c) => <span className="font-mono font-semibold text-brand-700">#{c.numero}</span>, sortValue: (c) => c.numero },
+            { header: 'Fecha', cell: (c) => <span className="text-slate-600">{fechaCorta(c.fecha)}</span>, sortValue: (c) => c.fecha },
+            { header: 'Descripción', cell: (c) => <span className="font-medium text-slate-800">{c.descripcion}</span>, sortValue: (c) => c.descripcion },
+            { header: 'Proveedor', cell: (c) => <span className="text-slate-600">{c.proveedor || '—'}</span>, sortValue: (c) => c.proveedor ?? '' },
+            { header: 'Categoría', cell: (c) => <span className="badge bg-slate-100 text-slate-600">{c.categoria}</span>, sortValue: (c) => c.categoria },
+            { header: 'Total', align: 'right', cell: (c) => <span className="font-semibold text-slate-800">{money(c.total)}</span>, sortValue: (c) => c.total },
+            {
+              header: '', align: 'right', cell: (c) => (
+                <div className="flex justify-end gap-1">
+                  <button onClick={() => abrirEditar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                  {puedeEliminar && (
+                    <button onClick={() => eliminar(c)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
       )}
       </>)}
 
