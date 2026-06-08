@@ -420,7 +420,7 @@ export default function Facturacion() {
                 Crédito <span className="font-mono text-xs opacity-70">CR</span>
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-400">El número será {tipoVenta === 'CREDITO' ? 'CR000001, CR000002…' : 'CO000001, CO000002…'} según el tipo.</p>
+            <p className="mt-1 text-xs text-slate-400">Un solo correlativo; solo cambia la letra: {tipoVenta === 'CREDITO' ? 'CR (crédito)' : 'CO (contado)'}.</p>
           </div>
 
           <div>
