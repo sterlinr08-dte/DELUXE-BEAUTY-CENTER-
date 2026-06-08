@@ -440,12 +440,18 @@ export default function Facturacion() {
 
           <div>
             <label className="label">Buscar servicio o artículo</label>
-            <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => { setBuscarCat(''); setCatalogoOpen(true) }}
+                title="Ver todo el catálogo"
+                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600"
+              >
+                <Search size={16} />
+              </button>
               <input
                 className="input pl-9"
-                placeholder="Ej: corte, cerveza, shampoo… (escribe para agregar)"
+                placeholder="Toca la lupa para ver todo, o escribe para buscar…"
                 value={buscarItem}
                 onChange={(e) => setBuscarItem(e.target.value)}
               />
@@ -478,15 +484,6 @@ export default function Facturacion() {
                   )}
                 </div>
               )}
-            </div>
-            <button
-              type="button"
-              onClick={() => { setBuscarCat(''); setCatalogoOpen(true) }}
-              className="btn-ghost shrink-0"
-              title="Ver todo el catálogo"
-            >
-              <Search size={16} /> Ver todo
-            </button>
             </div>
           </div>
 
