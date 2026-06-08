@@ -367,6 +367,16 @@ export default function Compras() {
           </div>
           </div>
 
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
+              className="text-xs font-semibold text-brand-600 hover:underline"
+            >
+              Ver historial de compras
+            </button>
+          </div>
+
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
             <div className="flex flex-wrap gap-2">
@@ -420,26 +430,9 @@ export default function Compras() {
         )}
       </Modal>
 
-      {/* VENTANA DE LA LUPA: artículos del inventario e historial de compras */}
-      <Modal open={catalogoOpen} title="Buscar" onClose={() => setCatalogoOpen(false)}>
+      {/* VENTANA DE LA LUPA: artículos del inventario (o historial, según se abra) */}
+      <Modal open={catalogoOpen} title={catTab === 'historial' ? 'Historial de compras' : 'Buscar artículo'} onClose={() => setCatalogoOpen(false)}>
         <div className="space-y-3">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setCatTab('articulos')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'articulos' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            >
-              Artículos
-            </button>
-            <button
-              type="button"
-              onClick={() => setCatTab('historial')}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${catTab === 'historial' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            >
-              Historial de compras
-            </button>
-          </div>
-
           {catTab === 'articulos' && (
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
