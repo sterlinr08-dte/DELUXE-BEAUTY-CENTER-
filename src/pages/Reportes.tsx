@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabase'
 import { Articulo, Compra, Factura } from '../types'
 import { money, fechaCorta, fechaHora, hoyISO, codigoArticulo, codigoFactura } from '../lib/format'
 import { useNegocio } from '../lib/negocio'
+import { useAuth } from '../lib/auth'
 import { descargarCSV, imprimirTabla } from '../lib/reportes'
 import PageHeader from '../components/PageHeader'
+import Modal from '../components/Modal'
 
 type Tab = 'inventario' | 'fisico' | 'ventas' | 'compras' | 'cuadres'
 
@@ -19,7 +21,14 @@ const tabs: { key: Tab; label: string; icon: typeof Boxes; rango: boolean }[] = 
 
 export default function Reportes() {
   const { negocio } = useNegocio()
+  const { puedeAccion } = useAuth()
+  const puedeAjustar = puedeAccion('caja.ajustar_cuadre')
   const [tab, setTab] = useState<Tab>('inventario')
+  // Ajuste de un cuadre cerrado (administración/gerente)
+  const [ajuste, setAjuste] = useState<any | null>(null)
+  const [ajContado, setAjContado] = useState(0)
+  const [ajNota, setAjNota] = useState('')
+  const [savingAj, setSavingAj] = useState(false)
   const [desde, setDesde] = useState(hoyISO().slice(0, 8) + '01')
   const [hasta, setHasta] = useState(hoyISO())
   const [loading, setLoading] = useState(false)
@@ -56,6 +65,30 @@ export default function Reportes() {
       cancel = true
     }
   }, [tab, desde, hasta])
+
+  function abrirAjuste(s: any) {
+    setAjuste(s)
+    setAjContado(Number(s.monto_contado ?? 0))
+    setAjNota('')
+  }
+
+  async function guardarAjuste() {
+    if (!ajuste) return
+    setSavingAj(true)
+    const esperado = Number(ajuste.monto_contado ?? 0) - Number(ajuste.diferencia ?? 0)
+    const nuevaDif = ajContado - esperado
+    const nota = `${ajuste.notas ? ajuste.notas + ' · ' : ''}Ajuste: ${ajNota || 'corrección de cuadre'}`
+    const { error } = await supabase.from('caja_sesiones').update({ monto_contado: ajContado, diferencia: nuevaDif, notas: nota }).eq('id', ajuste.id)
+    setSavingAj(false)
+    if (error) return alert('Error al ajustar: ' + error.message)
+    setAjuste(null)
+    const { data } = await supabase.from('caja_sesiones').select('*').eq('estado', 'CERRADA').order('cerrada_at', { ascending: false })
+    const enRango = (data ?? []).filter((s: any) => {
+      const d = (s.cerrada_at ?? '').slice(0, 10)
+      return d >= desde && d <= hasta
+    })
+    setCuadres(enRango)
+  }
 
   const periodo = `Del ${fechaCorta(desde)} al ${fechaCorta(hasta)}`
 
@@ -238,6 +271,7 @@ export default function Reportes() {
                   {rep.columnas.map((c, i) => (
                     <th key={i} className={`px-4 py-2 ${c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : ''}`}>{c.label}</th>
                   ))}
+                  {tab === 'cuadres' && puedeAjustar && <th className="px-4 py-2 text-right">Ajustar</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -248,6 +282,11 @@ export default function Reportes() {
                         {v === '' && rep.columnas[ci]?.align === 'center' ? '—' : v}
                       </td>
                     ))}
+                    {tab === 'cuadres' && puedeAjustar && (
+                      <td className="px-4 py-2 text-right">
+                        <button onClick={() => abrirAjuste(cuadres[ri])} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100">Ajustar</button>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {rep.pie && (
@@ -262,6 +301,45 @@ export default function Reportes() {
           </div>
         )}
       </div>
+
+      {/* AJUSTE DE CUADRE (administración / gerente) */}
+      <Modal
+        open={!!ajuste}
+        title={`Ajustar cuadre · Caja ${ajuste?.numero ?? ''}`}
+        onClose={() => setAjuste(null)}
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setAjuste(null)}>Cancelar</button>
+            <button className="btn-primary" onClick={guardarAjuste} disabled={savingAj}>{savingAj ? 'Guardando…' : 'Guardar ajuste'}</button>
+          </>
+        }
+      >
+        {ajuste && (() => {
+          const esperado = Number(ajuste.monto_contado ?? 0) - Number(ajuste.diferencia ?? 0)
+          const nuevaDif = ajContado - esperado
+          return (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-slate-50 p-3 text-sm">
+                <div className="flex justify-between text-slate-600"><span>Efectivo esperado</span><span>{money(esperado)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Contado al cerrar</span><span>{money(ajuste.monto_contado)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Diferencia registrada</span><span className={Number(ajuste.diferencia) < 0 ? 'text-rose-600' : Number(ajuste.diferencia) > 0 ? 'text-sky-600' : 'text-emerald-600'}>{money(ajuste.diferencia)}</span></div>
+              </div>
+              <div>
+                <label className="label">Efectivo contado corregido (RD$)</label>
+                <input type="number" min={0} step={50} className="input" value={ajContado || ''} onChange={(e) => setAjContado(Number(e.target.value))} />
+                <button type="button" className="mt-1 text-xs font-semibold text-brand-600 hover:underline" onClick={() => setAjContado(esperado)}>Dejar cuadrada ({money(esperado)})</button>
+              </div>
+              <div className={`rounded-xl p-3 text-center text-sm font-semibold ${Math.abs(nuevaDif) < 0.01 ? 'bg-emerald-50 text-emerald-700' : nuevaDif > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
+                {Math.abs(nuevaDif) < 0.01 ? 'Quedará cuadrada ✓' : nuevaDif > 0 ? `Sobrante: ${money(nuevaDif)}` : `Faltante: ${money(Math.abs(nuevaDif))}`}
+              </div>
+              <div>
+                <label className="label">Motivo del ajuste</label>
+                <textarea className="input" rows={2} value={ajNota} onChange={(e) => setAjNota(e.target.value)} placeholder="Ej: se encontró el faltante, error de conteo…" />
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
     </div>
   )
 }

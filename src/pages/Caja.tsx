@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, History, Receipt, HandCoins, Printer, FileText, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, CheckCircle2 } from 'lucide-react'
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, Receipt, HandCoins, Printer, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CajaSesion, CajaMovimiento, Factura, FacturaItem } from '../types'
 import { money, fechaHora, codigoFactura } from '../lib/format'
@@ -42,7 +42,6 @@ export default function Caja() {
 
   const [sesion, setSesion] = useState<CajaSesion | null>(null)
   const [movs, setMovs] = useState<CajaMovimiento[]>([])
-  const [historial, setHistorial] = useState<CajaSesion[]>([])
   const [pendientes, setPendientes] = useState<Factura[]>([])
   const [cobros, setCobros] = useState<Factura[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,14 +95,6 @@ export default function Caja() {
       setCobros([])
     }
     setSesion(abierta ?? null)
-
-    const { data: hist } = await supabase
-      .from('caja_sesiones')
-      .select('*')
-      .eq('estado', 'CERRADA')
-      .order('cerrada_at', { ascending: false })
-      .limit(20)
-    setHistorial(hist ?? [])
 
     // Facturas pendientes de cobro
     const { data: pend } = await supabase
@@ -255,16 +246,6 @@ export default function Caja() {
     setCobroHora(new Date().toISOString())
     setCobroOk(true) // muestra confirmación animada + recibo imprimible
     cargar()
-  }
-
-  async function abrirComprobante(s: CajaSesion) {
-    setVerCierre(s)
-    const [{ data: c }, { data: m }] = await Promise.all([
-      supabase.from('facturas').select('*').eq('caja_id', s.id).eq('estado', 'PAGADA'),
-      supabase.from('caja_movimientos').select('*').eq('caja_id', s.id).order('created_at'),
-    ])
-    setCierreCobros(c ?? [])
-    setCierreMovs(m ?? [])
   }
 
   function abrirCierre() {
@@ -475,57 +456,6 @@ export default function Caja() {
                 ))}
               </ul>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Historial de cierres */}
-      {historial.length > 0 && (
-        <div className="mt-8">
-          <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold text-slate-800">
-            <History size={18} /> Cierres anteriores
-          </h2>
-          <div className="overflow-x-auto panel-3d">
-            <table className="min-w-full divide-y divide-slate-100 text-sm">
-              <thead className="thead-3d">
-                <tr>
-                  <th className="px-5 py-3">No.</th>
-                  <th className="px-5 py-3">Cerrada</th>
-                  <th className="px-5 py-3 text-right">Inicial</th>
-                  {puedeVerDescuadre && <th className="px-5 py-3 text-right">Esperado</th>}
-                  <th className="px-5 py-3 text-right">Contado</th>
-                  {puedeVerDescuadre && <th className="px-5 py-3 text-right">Diferencia</th>}
-                  <th className="px-5 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {historial.map((s) => {
-                  const esp = s.monto_contado != null && s.diferencia != null ? Number(s.monto_contado) - Number(s.diferencia) : null
-                  const dif = Number(s.diferencia ?? 0)
-                  return (
-                    <tr key={s.id}>
-                      <td className="px-5 py-3 font-mono font-semibold text-brand-700">{s.numero}</td>
-                      <td className="px-5 py-3 text-slate-600">{fechaHora(s.cerrada_at)}</td>
-                      <td className="px-5 py-3 text-right text-slate-600">{money(s.monto_inicial)}</td>
-                      {puedeVerDescuadre && <td className="px-5 py-3 text-right text-slate-600">{esp != null ? money(esp) : '—'}</td>}
-                      <td className="px-5 py-3 text-right font-medium text-slate-800">{money(s.monto_contado)}</td>
-                      {puedeVerDescuadre && (
-                        <td className="px-5 py-3 text-right">
-                          <span className={`badge ${dif === 0 ? 'bg-emerald-50 text-emerald-700' : dif > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
-                            {dif > 0 ? '+' : ''}{money(dif)}
-                          </span>
-                        </td>
-                      )}
-                      <td className="px-5 py-3 text-right">
-                        <button title="Ver comprobante" onClick={() => abrirComprobante(s)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
-                          <FileText size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
