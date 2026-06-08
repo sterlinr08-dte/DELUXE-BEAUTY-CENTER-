@@ -587,11 +587,8 @@ export default function Facturacion() {
             <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
             <div className="flex flex-wrap gap-2">
               <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-              <button className="btn-ghost" onClick={() => guardar(false)} disabled={saving}>
-                {saving ? 'Guardando…' : 'Guardar'}
-              </button>
-              <button className="btn-primary" onClick={() => guardar(true)} disabled={saving}>
-                <Printer size={16} /> {saving ? 'Guardando…' : 'Guardar e imprimir'}
+              <button className="btn-primary" onClick={() => guardar(false)} disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar factura'}
               </button>
             </div>
           </div>
