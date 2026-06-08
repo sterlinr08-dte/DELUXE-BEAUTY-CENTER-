@@ -41,6 +41,7 @@ export const ACCIONES: Accion[] = [
   { key: 'caja.abrir', label: 'Abrir y cerrar caja', modulo: 'caja' },
   { key: 'caja.movimiento', label: 'Registrar entradas / salidas de efectivo', modulo: 'caja' },
   { key: 'caja.cerrar_descuadre', label: 'Cerrar caja aunque haya descuadre (diferencia)', modulo: 'caja' },
+  { key: 'caja.ver_descuadre', label: 'Ver el descuadre de la caja (sobrante / faltante)', modulo: 'caja' },
   { key: 'creditos.cobrar', label: 'Registrar abonos de ventas a crédito', modulo: 'caja' },
   { key: 'clientes.eliminar', label: 'Eliminar clientes', modulo: 'clientes' },
   { key: 'servicios.eliminar', label: 'Eliminar servicios', modulo: 'servicios' },

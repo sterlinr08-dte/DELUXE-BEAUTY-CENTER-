@@ -38,6 +38,7 @@ export default function Caja() {
   const puedeMover = puedeAccion('caja.movimiento')
   const puedeCobrar = puedeAccion('facturas.cobrar')
   const puedeCerrarDescuadre = puedeAccion('caja.cerrar_descuadre')
+  const puedeVerDescuadre = puedeAccion('caja.ver_descuadre')
 
   const [sesion, setSesion] = useState<CajaSesion | null>(null)
   const [movs, setMovs] = useState<CajaMovimiento[]>([])
@@ -272,14 +273,16 @@ export default function Caja() {
     setCerrarOpen(true)
   }
 
-  const bloqueadoPorDescuadre = diferencia !== 0 && !puedeCerrarDescuadre
+  // La cajera puede cerrar si SOBRA (o cuadra); si FALTA, solo gerente/administrador.
+  const bloqueadoPorDescuadre = diferencia < 0 && !puedeCerrarDescuadre
 
   async function cerrarCaja() {
     if (!sesion) return
     if (bloqueadoPorDescuadre) {
       return alert(
-        `Hay un descuadre de ${money(Math.abs(diferencia))}. No tienes permiso para cerrar la caja con diferencia. ` +
-          'Cuenta de nuevo el efectivo o solicita a un supervisor/administrador que la cierre.'
+        puedeVerDescuadre
+          ? `Hay un faltante de ${money(Math.abs(diferencia))}. No tienes permiso para cerrar la caja con faltante. Solicita a un gerente o administrador que la cierre.`
+          : 'No se puede cerrar la caja: cuenta de nuevo el efectivo o solicita a un gerente o administrador que la cierre.',
       )
     }
     setSaving(true)
@@ -363,10 +366,12 @@ export default function Caja() {
               <p className="text-sm text-slate-500">Salidas</p>
               <p className="mt-1 text-2xl font-bold text-rose-600">{money(salidas)}</p>
             </div>
-            <div className="card bg-gradient-to-br from-brand-600 to-brand-500 !ring-brand-400/30">
-              <p className="text-sm text-white/80">Efectivo esperado</p>
-              <p className="mt-1 text-2xl font-bold text-white">{money(esperado)}</p>
-            </div>
+            {puedeVerDescuadre && (
+              <div className="card bg-gradient-to-br from-brand-600 to-brand-500 !ring-brand-400/30">
+                <p className="text-sm text-white/80">Efectivo esperado</p>
+                <p className="mt-1 text-2xl font-bold text-white">{money(esperado)}</p>
+              </div>
+            )}
           </div>
 
           <p className="text-xs text-slate-400">
@@ -487,9 +492,9 @@ export default function Caja() {
                   <th className="px-5 py-3">#</th>
                   <th className="px-5 py-3">Cerrada</th>
                   <th className="px-5 py-3 text-right">Inicial</th>
-                  <th className="px-5 py-3 text-right">Esperado</th>
+                  {puedeVerDescuadre && <th className="px-5 py-3 text-right">Esperado</th>}
                   <th className="px-5 py-3 text-right">Contado</th>
-                  <th className="px-5 py-3 text-right">Diferencia</th>
+                  {puedeVerDescuadre && <th className="px-5 py-3 text-right">Diferencia</th>}
                   <th className="px-5 py-3"></th>
                 </tr>
               </thead>
@@ -502,13 +507,15 @@ export default function Caja() {
                       <td className="px-5 py-3 font-mono font-semibold text-brand-700">#{s.numero}</td>
                       <td className="px-5 py-3 text-slate-600">{fechaHora(s.cerrada_at)}</td>
                       <td className="px-5 py-3 text-right text-slate-600">{money(s.monto_inicial)}</td>
-                      <td className="px-5 py-3 text-right text-slate-600">{esp != null ? money(esp) : '—'}</td>
+                      {puedeVerDescuadre && <td className="px-5 py-3 text-right text-slate-600">{esp != null ? money(esp) : '—'}</td>}
                       <td className="px-5 py-3 text-right font-medium text-slate-800">{money(s.monto_contado)}</td>
-                      <td className="px-5 py-3 text-right">
-                        <span className={`badge ${dif === 0 ? 'bg-emerald-50 text-emerald-700' : dif > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
-                          {dif > 0 ? '+' : ''}{money(dif)}
-                        </span>
-                      </td>
+                      {puedeVerDescuadre && (
+                        <td className="px-5 py-3 text-right">
+                          <span className={`badge ${dif === 0 ? 'bg-emerald-50 text-emerald-700' : dif > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
+                            {dif > 0 ? '+' : ''}{money(dif)}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-5 py-3 text-right">
                         <button title="Ver comprobante" onClick={() => abrirComprobante(s)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
                           <FileText size={16} />
@@ -750,7 +757,9 @@ export default function Caja() {
             <div className="flex justify-between py-1"><span className="text-slate-500">Fondo inicial</span><span className="font-medium">{money(sesion?.monto_inicial)}</span></div>
             <div className="flex justify-between py-1"><span className="text-slate-500">Entradas</span><span className="font-medium text-emerald-600">+{money(entradas)}</span></div>
             <div className="flex justify-between py-1"><span className="text-slate-500">Salidas</span><span className="font-medium text-rose-600">−{money(salidas)}</span></div>
-            <div className="mt-1 flex justify-between border-t border-slate-200 pt-2"><span className="font-semibold text-slate-700">Efectivo esperado</span><span className="font-bold text-slate-900">{money(esperado)}</span></div>
+            {puedeVerDescuadre && (
+              <div className="mt-1 flex justify-between border-t border-slate-200 pt-2"><span className="font-semibold text-slate-700">Efectivo esperado</span><span className="font-bold text-slate-900">{money(esperado)}</span></div>
+            )}
             {cobrosOtros > 0 && (
               <p className="mt-2 text-xs text-slate-400">Nota: {money(cobrosOtros)} cobrados por tarjeta/transferencia no entran al arqueo de efectivo.</p>
             )}
@@ -778,13 +787,19 @@ export default function Caja() {
             <span className="font-semibold text-slate-700">Total contado</span>
             <span className="font-bold text-slate-900">{money(contado)}</span>
           </div>
-          <div className={`rounded-xl p-3 text-center text-sm font-semibold ${diferencia === 0 ? 'bg-emerald-50 text-emerald-700' : diferencia > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
-            {diferencia === 0 ? 'Caja cuadrada ✓' : diferencia > 0 ? `Sobrante: ${money(diferencia)}` : `Faltante: ${money(Math.abs(diferencia))}`}
-          </div>
-          {bloqueadoPorDescuadre && (
+          {puedeVerDescuadre ? (
+            <div className={`rounded-xl p-3 text-center text-sm font-semibold ${diferencia === 0 ? 'bg-emerald-50 text-emerald-700' : diferencia > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'}`}>
+              {diferencia === 0 ? 'Caja cuadrada ✓' : diferencia > 0 ? `Sobrante: ${money(diferencia)}` : `Faltante: ${money(Math.abs(diferencia))}`}
+            </div>
+          ) : (
+            <div className={`rounded-xl p-3 text-center text-sm font-semibold ${bloqueadoPorDescuadre ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+              {bloqueadoPorDescuadre ? 'No se puede cerrar. Avisa a un gerente o administrador.' : 'Listo para cerrar ✓'}
+            </div>
+          )}
+          {bloqueadoPorDescuadre && puedeVerDescuadre && (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-center text-xs font-medium text-rose-700">
-              ⚠️ Hay un descuadre. No tienes permiso para cerrar la caja con diferencia.
-              Vuelve a contar el efectivo o pide a un supervisor/administrador que la cierre.
+              ⚠️ Hay un faltante. No tienes permiso para cerrar la caja con faltante.
+              Pide a un gerente o administrador que la cierre.
             </div>
           )}
           <div>
@@ -843,12 +858,14 @@ export default function Caja() {
                 <div className="flex justify-between text-slate-600"><span>Fondo inicial</span><span>{money(verCierre.monto_inicial)}</span></div>
                 <div className="flex justify-between text-slate-600"><span>Entradas de efectivo</span><span>+{money(ent)}</span></div>
                 <div className="flex justify-between text-slate-600"><span>Salidas de efectivo</span><span>−{money(sal)}</span></div>
-                <div className="flex justify-between font-medium text-slate-700"><span>Efectivo esperado</span><span>{money(esp)}</span></div>
+                {puedeVerDescuadre && <div className="flex justify-between font-medium text-slate-700"><span>Efectivo esperado</span><span>{money(esp)}</span></div>}
                 <div className="flex justify-between font-medium text-slate-700"><span>Efectivo contado</span><span>{money(verCierre.monto_contado)}</span></div>
-                <div className={`flex justify-between border-t pt-1 text-base font-bold ${dif === 0 ? 'text-emerald-700' : dif > 0 ? 'text-sky-700' : 'text-rose-700'}`}>
-                  <span>{dif === 0 ? 'Cuadrada' : dif > 0 ? 'Sobrante' : 'Faltante'}</span>
-                  <span>{dif === 0 ? money(0) : money(Math.abs(dif))}</span>
-                </div>
+                {puedeVerDescuadre && (
+                  <div className={`flex justify-between border-t pt-1 text-base font-bold ${dif === 0 ? 'text-emerald-700' : dif > 0 ? 'text-sky-700' : 'text-rose-700'}`}>
+                    <span>{dif === 0 ? 'Cuadrada' : dif > 0 ? 'Sobrante' : 'Faltante'}</span>
+                    <span>{dif === 0 ? money(0) : money(Math.abs(dif))}</span>
+                  </div>
+                )}
               </div>
 
               {verCierre.notas && <p className="text-xs text-slate-500">{verCierre.notas}</p>}
