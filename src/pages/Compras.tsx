@@ -5,6 +5,7 @@ import { Compra, Articulo, Proveedor } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import PageHeader from '../components/PageHeader'
+import Modal from '../components/Modal'
 
 const vacio = {
   fecha: hoyISO(),
@@ -30,6 +31,9 @@ export default function Compras() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
+  // catálogo de artículos (lupa)
+  const [catalogoOpen, setCatalogoOpen] = useState(false)
+  const [buscarCat, setBuscarCat] = useState('')
 
   async function cargar() {
     setLoading(true)
@@ -268,11 +272,24 @@ export default function Compras() {
 
           {/* Compra de un artículo de inventario: artículo + cantidad + costo */}
           <div className="rounded-xl border border-pink-100 bg-pink-50/40 p-3">
-            <label className="label">Artículo de inventario {editId ? '' : '(suma al stock)'}</label>
-            <select className="input" value={form.articulo_id} onChange={(e) => elegirArticulo(e.target.value)} disabled={!!editId}>
-              <option value="">— Compra sin inventario —</option>
-              {articulos.map((a) => <option key={a.id} value={a.id}>#{codigoArticulo(a.codigo)} {a.nombre} (stock {a.stock})</option>)}
-            </select>
+            <label className="label">Artículo de inventario {editId ? '' : '(suma a la existencia)'}</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <button
+                  type="button"
+                  onClick={() => { setBuscarCat(''); setCatalogoOpen(true) }}
+                  title="Ver todos los artículos"
+                  disabled={!!editId}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40"
+                >
+                  <Search size={16} />
+                </button>
+                <select className="input pl-9" value={form.articulo_id} onChange={(e) => elegirArticulo(e.target.value)} disabled={!!editId}>
+                  <option value="">— Compra sin inventario —</option>
+                  {articulos.map((a) => <option key={a.id} value={a.id}>#{codigoArticulo(a.codigo)} {a.nombre} (existencia {a.stock})</option>)}
+                </select>
+              </div>
+            </div>
             {form.articulo_id && (
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <div>
@@ -331,6 +348,64 @@ export default function Compras() {
           </div>
         </div>
       )}
+
+      {/* VENTANA DEL CATÁLOGO DE ARTÍCULOS (lupa) */}
+      <Modal open={catalogoOpen} title="Artículos del inventario" onClose={() => setCatalogoOpen(false)}>
+        <div className="space-y-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              className="input pl-9"
+              placeholder="Filtrar por nombre, categoría o código…"
+              value={buscarCat}
+              onChange={(e) => setBuscarCat(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto rounded-xl border border-slate-100">
+            <table className="min-w-full divide-y divide-slate-100 text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">Código</th>
+                  <th className="px-3 py-2">Nombre</th>
+                  <th className="px-3 py-2">Existencia</th>
+                  <th className="px-3 py-2 text-right">Costo</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {articulos.filter((a) => {
+                  const f = buscarCat.trim().toLowerCase()
+                  return !f || a.nombre.toLowerCase().includes(f) || a.categoria.toLowerCase().includes(f) || codigoArticulo(a.codigo).includes(f)
+                }).map((a) => (
+                  <tr key={a.id} className="hover:bg-pink-50/40">
+                    <td className="px-3 py-2 font-mono text-slate-500">#{codigoArticulo(a.codigo)}</td>
+                    <td className="px-3 py-2 font-medium text-slate-800">{a.nombre}</td>
+                    <td className="px-3 py-2">
+                      <span className={Number(a.stock) <= 0 ? 'font-semibold text-rose-500' : 'text-slate-600'}>
+                        {Number(a.stock) <= 0 ? 'Sin existencia' : a.stock}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-slate-600">{money(a.costo)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => { elegirArticulo(a.id); setCatalogoOpen(false) }}
+                        className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+                      >
+                        Elegir
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {articulos.length === 0 && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">No hay artículos en el inventario.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
