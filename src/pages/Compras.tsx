@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, ShoppingCart, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, ShoppingCart, Search, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { Compra, Articulo } from '../types'
+import { Compra, Articulo, Proveedor } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import PageHeader from '../components/PageHeader'
-import Modal from '../components/Modal'
 
 const vacio = {
   fecha: hoyISO(),
@@ -24,6 +23,7 @@ const vacio = {
 export default function Compras() {
   const [items, setItems] = useState<Compra[]>([])
   const [articulos, setArticulos] = useState<Articulo[]>([])
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -33,12 +33,14 @@ export default function Compras() {
 
   async function cargar() {
     setLoading(true)
-    const [{ data }, { data: arts }] = await Promise.all([
+    const [{ data }, { data: arts }, { data: provs }] = await Promise.all([
       supabase.from('compras').select('*').order('fecha', { ascending: false }),
       supabase.from('articulos').select('*').eq('activo', true).order('nombre'),
+      supabase.from('proveedores').select('*').eq('activo', true).order('nombre'),
     ])
     setItems(data ?? [])
     setArticulos(arts ?? [])
+    setProveedores(provs ?? [])
     setLoading(false)
   }
 
@@ -152,6 +154,7 @@ export default function Compras() {
 
   return (
     <div>
+      {!open && (<>
       <PageHeader
         title="Compras"
         subtitle={`Compras de este mes: ${money(totalMes)}`}
@@ -221,19 +224,21 @@ export default function Compras() {
           </table>
         </div>
       )}
+      </>)}
 
-      <Modal
-        open={open}
-        title={editId ? 'Editar compra' : 'Nueva compra'}
-        onClose={() => setOpen(false)}
-        footer={
-          <>
-            <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="btn-primary" onClick={guardar} disabled={saving}>{saving ? 'Guardando…' : `Guardar (${money(total)})`}</button>
-          </>
-        }
-      >
-        <div className="space-y-4">
+      {/* PANTALLA DE COMPRA (a página completa, ya no es ventana emergente) */}
+      {open && (
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-slate-800">{editId ? 'Editar compra' : 'Nueva compra'}</h2>
+              <p className="text-sm text-slate-400">Registra la compra y, si aplica, súmala al inventario.</p>
+            </div>
+            <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>
+              <X size={16} /> Cerrar
+            </button>
+          </div>
+          <div className="card space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Fecha</label>
@@ -248,7 +253,17 @@ export default function Compras() {
           </div>
           <div>
             <label className="label">Proveedor</label>
-            <input className="input" value={form.proveedor} onChange={(e) => setForm({ ...form, proveedor: e.target.value })} />
+            <select className="input" value={form.proveedor} onChange={(e) => setForm({ ...form, proveedor: e.target.value })}>
+              <option value="">— Sin proveedor —</option>
+              {proveedores.map((p) => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+              {/* Si la compra guardada tiene un proveedor que ya no está en la lista, lo mostramos igual */}
+              {form.proveedor && !proveedores.some((p) => p.nombre === form.proveedor) && (
+                <option value={form.proveedor}>{form.proveedor}</option>
+              )}
+            </select>
+            {proveedores.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">No hay proveedores. Créalos en Configuración → Proveedores.</p>
+            )}
           </div>
 
           {/* Compra de un artículo de inventario: artículo + cantidad + costo */}
@@ -305,8 +320,17 @@ export default function Compras() {
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
           </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
+            <div className="flex gap-2">
+              <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={guardar} disabled={saving}>{saving ? 'Guardando…' : 'Guardar compra'}</button>
+            </div>
+          </div>
         </div>
-      </Modal>
+      )}
     </div>
   )
 }

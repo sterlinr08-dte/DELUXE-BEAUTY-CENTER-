@@ -134,6 +134,17 @@ export interface Compra {
   created_at: string
 }
 
+export interface Proveedor {
+  id: string
+  nombre: string
+  telefono: string | null
+  contacto: string | null
+  notas: string | null
+  activo: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface PagoEmpleado {
   id: string
   empleado_id: string | null

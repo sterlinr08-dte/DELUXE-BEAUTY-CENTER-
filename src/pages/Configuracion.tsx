@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
-import { Empleado } from '../types'
+import { Empleado, Proveedor } from '../types'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
@@ -22,11 +22,18 @@ interface UsuarioRow {
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
   const { recargarNegocio } = useNegocio()
-  const [tab, setTab] = useState<'usuarios' | 'roles' | 'negocio' | 'categorias'>('usuarios')
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'categorias'>('usuarios')
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [loading, setLoading] = useState(true)
+
+  // proveedores
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
+  const [openP, setOpenP] = useState(false)
+  const [editP, setEditP] = useState<Proveedor | null>(null)
+  const [formP, setFormP] = useState({ nombre: '', telefono: '', contacto: '', notas: '', activo: true })
+  const [savingP, setSavingP] = useState(false)
 
   // datos del negocio
   const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '' })
@@ -66,7 +73,45 @@ export default function Configuracion() {
     })
     const { data: cats } = await supabase.from('categorias').select('id,nombre,tipo').order('tipo').order('nombre')
     setCategorias((cats as any) ?? [])
+    const { data: prov } = await supabase.from('proveedores').select('*').order('nombre')
+    setProveedores((prov as any) ?? [])
     setLoading(false)
+  }
+
+  // ---------- PROVEEDORES ----------
+  function nuevoProveedor() {
+    setEditP(null)
+    setFormP({ nombre: '', telefono: '', contacto: '', notas: '', activo: true })
+    setOpenP(true)
+  }
+  function editarProveedor(p: Proveedor) {
+    setEditP(p)
+    setFormP({ nombre: p.nombre, telefono: p.telefono ?? '', contacto: p.contacto ?? '', notas: p.notas ?? '', activo: p.activo })
+    setOpenP(true)
+  }
+  async function guardarProveedor() {
+    if (!formP.nombre.trim()) return alert('El nombre del proveedor es obligatorio')
+    setSavingP(true)
+    const payload = {
+      nombre: formP.nombre.trim(),
+      telefono: formP.telefono || null,
+      contacto: formP.contacto || null,
+      notas: formP.notas || null,
+      activo: formP.activo,
+    }
+    const { error } = editP
+      ? await supabase.from('proveedores').update(payload).eq('id', editP.id)
+      : await supabase.from('proveedores').insert(payload)
+    setSavingP(false)
+    if (error) return alert('Error: ' + error.message)
+    setOpenP(false)
+    cargar()
+  }
+  async function eliminarProveedor(p: Proveedor) {
+    if (!confirm(`¿Eliminar al proveedor "${p.nombre}"? Las compras ya registradas no cambian.`)) return
+    const { error } = await supabase.from('proveedores').delete().eq('id', p.id)
+    if (error) return alert('Error: ' + error.message)
+    cargar()
   }
 
   async function agregarCategoria() {
@@ -195,6 +240,9 @@ export default function Configuracion() {
         <button onClick={() => setTab('roles')} className={tab === 'roles' ? 'btn-primary' : 'btn-ghost'}>
           <ShieldCheck size={16} /> Roles y permisos
         </button>
+        <button onClick={() => setTab('proveedores')} className={tab === 'proveedores' ? 'btn-primary' : 'btn-ghost'}>
+          <Truck size={16} /> Proveedores
+        </button>
         <button onClick={() => setTab('negocio')} className={tab === 'negocio' ? 'btn-primary' : 'btn-ghost'}>
           <Store size={16} /> Negocio
         </button>
@@ -278,6 +326,54 @@ export default function Configuracion() {
               </div>
             ))}
           </div>
+        </div>
+      ) : tab === 'proveedores' ? (
+        <div>
+          <div className="mb-4 flex justify-end">
+            <button className="btn-primary" onClick={nuevoProveedor}>
+              <Plus size={16} /> Nuevo proveedor
+            </button>
+          </div>
+          {proveedores.length === 0 ? (
+            <div className="card flex flex-col items-center gap-3 py-12 text-center">
+              <Truck className="text-brand-300" size={40} />
+              <p className="text-slate-500">Aún no hay proveedores. Crea el primero para elegirlo en Compras.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto panel-3d">
+              <table className="min-w-full divide-y divide-slate-100 text-sm">
+                <thead className="thead-3d">
+                  <tr>
+                    <th className="px-5 py-3">Proveedor</th>
+                    <th className="px-5 py-3">Teléfono</th>
+                    <th className="px-5 py-3">Contacto</th>
+                    <th className="px-5 py-3">Estado</th>
+                    <th className="px-5 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {proveedores.map((p) => (
+                    <tr key={p.id} className={p.activo ? '' : 'opacity-60'}>
+                      <td className="px-5 py-3 font-medium text-slate-800">{p.nombre}</td>
+                      <td className="px-5 py-3 text-slate-600">{p.telefono || '—'}</td>
+                      <td className="px-5 py-3 text-slate-600">{p.contacto || '—'}</td>
+                      <td className="px-5 py-3">
+                        <span className={`badge ${p.activo ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                          {p.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button onClick={() => editarProveedor(p)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                          <button onClick={() => eliminarProveedor(p)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       ) : tab === 'negocio' ? (
         <div className="max-w-2xl">
@@ -441,6 +537,46 @@ export default function Configuracion() {
               ))}
             </div>
           </div>
+        </div>
+      </Modal>
+
+      {/* MODAL PROVEEDOR */}
+      <Modal
+        open={openP}
+        title={editP ? 'Editar proveedor' : 'Nuevo proveedor'}
+        onClose={() => setOpenP(false)}
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setOpenP(false)}>Cancelar</button>
+            <button className="btn-primary" onClick={guardarProveedor} disabled={savingP}>{savingP ? 'Guardando…' : 'Guardar'}</button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label">Nombre del proveedor</label>
+            <input className="input" value={formP.nombre} onChange={(e) => setFormP({ ...formP, nombre: e.target.value })} placeholder="Ej: Distribuidora Bella" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Teléfono</label>
+              <input className="input" value={formP.telefono} onChange={(e) => setFormP({ ...formP, telefono: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Contacto</label>
+              <input className="input" value={formP.contacto} onChange={(e) => setFormP({ ...formP, contacto: e.target.value })} placeholder="Persona / vendedor" />
+            </div>
+          </div>
+          <div>
+            <label className="label">Notas</label>
+            <textarea className="input" rows={2} value={formP.notas} onChange={(e) => setFormP({ ...formP, notas: e.target.value })} />
+          </div>
+          {editP && (
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" checked={formP.activo} onChange={(e) => setFormP({ ...formP, activo: e.target.checked })} />
+              Proveedor activo
+            </label>
+          )}
         </div>
       </Modal>
     </div>
