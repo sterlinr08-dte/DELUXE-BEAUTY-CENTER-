@@ -21,7 +21,7 @@ const tabs: { key: Tab; label: string; icon: typeof Boxes; rango: boolean }[] = 
 
 export default function Reportes() {
   const { negocio } = useNegocio()
-  const { puedeAccion } = useAuth()
+  const { puedeAccion, perfil } = useAuth()
   const puedeAjustar = puedeAccion('caja.ajustar_cuadre')
   const [tab, setTab] = useState<Tab>('inventario')
   // Ajuste de un cuadre cerrado (administración/gerente)
@@ -77,7 +77,9 @@ export default function Reportes() {
     setSavingAj(true)
     const esperado = Number(ajuste.monto_contado ?? 0) - Number(ajuste.diferencia ?? 0)
     const nuevaDif = ajContado - esperado
-    const nota = `${ajuste.notas ? ajuste.notas + ' · ' : ''}Ajuste: ${ajNota || 'corrección de cuadre'}`
+    const quien = perfil?.nombre || perfil?.username || 'administración'
+    const fechaTxt = new Date().toLocaleDateString('es-DO')
+    const nota = `${ajuste.notas ? ajuste.notas + ' · ' : ''}Ajuste ${fechaTxt} por ${quien}: ${ajNota || 'corrección de cuadre'}`
     const { error } = await supabase.from('caja_sesiones').update({ monto_contado: ajContado, diferencia: nuevaDif, notas: nota }).eq('id', ajuste.id)
     setSavingAj(false)
     if (error) return alert('Error al ajustar: ' + error.message)
@@ -184,8 +186,8 @@ export default function Reportes() {
       const dif = Number(s.diferencia ?? 0)
       const estado = dif === 0 ? 'Cuadrada' : dif > 0 ? 'Sobrante' : 'Faltante'
       return {
-        ver: [`${s.numero}`, fechaHora(s.cerrada_at), s.cerrada_por || '—', money(s.monto_inicial), esperado != null ? money(esperado) : '—', money(s.monto_contado), `${estado} ${dif !== 0 ? money(Math.abs(dif)) : ''}`],
-        csv: [s.numero, fechaHora(s.cerrada_at), s.cerrada_por || '', Number(s.monto_inicial), esperado ?? '', Number(s.monto_contado ?? 0), dif],
+        ver: [`${s.numero}`, fechaHora(s.cerrada_at), s.cerrada_por || '—', money(s.monto_inicial), esperado != null ? money(esperado) : '—', money(s.monto_contado), `${estado} ${dif !== 0 ? money(Math.abs(dif)) : ''}`, s.notas || ''],
+        csv: [s.numero, fechaHora(s.cerrada_at), s.cerrada_por || '', Number(s.monto_inicial), esperado ?? '', Number(s.monto_contado ?? 0), dif, s.notas || ''],
       }
     })
     const totalDif = cuadres.reduce((s, x) => s + Number(x.diferencia ?? 0), 0)
@@ -196,6 +198,7 @@ export default function Reportes() {
         { label: 'No.' }, { label: 'Cerrada' }, { label: 'Cerró' },
         { label: 'Inicial', align: 'right' as const }, { label: 'Esperado', align: 'right' as const },
         { label: 'Contado', align: 'right' as const }, { label: 'Resultado', align: 'right' as const },
+        { label: 'Notas / Ajustes' },
       ],
       filas,
       pie: undefined,
