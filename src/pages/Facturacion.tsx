@@ -195,7 +195,7 @@ export default function Facturacion() {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
   }
 
-  async function guardar() {
+  async function guardar(imprimir = false) {
     const items = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0)
     if (items.length === 0) return alert('Agrega al menos un ítem con descripción')
     setSaving(true)
@@ -257,7 +257,12 @@ export default function Facturacion() {
     }
     setSaving(false)
     setOpen(false)
-    cargar()
+    await cargar()
+    // Guardar e imprimir: abre el recibo de la factura recién guardada y lo manda a imprimir
+    if (imprimir && facturaId) {
+      await verDetalle({ id: facturaId } as Factura)
+      setTimeout(() => window.print(), 400)
+    }
   }
 
   // Devuelve al stock los artículos de una factura
@@ -570,10 +575,13 @@ export default function Facturacion() {
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-              <button className="btn-primary" onClick={guardar} disabled={saving}>
-                {saving ? 'Guardando…' : 'Guardar factura'}
+              <button className="btn-ghost" onClick={() => guardar(false)} disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar'}
+              </button>
+              <button className="btn-primary" onClick={() => guardar(true)} disabled={saving}>
+                <Printer size={16} /> {saving ? 'Guardando…' : 'Guardar e imprimir'}
               </button>
             </div>
           </div>
