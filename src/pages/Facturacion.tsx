@@ -598,16 +598,18 @@ export default function Facturacion() {
       {/* VENTANA DE LA LUPA: catálogo de servicios/artículos (o historial, según se abra) */}
       <Modal open={catalogoOpen} title={catTab === 'historial' ? 'Historial de facturas' : 'Buscar servicio o artículo'} onClose={() => setCatalogoOpen(false)}>
         <div className="space-y-3">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              className="input pl-9"
-              placeholder={catTab === 'catalogo' ? 'Filtrar por nombre, categoría o código…' : 'Filtrar por código, cliente, fecha o estado…'}
-              value={buscarCat}
-              onChange={(e) => setBuscarCat(e.target.value)}
-              autoFocus
-            />
-          </div>
+          {catTab === 'catalogo' && (
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder="Filtrar por nombre, categoría o código…"
+                value={buscarCat}
+                onChange={(e) => setBuscarCat(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
 
           {catTab === 'catalogo' ? (
             <>
@@ -643,37 +645,23 @@ export default function Facturacion() {
               <p className="text-xs text-slate-400">Toca un servicio o artículo y se agrega a la factura.</p>
             </>
           ) : (
-            <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
-              {(() => {
-                const t = buscarCat.trim().toLowerCase()
-                const lista = facturas.filter((f) =>
-                  !t || codigoFactura(f).toLowerCase().includes(t) || (f.cliente_nombre ?? '').toLowerCase().includes(t) || f.fecha.includes(t) || f.estado.toLowerCase().includes(t),
-                )
-                if (lista.length === 0) {
-                  return <p className="px-3 py-6 text-center text-slate-400">Sin facturas que coincidan</p>
-                }
-                return lista.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => { setCatalogoOpen(false); verDetalle(f) }}
-                    className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-pink-50"
-                  >
-                    <span className="flex min-w-0 flex-col">
-                      <span className="flex items-center gap-2">
-                        <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>
-                        <span className="truncate text-slate-600">{f.cliente_nombre || 'Cliente'}</span>
-                      </span>
-                      <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
-                        {fechaCorta(f.fecha)}
-                        <span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span>
-                      </span>
-                    </span>
-                    <span className="shrink-0 font-semibold text-slate-800">{money(f.total)}</span>
-                  </button>
-                ))
-              })()}
-            </div>
+            <DataTable
+              rows={facturas}
+              rowKey={(f) => f.id}
+              searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.fecha} ${f.estado}`}
+              searchPlaceholder="Filtrar por código, cliente, fecha o estado…"
+              emptyText="Sin facturas"
+              pageSize={8}
+              initialSort={{ index: 0, dir: 'desc' }}
+              onRowClick={(f) => { setCatalogoOpen(false); verDetalle(f) }}
+              columns={[
+                { header: '# Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+                { header: 'Cliente', cell: (f) => <span className="text-slate-600">{f.cliente_nombre || 'Cliente'}</span>, sortValue: (f) => f.cliente_nombre ?? '' },
+                { header: 'Fecha', cell: (f) => <span className="text-slate-500">{fechaCorta(f.fecha)}</span>, sortValue: (f) => f.fecha },
+                { header: 'Total', align: 'right', cell: (f) => money(f.total), sortValue: (f) => f.total },
+                { header: 'Estado', cell: (f) => <span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span>, sortValue: (f) => f.estado },
+              ]}
+            />
           )}
 
           <div className="flex justify-end">

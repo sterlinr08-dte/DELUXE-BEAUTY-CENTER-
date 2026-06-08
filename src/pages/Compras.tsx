@@ -395,16 +395,18 @@ export default function Compras() {
             </button>
           </div>
 
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              className="input pl-9"
-              placeholder={catTab === 'articulos' ? 'Filtrar por nombre, categoría o código…' : 'Filtrar por #, descripción, proveedor o fecha…'}
-              value={buscarCat}
-              onChange={(e) => setBuscarCat(e.target.value)}
-              autoFocus
-            />
-          </div>
+          {catTab === 'articulos' && (
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder="Filtrar por nombre, categoría o código…"
+                value={buscarCat}
+                onChange={(e) => setBuscarCat(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
 
           {catTab === 'articulos' ? (
             <>
@@ -439,29 +441,22 @@ export default function Compras() {
               <p className="text-xs text-slate-400">Toca un artículo para elegirlo en la compra.</p>
             </>
           ) : (
-            <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
-              {(() => {
-                const f = buscarCat.trim().toLowerCase()
-                const lista = items.filter((c) =>
-                  !f || String(c.numero).includes(f) || c.descripcion.toLowerCase().includes(f) || (c.proveedor ?? '').toLowerCase().includes(f) || c.categoria.toLowerCase().includes(f) || c.fecha.includes(f),
-                )
-                if (lista.length === 0) {
-                  return <p className="px-3 py-6 text-center text-slate-400">Sin compras que coincidan</p>
-                }
-                return lista.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between gap-3 px-3 py-3">
-                    <span className="flex min-w-0 flex-col">
-                      <span className="flex items-center gap-2">
-                        <span className="font-mono font-semibold text-brand-700">#{c.numero}</span>
-                        <span className="truncate font-medium text-slate-800">{c.descripcion}</span>
-                      </span>
-                      <span className="mt-0.5 text-xs text-slate-400">{fechaCorta(c.fecha)} · {c.proveedor || 'Sin proveedor'} · {c.categoria}</span>
-                    </span>
-                    <span className="shrink-0 font-semibold text-slate-800">{money(c.total)}</span>
-                  </div>
-                ))
-              })()}
-            </div>
+            <DataTable
+              rows={items}
+              rowKey={(c) => c.id}
+              searchText={(c) => `${c.numero} ${c.descripcion} ${c.proveedor ?? ''} ${c.categoria} ${c.fecha}`}
+              searchPlaceholder="Filtrar por #, descripción, proveedor o fecha…"
+              emptyText="Sin compras"
+              pageSize={8}
+              initialSort={{ index: 0, dir: 'desc' }}
+              columns={[
+                { header: '#', cell: (c) => <span className="font-mono font-semibold text-brand-700">#{c.numero}</span>, sortValue: (c) => c.numero },
+                { header: 'Fecha', cell: (c) => <span className="text-slate-500">{fechaCorta(c.fecha)}</span>, sortValue: (c) => c.fecha },
+                { header: 'Descripción', cell: (c) => <span className="font-medium text-slate-800">{c.descripcion}</span>, sortValue: (c) => c.descripcion },
+                { header: 'Proveedor', cell: (c) => <span className="text-slate-600">{c.proveedor || '—'}</span>, sortValue: (c) => c.proveedor ?? '' },
+                { header: 'Total', align: 'right', cell: (c) => <span className="font-semibold text-slate-800">{money(c.total)}</span>, sortValue: (c) => c.total },
+              ]}
+            />
           )}
         </div>
       </Modal>
