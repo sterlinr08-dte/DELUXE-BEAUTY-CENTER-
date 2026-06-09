@@ -11,7 +11,10 @@ import Modal from '../components/Modal'
 const SELECT = `*,
   cliente:clientes(id,nombre,telefono),
   empleado:empleados(id,nombre,color),
-  servicio:servicios(id,nombre,precio,duracion_min)`
+  servicio:servicios(id,nombre,precio,duracion_min),
+  cita_servicios(precio, servicio:servicios(nombre))`
+
+interface ServLinea { servicio_id: string; precio: number }
 
 const estados: { value: EstadoCita; label: string; clase: string }[] = [
   { value: 'PENDIENTE', label: 'Pendiente', clase: 'bg-amber-50 text-amber-700' },
@@ -35,11 +38,9 @@ function sumarMinutos(h: string, min: number): string {
 const vacio = {
   cliente_id: '',
   empleado_id: '',
-  servicio_id: '',
   fecha: hoyISO(),
   hora_inicio: '09:00',
   estado: 'PENDIENTE' as EstadoCita,
-  precio: 0,
   notas: '',
 }
 
@@ -55,7 +56,25 @@ export default function Citas() {
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
+  const [servLineas, setServLineas] = useState<ServLinea[]>([])
   const [saving, setSaving] = useState(false)
+
+  const totalPrecio = servLineas.reduce((s, l) => s + Number(l.precio || 0), 0)
+  const totalDuracion = servLineas.reduce((s, l) => s + (servicios.find((x) => x.id === l.servicio_id)?.duracion_min ?? 0), 0)
+
+  function agregarServicio() {
+    setServLineas((prev) => [...prev, { servicio_id: '', precio: 0 }])
+  }
+  function setServLinea(i: number, patch: Partial<ServLinea>) {
+    setServLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
+  }
+  function elegirServicioLinea(i: number, id: string) {
+    const s = servicios.find((x) => x.id === id)
+    setServLinea(i, { servicio_id: id, precio: s ? Number(s.precio) : 0 })
+  }
+  function quitarServicio(i: number) {
+    setServLineas((prev) => prev.filter((_, idx) => idx !== i))
+  }
 
   async function cargar() {
     setLoading(true)
@@ -92,50 +111,60 @@ export default function Citas() {
   function abrirNuevo() {
     setEditId(null)
     setForm({ ...vacio, fecha })
+    setServLineas([{ servicio_id: '', precio: 0 }])
     setOpen(true)
   }
 
-  function abrirEditar(c: CitaConRelaciones) {
+  async function abrirEditar(c: CitaConRelaciones) {
     setEditId(c.id)
     setForm({
       cliente_id: c.cliente_id ?? '',
       empleado_id: c.empleado_id ?? '',
-      servicio_id: c.servicio_id ?? '',
       fecha: c.fecha,
       hora_inicio: c.hora_inicio.slice(0, 5),
       estado: c.estado,
-      precio: Number(c.precio),
       notas: c.notas ?? '',
     })
+    const { data } = await supabase.from('cita_servicios').select('servicio_id, precio').eq('cita_id', c.id).order('created_at')
+    if (data && data.length) {
+      setServLineas((data as any[]).map((s) => ({ servicio_id: s.servicio_id ?? '', precio: Number(s.precio) })))
+    } else {
+      // Cita antigua (un solo servicio en la fila)
+      setServLineas([{ servicio_id: c.servicio_id ?? '', precio: Number(c.precio) }])
+    }
     setOpen(true)
-  }
-
-  function elegirServicio(id: string) {
-    const s = servicios.find((x) => x.id === id)
-    setForm((f) => ({ ...f, servicio_id: id, precio: s ? Number(s.precio) : f.precio }))
   }
 
   async function guardar() {
     if (!form.cliente_id) return alert('Selecciona un cliente')
-    if (!form.servicio_id) return alert('Selecciona un servicio')
+    const serv = servLineas.filter((l) => l.servicio_id)
+    if (serv.length === 0) return alert('Agrega al menos un servicio')
     setSaving(true)
-    const serv = servicios.find((s) => s.id === form.servicio_id)
     const payload = {
       cliente_id: form.cliente_id,
       empleado_id: form.empleado_id || null,
-      servicio_id: form.servicio_id,
+      servicio_id: serv[0].servicio_id, // servicio principal (etiqueta / compatibilidad)
       fecha: form.fecha,
       hora_inicio: form.hora_inicio,
-      hora_fin: serv ? sumarMinutos(form.hora_inicio, serv.duracion_min) : null,
+      hora_fin: sumarMinutos(form.hora_inicio, totalDuracion),
       estado: form.estado,
-      precio: form.precio,
+      precio: totalPrecio,
       notas: form.notas || null,
     }
-    const { error } = editId
-      ? await supabase.from('citas').update(payload).eq('id', editId)
-      : await supabase.from('citas').insert(payload)
+    let citaId = editId
+    if (editId) {
+      const { error } = await supabase.from('citas').update(payload).eq('id', editId)
+      if (error) { setSaving(false); return alert('Error al guardar: ' + error.message) }
+      await supabase.from('cita_servicios').delete().eq('cita_id', editId)
+    } else {
+      const { data, error } = await supabase.from('citas').insert(payload).select('id').single()
+      if (error || !data) { setSaving(false); return alert('Error al guardar: ' + error?.message) }
+      citaId = (data as any).id
+    }
+    await supabase.from('cita_servicios').insert(
+      serv.map((l) => ({ cita_id: citaId, servicio_id: l.servicio_id, precio: l.precio, duracion_min: servicios.find((x) => x.id === l.servicio_id)?.duracion_min ?? 0 })),
+    )
     setSaving(false)
-    if (error) return alert('Error al guardar: ' + error.message)
     setOpen(false)
     if (form.fecha !== fecha) setFecha(form.fecha)
     else cargar()
@@ -179,15 +208,28 @@ export default function Citas() {
       .single()
     if (error || !factura) return alert('Error al facturar: ' + error?.message)
 
-    await supabase.from('factura_items').insert({
-      factura_id: factura.id,
-      servicio_id: c.servicio_id,
-      empleado_id: c.empleado_id || null,
-      descripcion: c.servicio?.nombre ?? 'Servicio',
-      cantidad: 1,
-      precio_unit: c.precio,
-      importe: c.precio,
-    })
+    // Un renglón de factura por cada servicio de la cita (o uno solo si es cita antigua)
+    const { data: cs } = await supabase.from('cita_servicios').select('servicio_id, precio, servicio:servicios(nombre)').eq('cita_id', c.id).order('created_at')
+    const renglones = (cs && cs.length)
+      ? (cs as any[]).map((s) => ({
+          factura_id: factura.id,
+          servicio_id: s.servicio_id,
+          empleado_id: c.empleado_id || null,
+          descripcion: s.servicio?.nombre ?? 'Servicio',
+          cantidad: 1,
+          precio_unit: Number(s.precio),
+          importe: Number(s.precio),
+        }))
+      : [{
+          factura_id: factura.id,
+          servicio_id: c.servicio_id,
+          empleado_id: c.empleado_id || null,
+          descripcion: c.servicio?.nombre ?? 'Servicio',
+          cantidad: 1,
+          precio_unit: c.precio,
+          importe: c.precio,
+        }]
+    await supabase.from('factura_items').insert(renglones)
     // Marcar la cita como completada
     if (c.estado !== 'COMPLETADA') await supabase.from('citas').update({ estado: 'COMPLETADA' }).eq('id', c.id)
     alert(`Factura ${codigoFactura(factura)} generada. Ahora cóbrala en Caja.`)
@@ -232,7 +274,7 @@ export default function Citas() {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-slate-800">{c.cliente?.nombre ?? 'Cliente eliminado'}</p>
                 <p className="text-sm text-slate-500">
-                  {c.servicio?.nombre ?? 'Servicio'} · {money(c.precio)}
+                  {((c as any).cita_servicios?.length ? (c as any).cita_servicios.map((s: any) => s.servicio?.nombre).filter(Boolean).join(', ') : c.servicio?.nombre) || 'Servicio'} · {money(c.precio)}
                 </p>
                 {c.empleado && (
                   <span className="mt-1 inline-flex items-center gap-1 text-xs text-slate-600">
@@ -298,13 +340,31 @@ export default function Citas() {
             </select>
           </div>
           <div>
-            <label className="label">Servicio</label>
-            <select className="input" value={form.servicio_id} onChange={(e) => elegirServicio(e.target.value)}>
-              <option value="">— Selecciona —</option>
-              {servicios.map((s) => (
-                <option key={s.id} value={s.id}>{s.nombre} · {money(s.precio)}</option>
+            <label className="label">Servicios</label>
+            <div className="space-y-2">
+              {servLineas.map((l, i) => (
+                <div key={i} className="flex gap-2">
+                  <select className="input flex-1" value={l.servicio_id} onChange={(e) => elegirServicioLinea(i, e.target.value)}>
+                    <option value="">— Selecciona un servicio —</option>
+                    {servicios.map((s) => (
+                      <option key={s.id} value={s.id}>{s.nombre} · {money(s.precio)}</option>
+                    ))}
+                  </select>
+                  <input type="number" min={0} step={50} className="input w-28" value={l.precio || ''} onChange={(e) => setServLinea(i, { precio: Number(e.target.value) })} title="Precio" />
+                  {servLineas.length > 1 && (
+                    <button type="button" onClick={() => quitarServicio(i)} className="rounded-lg px-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               ))}
-            </select>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <button type="button" className="btn-ghost" onClick={agregarServicio}>
+                <Plus size={14} /> Agregar servicio
+              </button>
+              <span className="text-sm font-semibold text-slate-700">Total: {money(totalPrecio)} · {totalDuracion} min</span>
+            </div>
           </div>
           <div>
             <label className="label">Empleado</label>
@@ -315,7 +375,7 @@ export default function Citas() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Fecha</label>
               <input type="date" className="input" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
@@ -323,10 +383,6 @@ export default function Citas() {
             <div>
               <label className="label">Hora</label>
               <input type="time" className="input" value={form.hora_inicio} onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} />
-            </div>
-            <div>
-              <label className="label">Precio</label>
-              <input type="number" min={0} step={50} className="input" value={form.precio || ''} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
             </div>
           </div>
           <div>
