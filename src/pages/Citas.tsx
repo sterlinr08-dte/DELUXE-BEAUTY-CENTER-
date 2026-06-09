@@ -14,7 +14,7 @@ const SELECT = `*,
   servicio:servicios(id,nombre,precio,duracion_min),
   cita_servicios(precio, servicio:servicios(nombre))`
 
-interface ServLinea { servicio_id: string; precio: number }
+interface ServLinea { servicio_id: string; empleado_id: string; precio: number }
 
 const estados: { value: EstadoCita; label: string; clase: string }[] = [
   { value: 'PENDIENTE', label: 'Pendiente', clase: 'bg-amber-50 text-amber-700' },
@@ -37,7 +37,6 @@ function sumarMinutos(h: string, min: number): string {
 
 const vacio = {
   cliente_id: '',
-  empleado_id: '',
   fecha: hoyISO(),
   hora_inicio: '09:00',
   estado: 'PENDIENTE' as EstadoCita,
@@ -63,7 +62,7 @@ export default function Citas() {
   const totalDuracion = servLineas.reduce((s, l) => s + (servicios.find((x) => x.id === l.servicio_id)?.duracion_min ?? 0), 0)
 
   function agregarServicio() {
-    setServLineas((prev) => [...prev, { servicio_id: '', precio: 0 }])
+    setServLineas((prev) => [...prev, { servicio_id: '', empleado_id: '', precio: 0 }])
   }
   function setServLinea(i: number, patch: Partial<ServLinea>) {
     setServLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
@@ -111,7 +110,7 @@ export default function Citas() {
   function abrirNuevo() {
     setEditId(null)
     setForm({ ...vacio, fecha })
-    setServLineas([{ servicio_id: '', precio: 0 }])
+    setServLineas([{ servicio_id: '', empleado_id: '', precio: 0 }])
     setOpen(true)
   }
 
@@ -119,18 +118,17 @@ export default function Citas() {
     setEditId(c.id)
     setForm({
       cliente_id: c.cliente_id ?? '',
-      empleado_id: c.empleado_id ?? '',
       fecha: c.fecha,
       hora_inicio: c.hora_inicio.slice(0, 5),
       estado: c.estado,
       notas: c.notas ?? '',
     })
-    const { data } = await supabase.from('cita_servicios').select('servicio_id, precio').eq('cita_id', c.id).order('created_at')
+    const { data } = await supabase.from('cita_servicios').select('servicio_id, empleado_id, precio').eq('cita_id', c.id).order('created_at')
     if (data && data.length) {
-      setServLineas((data as any[]).map((s) => ({ servicio_id: s.servicio_id ?? '', precio: Number(s.precio) })))
+      setServLineas((data as any[]).map((s) => ({ servicio_id: s.servicio_id ?? '', empleado_id: s.empleado_id ?? '', precio: Number(s.precio) })))
     } else {
       // Cita antigua (un solo servicio en la fila)
-      setServLineas([{ servicio_id: c.servicio_id ?? '', precio: Number(c.precio) }])
+      setServLineas([{ servicio_id: c.servicio_id ?? '', empleado_id: c.empleado_id ?? '', precio: Number(c.precio) }])
     }
     setOpen(true)
   }
@@ -142,7 +140,7 @@ export default function Citas() {
     setSaving(true)
     const payload = {
       cliente_id: form.cliente_id,
-      empleado_id: form.empleado_id || null,
+      empleado_id: serv[0].empleado_id || null, // empleado principal (para la agenda)
       servicio_id: serv[0].servicio_id, // servicio principal (etiqueta / compatibilidad)
       fecha: form.fecha,
       hora_inicio: form.hora_inicio,
@@ -162,7 +160,7 @@ export default function Citas() {
       citaId = (data as any).id
     }
     await supabase.from('cita_servicios').insert(
-      serv.map((l) => ({ cita_id: citaId, servicio_id: l.servicio_id, precio: l.precio, duracion_min: servicios.find((x) => x.id === l.servicio_id)?.duracion_min ?? 0 })),
+      serv.map((l) => ({ cita_id: citaId, servicio_id: l.servicio_id, empleado_id: l.empleado_id || null, precio: l.precio, duracion_min: servicios.find((x) => x.id === l.servicio_id)?.duracion_min ?? 0 })),
     )
     setSaving(false)
     setOpen(false)
@@ -209,12 +207,12 @@ export default function Citas() {
     if (error || !factura) return alert('Error al facturar: ' + error?.message)
 
     // Un renglón de factura por cada servicio de la cita (o uno solo si es cita antigua)
-    const { data: cs } = await supabase.from('cita_servicios').select('servicio_id, precio, servicio:servicios(nombre)').eq('cita_id', c.id).order('created_at')
+    const { data: cs } = await supabase.from('cita_servicios').select('servicio_id, empleado_id, precio, servicio:servicios(nombre)').eq('cita_id', c.id).order('created_at')
     const renglones = (cs && cs.length)
       ? (cs as any[]).map((s) => ({
           factura_id: factura.id,
           servicio_id: s.servicio_id,
-          empleado_id: c.empleado_id || null,
+          empleado_id: s.empleado_id || c.empleado_id || null,
           descripcion: s.servicio?.nombre ?? 'Servicio',
           cantidad: 1,
           precio_unit: Number(s.precio),
@@ -340,22 +338,38 @@ export default function Citas() {
             </select>
           </div>
           <div>
-            <label className="label">Servicios</label>
+            <label className="label">Servicios (cada uno con su empleado)</label>
             <div className="space-y-2">
               {servLineas.map((l, i) => (
-                <div key={i} className="flex gap-2">
-                  <select className="input flex-1" value={l.servicio_id} onChange={(e) => elegirServicioLinea(i, e.target.value)}>
-                    <option value="">— Selecciona un servicio —</option>
-                    {servicios.map((s) => (
-                      <option key={s.id} value={s.id}>{s.nombre} · {money(s.precio)}</option>
-                    ))}
-                  </select>
-                  <input type="number" min={0} step={50} className="input w-28" value={l.precio || ''} onChange={(e) => setServLinea(i, { precio: Number(e.target.value) })} title="Precio" />
-                  {servLineas.length > 1 && (
-                    <button type="button" onClick={() => quitarServicio(i)} className="rounded-lg px-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+                <div key={i} className="rounded-lg border border-slate-200 p-2">
+                  <div className="flex gap-2">
+                    <select className="input flex-1" value={l.servicio_id} onChange={(e) => elegirServicioLinea(i, e.target.value)}>
+                      <option value="">— Selecciona un servicio —</option>
+                      {servicios.map((s) => (
+                        <option key={s.id} value={s.id}>{s.nombre} · {money(s.precio)}</option>
+                      ))}
+                    </select>
+                    {servLineas.length > 1 && (
+                      <button type="button" onClick={() => quitarServicio(i)} className="rounded-lg px-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-xs font-medium text-slate-600">Realizado por</span>
+                      <select className="input" value={l.empleado_id} onChange={(e) => setServLinea(i, { empleado_id: e.target.value })}>
+                        <option value="">— Sin asignar —</option>
+                        {empleados.map((e) => (
+                          <option key={e.id} value={e.id}>{e.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-slate-600">Precio</span>
+                      <input type="number" min={0} step={50} className="input" value={l.precio || ''} onChange={(e) => setServLinea(i, { precio: Number(e.target.value) })} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -365,15 +379,6 @@ export default function Citas() {
               </button>
               <span className="text-sm font-semibold text-slate-700">Total: {money(totalPrecio)} · {totalDuracion} min</span>
             </div>
-          </div>
-          <div>
-            <label className="label">Empleado</label>
-            <select className="input" value={form.empleado_id} onChange={(e) => setForm({ ...form, empleado_id: e.target.value })}>
-              <option value="">— Sin asignar —</option>
-              {empleados.map((e) => (
-                <option key={e.id} value={e.id}>{e.nombre} ({e.puesto})</option>
-              ))}
-            </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
