@@ -72,6 +72,9 @@ export default function Facturacion() {
   const [crearClienteOpen, setCrearClienteOpen] = useState(false)
   const [nuevoCli, setNuevoCli] = useState({ nombre: '', telefono: '', email: '' })
   const [savingCli, setSavingCli] = useState(false)
+  // Buscador de cliente (combobox)
+  const [buscarCliente, setBuscarCliente] = useState('')
+  const [clienteFocus, setClienteFocus] = useState(false)
 
   // Resultados del buscador (servicios + artículos)
   const q = buscarItem.trim().toLowerCase()
@@ -154,6 +157,7 @@ export default function Facturacion() {
     setClientes(cls ?? [])
     setClienteId((data as any).id)
     setClienteNombre('')
+    setBuscarCliente(`${codigoCliente((data as any).codigo)} · ${(data as any).nombre}`)
     setSavingCli(false)
     setCrearClienteOpen(false)
   }
@@ -190,10 +194,20 @@ export default function Facturacion() {
   // En una cuenta ya creada (editando), descuento e ITBIS quedan protegidos salvo autorización
   const protegerCuenta = !!editId && !puedeModificarLineas
 
+  // Clientes que coinciden con la búsqueda (nombre, código o teléfono)
+  const clientesFiltrados = (() => {
+    const t = buscarCliente.trim().toLowerCase()
+    const base = !t
+      ? clientes
+      : clientes.filter((c) => c.nombre.toLowerCase().includes(t) || codigoCliente(c.codigo).includes(t) || (c.telefono ?? '').toLowerCase().includes(t))
+    return base.slice(0, 8)
+  })()
+
   function nuevaFactura() {
     setEditId(null)
     setClienteId('')
     setClienteNombre('')
+    setBuscarCliente('')
     setFecha(hoyISO())
     setTipoVenta('CONTADO')
     setAplicaItbis(false)
@@ -218,6 +232,10 @@ export default function Facturacion() {
     setEditId(f.id)
     setClienteId(f.cliente_id ?? '')
     setClienteNombre(f.cliente_nombre ?? '')
+    {
+      const cl = f.cliente_id ? clientes.find((c) => c.id === f.cliente_id) : null
+      setBuscarCliente(cl ? `${codigoCliente(cl.codigo)} · ${cl.nombre}` : '')
+    }
     setFecha(f.fecha)
     setTipoVenta(f.tipo_venta ?? 'CONTADO')
     setAplicaItbis(Number(f.itbis) > 0)
@@ -478,12 +496,46 @@ export default function Facturacion() {
             <div>
               <label className="label">Cliente</label>
               <div className="flex gap-2">
-                <select className="input flex-1" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-                  <option value="">— De contado —</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>{codigoCliente(c.codigo)} · {c.nombre}</option>
-                  ))}
-                </select>
+                <div className="relative flex-1">
+                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                  <input
+                    className="input pl-9"
+                    placeholder="Buscar cliente por nombre o código… (vacío = de contado)"
+                    value={buscarCliente}
+                    onChange={(e) => { setBuscarCliente(e.target.value); setClienteId('') }}
+                    onFocus={() => setClienteFocus(true)}
+                    onBlur={() => setTimeout(() => setClienteFocus(false), 150)}
+                  />
+                  {clienteId && (
+                    <button type="button" onClick={() => { setClienteId(''); setBuscarCliente('') }} title="Quitar cliente" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600">
+                      <X size={15} />
+                    </button>
+                  )}
+                  {clienteFocus && (
+                    <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-pink-100 bg-white shadow-card">
+                      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setClienteId(''); setBuscarCliente(''); setClienteFocus(false) }} className="block w-full px-3 py-2 text-left text-sm text-slate-500 hover:bg-pink-50">
+                        — De contado —
+                      </button>
+                      {clientesFiltrados.length === 0 ? (
+                        <p className="px-3 py-2 text-sm text-slate-500">Sin coincidencias</p>
+                      ) : (
+                        clientesFiltrados.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setClienteId(c.id); setBuscarCliente(`${codigoCliente(c.codigo)} · ${c.nombre}`); setClienteFocus(false) }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-pink-50"
+                          >
+                            <span className="font-mono font-semibold text-brand-700">{codigoCliente(c.codigo)}</span>
+                            <span className="truncate text-slate-700">{c.nombre}</span>
+                            {c.telefono && <span className="ml-auto shrink-0 text-xs text-slate-500">{c.telefono}</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 <button type="button" onClick={abrirCrearCliente} title="Crear cliente nuevo" className="btn-ghost shrink-0">
                   <UserPlus size={16} /> Crear
                 </button>
