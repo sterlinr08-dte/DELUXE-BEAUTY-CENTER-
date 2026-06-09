@@ -35,6 +35,7 @@ export default function Facturacion() {
   const puedeEliminar = puedeAccion('facturas.eliminar')
   const puedeEditar = puedeAccion('facturas.editar')
   const puedeVenderSinExistencia = puedeAccion('facturas.vender_sin_existencia')
+  const puedeModificarLineas = puedeAccion('facturas.modificar_lineas')
 
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [verEstado, setVerEstado] = useState<'ABIERTAS' | 'PAGADAS' | 'TODAS'>('ABIERTAS')
@@ -61,6 +62,8 @@ export default function Facturacion() {
   const [editId, setEditId] = useState<string | null>(null)
   // Cantidad por artículo que ya tenía la factura al editar (para no bloquear de más la existencia)
   const [cantOriginal, setCantOriginal] = useState<Record<string, number>>({})
+  // Cantidad de ítems que ya tenía la factura al abrir (los primeros N renglones son los previos)
+  const [lineasOriginales, setLineasOriginales] = useState(0)
   // Catálogo completo (ventana de la lupa)
   const [catalogoOpen, setCatalogoOpen] = useState(false)
   const [catTab, setCatTab] = useState<'catalogo' | 'historial'>('catalogo')
@@ -196,6 +199,7 @@ export default function Facturacion() {
     setNotas('')
     setLineas([])
     setCantOriginal({})
+    setLineasOriginales(0)
     setBuscarItem('')
     setOpen(true)
   }
@@ -234,6 +238,7 @@ export default function Facturacion() {
       if (it.articulo_id) orig[it.articulo_id] = (orig[it.articulo_id] ?? 0) + Number(it.cantidad)
     }
     setCantOriginal(orig)
+    setLineasOriginales((data ?? []).length)
     setOpen(true)
   }
 
@@ -566,6 +571,9 @@ export default function Facturacion() {
 
           <div>
             <label className="label">Artículos o servicios agregados</label>
+            {editId && lineasOriginales > 0 && !puedeModificarLineas && (
+              <p className="mb-2 text-xs font-medium text-amber-600">Lo ya agregado (🔒) no se puede modificar ni eliminar sin autorización. Puedes seguir agregando consumo.</p>
+            )}
             {lineas.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">
                 Busca arriba y toca un servicio o producto para agregarlo aquí.
@@ -574,14 +582,17 @@ export default function Facturacion() {
               <div className="space-y-5">
                 {lineas.map((l, i) => {
                   const esManual = !l.servicio_id && !l.articulo_id
+                  // Renglón ya agregado antes (cuenta abierta): no se puede modificar/eliminar sin autorización
+                  const bloqueado = i < lineasOriginales && !puedeModificarLineas
                   return (
-                    <div key={i} className="rounded-xl border-2 border-slate-200 bg-white p-3 shadow-sm">
+                    <div key={i} className={`rounded-xl border-2 p-3 shadow-sm ${bloqueado ? 'border-slate-100 bg-slate-50' : 'border-slate-200 bg-white'}`}>
                       <div className="flex items-start justify-between gap-2">
                         {esManual ? (
                           <input
                             className="input flex-1"
                             placeholder="Concepto (ej: ajuste, recargo…)"
                             value={l.descripcion}
+                            readOnly={bloqueado}
                             onChange={(e) => setLinea(i, { descripcion: e.target.value })}
                           />
                         ) : (
@@ -592,9 +603,13 @@ export default function Facturacion() {
                             <span className="truncate">{l.descripcion}</span>
                           </span>
                         )}
-                        <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
-                          <X size={16} />
-                        </button>
+                        {bloqueado ? (
+                          <span className="badge shrink-0 bg-slate-200 text-slate-500" title="Ya agregado · requiere autorización para modificar">🔒 Agregado</span>
+                        ) : (
+                          <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
+                            <X size={16} />
+                          </button>
+                        )}
                       </div>
 
                       <div className="mt-2">
@@ -610,11 +625,11 @@ export default function Facturacion() {
                       <div className="mt-2 grid grid-cols-3 gap-2">
                         <div>
                           <span className="text-xs font-medium text-slate-600">Cant.</span>
-                          <input type="number" min={1} className="input" value={l.cantidad || ''} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
+                          <input type="number" min={1} className={`input ${bloqueado ? 'bg-slate-100 text-slate-500' : ''}`} value={l.cantidad || ''} readOnly={bloqueado} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
                         </div>
                         <div>
                           <span className="text-xs font-medium text-slate-600">Precio</span>
-                          <input type="number" min={0} step={50} className="input" value={l.precio_unit || ''} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
+                          <input type="number" min={0} step={50} className={`input ${bloqueado ? 'bg-slate-100 text-slate-500' : ''}`} value={l.precio_unit || ''} readOnly={bloqueado} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
                         </div>
                         <div>
                           <span className="text-xs font-medium text-slate-600">Importe</span>
@@ -770,7 +785,7 @@ export default function Facturacion() {
               <p className="mt-1 text-xs font-medium text-slate-600">Factura {codigoFactura(facturaVista)} · {facturaVista.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · {fechaCorta(facturaVista.fecha)}</p>
             </div>
             <div className="text-sm text-slate-600">
-              <p><span className="font-medium">Cliente:</span> {facturaVista.cliente_nombre}</p>
+              <p><span className="font-medium">Cliente:</span> {(() => { const cl = clientes.find((c) => c.id === facturaVista.cliente_id); return cl ? `${codigoCliente(cl.codigo)} · ${facturaVista.cliente_nombre}` : facturaVista.cliente_nombre })()}</p>
               <p><span className="font-medium">Estado:</span> {facturaVista.estado}</p>
               <p><span className="font-medium">Pago:</span> {facturaVista.metodo_pago}</p>
             </div>
