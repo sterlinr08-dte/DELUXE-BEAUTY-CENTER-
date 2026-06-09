@@ -187,6 +187,8 @@ export default function Facturacion() {
   const baseImponible = Math.max(0, subtotal - descuento)
   const itbis = aplicaItbis ? baseImponible * ITBIS_RATE : 0
   const total = baseImponible + itbis
+  // En una cuenta ya creada (editando), descuento e ITBIS quedan protegidos salvo autorización
+  const protegerCuenta = !!editId && !puedeModificarLineas
 
   function nuevaFactura() {
     setEditId(null)
@@ -653,13 +655,13 @@ export default function Facturacion() {
 
           <div>
             <label className="label">Descuento (RD$)</label>
-            <input type="number" min={0} step={50} className="input w-32" value={descuento || ''} onChange={(e) => setDescuento(Number(e.target.value))} />
-            <p className="mt-1 text-xs text-slate-600">El método de pago se elige al cobrar en Caja.</p>
+            <input type="number" min={0} step={50} className={`input w-32 ${protegerCuenta ? 'bg-slate-100 text-slate-500' : ''}`} value={descuento || ''} readOnly={protegerCuenta} onChange={(e) => setDescuento(Number(e.target.value))} />
+            <p className="mt-1 text-xs text-slate-600">{protegerCuenta ? '🔒 El descuento no se puede cambiar sin autorización.' : 'El método de pago se elige al cobrar en Caja.'}</p>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={aplicaItbis} onChange={(e) => setAplicaItbis(e.target.checked)} />
-            Aplicar ITBIS (18%)
+          <label className={`flex items-center gap-2 text-sm text-slate-600 ${protegerCuenta ? 'opacity-60' : ''}`}>
+            <input type="checkbox" checked={aplicaItbis} disabled={protegerCuenta} onChange={(e) => setAplicaItbis(e.target.checked)} />
+            Aplicar ITBIS (18%) {protegerCuenta && <span className="text-xs">🔒</span>}
           </label>
 
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
