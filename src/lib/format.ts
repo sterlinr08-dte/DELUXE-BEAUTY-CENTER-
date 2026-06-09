@@ -57,6 +57,11 @@ export function codigoArticulo(n: number | null | undefined): string {
   return String(n ?? 0).padStart(4, '0')
 }
 
+// Código de cliente a 4 dígitos con ceros a la izquierda: 0001, 0002, …
+export function codigoCliente(n: number | null | undefined): string {
+  return String(n ?? 0).padStart(4, '0')
+}
+
 // Código de factura: un solo correlativo (numero) y la letra cambia según el tipo
 // de venta -> contado = CO000001, crédito = CR000002, contado = CO000003, ...
 export function codigoFactura(f: { tipo_venta?: string | null; serie?: number | null; numero?: number | null }): string {

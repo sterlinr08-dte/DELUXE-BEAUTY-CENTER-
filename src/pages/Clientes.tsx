@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente } from '../types'
-import { fechaCorta } from '../lib/format'
+import { fechaCorta, codigoCliente } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
@@ -101,10 +101,11 @@ export default function Clientes() {
         <DataTable
           rows={items}
           rowKey={(c) => c.id}
-          searchText={(c) => `${c.nombre} ${c.telefono ?? ''} ${c.email ?? ''}`}
-          searchPlaceholder="Buscar por nombre, teléfono o email…"
+          searchText={(c) => `${codigoCliente(c.codigo)} ${c.nombre} ${c.telefono ?? ''} ${c.email ?? ''}`}
+          searchPlaceholder="Buscar por código, nombre, teléfono o email…"
           emptyText={items.length === 0 ? 'Aún no hay clientes.' : 'No hay clientes que coincidan.'}
           columns={[
+            { header: 'Código', cell: (c) => <span className="font-mono font-semibold text-brand-700">{codigoCliente(c.codigo)}</span>, sortValue: (c) => c.codigo },
             { header: 'Nombre', cell: (c) => <span className="font-medium text-slate-800">{c.nombre}</span>, sortValue: (c) => c.nombre },
             { header: 'Teléfono', cell: (c) => <span className="text-slate-600">{c.telefono || '—'}</span>, sortValue: (c) => c.telefono ?? '' },
             { header: 'Email', cell: (c) => <span className="text-slate-600">{c.email || '—'}</span>, sortValue: (c) => c.email ?? '' },

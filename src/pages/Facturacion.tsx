@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Printer, Ban, X, Search, Receipt } from 'lucide-react'
+import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
-import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura } from '../lib/format'
+import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
@@ -65,6 +65,10 @@ export default function Facturacion() {
   const [catalogoOpen, setCatalogoOpen] = useState(false)
   const [catTab, setCatTab] = useState<'catalogo' | 'historial'>('catalogo')
   const [buscarCat, setBuscarCat] = useState('')
+  // Crear cliente rápido (desde la factura)
+  const [crearClienteOpen, setCrearClienteOpen] = useState(false)
+  const [nuevoCli, setNuevoCli] = useState({ nombre: '', telefono: '', email: '' })
+  const [savingCli, setSavingCli] = useState(false)
 
   // Resultados del buscador (servicios + artículos)
   const q = buscarItem.trim().toLowerCase()
@@ -123,6 +127,32 @@ export default function Facturacion() {
   // Agrega un concepto manual (algo que no está en el catálogo)
   function agregarManual() {
     setLineas((prev) => [...prev, { ...lineaVacia }])
+  }
+
+  // Crear cliente rápido sin salir de la factura
+  function abrirCrearCliente() {
+    setNuevoCli({ nombre: clienteNombre || '', telefono: '', email: '' })
+    setCrearClienteOpen(true)
+  }
+  async function guardarNuevoCliente() {
+    if (!nuevoCli.nombre.trim()) return alert('El nombre del cliente es obligatorio')
+    setSavingCli(true)
+    const { data, error } = await supabase
+      .from('clientes')
+      .insert({ nombre: nuevoCli.nombre.trim(), telefono: nuevoCli.telefono || null, email: nuevoCli.email || null })
+      .select()
+      .single()
+    if (error || !data) {
+      setSavingCli(false)
+      return alert('Error al crear el cliente: ' + error?.message)
+    }
+    // Recargar la lista y dejar seleccionado el cliente recién creado
+    const { data: cls } = await supabase.from('clientes').select('*').order('nombre')
+    setClientes(cls ?? [])
+    setClienteId((data as any).id)
+    setClienteNombre('')
+    setSavingCli(false)
+    setCrearClienteOpen(false)
   }
 
   async function cargar() {
@@ -440,12 +470,17 @@ export default function Facturacion() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Cliente</label>
-              <select className="input" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-                <option value="">— De contado —</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select className="input flex-1" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+                  <option value="">— De contado —</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>{codigoCliente(c.codigo)} · {c.nombre}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={abrirCrearCliente} title="Crear cliente nuevo" className="btn-ghost shrink-0">
+                  <UserPlus size={16} /> Crear
+                </button>
+              </div>
             </div>
             <div>
               <label className="label">Fecha</label>
@@ -767,6 +802,39 @@ export default function Facturacion() {
             </button>
           </div>
         )}
+      </Modal>
+
+      {/* CREAR CLIENTE RÁPIDO (desde la factura) */}
+      <Modal
+        open={crearClienteOpen}
+        title="Crear cliente"
+        onClose={() => setCrearClienteOpen(false)}
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setCrearClienteOpen(false)}>Cancelar</button>
+            <button className="btn-primary" onClick={guardarNuevoCliente} disabled={savingCli}>
+              <UserPlus size={16} /> {savingCli ? 'Guardando…' : 'Crear y seleccionar'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500">Se le asigna un código automático. Luego puedes completar sus datos en el módulo Clientes.</p>
+          <div>
+            <label className="label">Nombre</label>
+            <input className="input" value={nuevoCli.nombre} autoFocus onChange={(e) => setNuevoCli({ ...nuevoCli, nombre: e.target.value })} placeholder="Nombre del cliente" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Teléfono</label>
+              <input className="input" value={nuevoCli.telefono} onChange={(e) => setNuevoCli({ ...nuevoCli, telefono: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Email</label>
+              <input type="email" className="input" value={nuevoCli.email} onChange={(e) => setNuevoCli({ ...nuevoCli, email: e.target.value })} />
+            </div>
+          </div>
+        </div>
       </Modal>
     </div>
   )

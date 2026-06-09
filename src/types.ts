@@ -30,6 +30,7 @@ export interface Servicio {
 
 export interface Cliente {
   id: string
+  codigo: number
   nombre: string
   telefono: string | null
   email: string | null
