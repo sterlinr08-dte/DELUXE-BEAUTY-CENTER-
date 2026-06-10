@@ -227,7 +227,12 @@ export default function Citas() {
           precio_unit: c.precio,
           importe: c.precio,
         }]
-    await supabase.from('factura_items').insert(renglones)
+    const { error: eItems } = await supabase.from('factura_items').insert(renglones)
+    if (eItems) {
+      // Evita dejar una factura sin renglones: la elimina y avisa
+      await supabase.from('facturas').delete().eq('id', factura.id)
+      return alert('Error al generar el detalle de la factura: ' + eItems.message)
+    }
     // Marcar la cita como completada
     if (c.estado !== 'COMPLETADA') await supabase.from('citas').update({ estado: 'COMPLETADA' }).eq('id', c.id)
     alert(`Factura ${codigoFactura(factura)} generada. Ahora cóbrala en Caja.`)

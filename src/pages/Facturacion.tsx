@@ -303,7 +303,11 @@ export default function Facturacion() {
         setSaving(false)
         return alert('Error al actualizar factura: ' + error.message)
       }
-      await supabase.from('factura_items').delete().eq('factura_id', editId)
+      const { error: eDel } = await supabase.from('factura_items').delete().eq('factura_id', editId)
+      if (eDel) {
+        setSaving(false)
+        return alert('Error al actualizar el detalle: ' + eDel.message)
+      }
     } else {
       const { data: factura, error } = await supabase
         .from('facturas')

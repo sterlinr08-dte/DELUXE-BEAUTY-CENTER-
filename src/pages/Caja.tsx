@@ -215,13 +215,14 @@ export default function Caja() {
         await supabase.from('facturas').update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id }).eq('id', cobrarFactura.id)
       }
       if (metodoCobro === 'Efectivo') {
-        await supabase.from('caja_movimientos').insert({
+        const { error: em } = await supabase.from('caja_movimientos').insert({
           caja_id: sesion.id,
           tipo: 'ENTRADA',
           concepto: `Abono ${codigoFactura(cobrarFactura)} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
           monto,
           factura_id: cobrarFactura.id,
         })
+        if (em) { setSaving(false); return alert('Abono guardado, pero falló el registro en caja: ' + em.message) }
       }
     } else {
       // VENTA DE CONTADO: cobro total (marca PAGADA y la vincula a esta caja)
@@ -234,13 +235,14 @@ export default function Caja() {
         return alert('Error al cobrar: ' + e1.message)
       }
       if (metodoCobro === 'Efectivo') {
-        await supabase.from('caja_movimientos').insert({
+        const { error: em } = await supabase.from('caja_movimientos').insert({
           caja_id: sesion.id,
           tipo: 'ENTRADA',
           concepto: `Factura ${codigoFactura(cobrarFactura)} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
           monto: cobrarFactura.total,
           factura_id: cobrarFactura.id,
         })
+        if (em) { setSaving(false); return alert('Factura cobrada, pero falló el registro en caja: ' + em.message) }
       }
     }
     setSaving(false)

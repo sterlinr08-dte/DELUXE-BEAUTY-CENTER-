@@ -44,7 +44,6 @@ export default function Compras() {
   const [saving, setSaving] = useState(false)
   // catálogo de artículos / historial de compras (lupa)
   const [catalogoOpen, setCatalogoOpen] = useState(false)
-  const [catTab, setCatTab] = useState<'articulos' | 'historial'>('articulos')
   const [buscarCat, setBuscarCat] = useState('')
 
   async function cargar() {
@@ -321,7 +320,7 @@ export default function Compras() {
               </div>
             )}
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" className="btn-ghost" onClick={() => { setBuscarCat(''); setCatTab('articulos'); setCatalogoOpen(true) }}>
+              <button type="button" className="btn-ghost" onClick={() => { setBuscarCat(''); setCatalogoOpen(true) }}>
                 <Search size={14} /> Agregar artículo
               </button>
               <button type="button" className="btn-ghost" onClick={agregarManual}>
@@ -421,75 +420,52 @@ export default function Compras() {
         )}
       </Modal>
 
-      {/* VENTANA DE LA LUPA: artículos del inventario (o historial, según se abra) */}
-      <Modal open={catalogoOpen} title={catTab === 'historial' ? 'Historial de compras' : 'Buscar artículo'} onClose={() => setCatalogoOpen(false)}>
+      {/* VENTANA DE LA LUPA: artículos del inventario */}
+      <Modal open={catalogoOpen} title="Buscar artículo" onClose={() => setCatalogoOpen(false)}>
         <div className="space-y-3">
-          {catTab === 'articulos' && (
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-              <input
-                className="input pl-9"
-                placeholder="Filtrar por nombre, categoría o código…"
-                value={buscarCat}
-                onChange={(e) => setBuscarCat(e.target.value)}
-                autoFocus
-              />
-            </div>
-          )}
-
-          {catTab === 'articulos' ? (
-            <>
-              <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
-                {articulos.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-slate-600">No hay artículos en el inventario.</p>
-                ) : (
-                  articulos.filter((a) => {
-                    const f = buscarCat.trim().toLowerCase()
-                    return !f || a.nombre.toLowerCase().includes(f) || a.categoria.toLowerCase().includes(f) || codigoArticulo(a.codigo).includes(f)
-                  }).map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => agregarArticulo(a)}
-                      className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-pink-50"
-                    >
-                      <span className="flex min-w-0 flex-col">
-                        <span className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-slate-600">{codigoArticulo(a.codigo)}</span>
-                          <span className="truncate font-medium text-slate-800">{a.nombre}</span>
-                        </span>
-                        <span className={`mt-0.5 text-xs ${Number(a.stock) <= 0 ? 'text-rose-500' : 'text-slate-600'}`}>
-                          {Number(a.stock) <= 0 ? 'Sin existencia' : `Existencia: ${a.stock}`}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-slate-600">{money(a.costo)}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-600">Toca para agregar; puedes añadir varios.</p>
-                <button type="button" className="btn-primary" onClick={() => setCatalogoOpen(false)}>Listo</button>
-              </div>
-            </>
-          ) : (
-            <DataTable
-              rows={items}
-              rowKey={(c) => c.id}
-              searchText={(c) => `${c.numero} ${c.descripcion} ${c.proveedor ?? ''} ${c.categoria} ${c.fecha}`}
-              searchPlaceholder="Filtrar por #, descripción, proveedor o fecha…"
-              emptyText="Sin compras"
-              pageSize={8}
-              initialSort={{ index: 0, dir: 'desc' }}
-              columns={[
-                { header: 'No.', cell: (c) => <span className="font-mono font-semibold text-brand-700">{c.numero}</span>, sortValue: (c) => c.numero },
-                { header: 'Fecha', cell: (c) => <span className="text-slate-500">{fechaCorta(c.fecha)}</span>, sortValue: (c) => c.fecha },
-                { header: 'Descripción', cell: (c) => <span className="font-medium text-slate-800">{c.descripcion}</span>, sortValue: (c) => c.descripcion },
-                { header: 'Proveedor', cell: (c) => <span className="text-slate-600">{c.proveedor || '—'}</span>, sortValue: (c) => c.proveedor ?? '' },
-                { header: 'Total', align: 'right', cell: (c) => <span className="font-semibold text-slate-800">{money(c.total)}</span>, sortValue: (c) => c.total },
-              ]}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+            <input
+              className="input pl-9"
+              placeholder="Filtrar por nombre, categoría o código…"
+              value={buscarCat}
+              onChange={(e) => setBuscarCat(e.target.value)}
+              autoFocus
             />
-          )}
+          </div>
+
+          <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
+            {articulos.length === 0 ? (
+              <p className="px-3 py-6 text-center text-slate-600">No hay artículos en el inventario.</p>
+            ) : (
+              articulos.filter((a) => {
+                const f = buscarCat.trim().toLowerCase()
+                return !f || a.nombre.toLowerCase().includes(f) || a.categoria.toLowerCase().includes(f) || codigoArticulo(a.codigo).includes(f)
+              }).map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => agregarArticulo(a)}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-pink-50"
+                >
+                  <span className="flex min-w-0 flex-col">
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-slate-600">{codigoArticulo(a.codigo)}</span>
+                      <span className="truncate font-medium text-slate-800">{a.nombre}</span>
+                    </span>
+                    <span className={`mt-0.5 text-xs ${Number(a.stock) <= 0 ? 'text-rose-500' : 'text-slate-600'}`}>
+                      {Number(a.stock) <= 0 ? 'Sin existencia' : `Existencia: ${a.stock}`}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-slate-600">{money(a.costo)}</span>
+                </button>
+              ))
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-600">Toca para agregar; puedes añadir varios.</p>
+            <button type="button" className="btn-primary" onClick={() => setCatalogoOpen(false)}>Listo</button>
+          </div>
         </div>
       </Modal>
     </div>

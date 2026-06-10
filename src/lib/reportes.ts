@@ -38,8 +38,10 @@ export function imprimirTabla(opts: {
   orientacion?: 'portrait' | 'landscape'
 }) {
   const { negocio, titulo, subtitulo, columnas, filas, pie, orientacion = 'portrait' } = opts
-  const th = columnas.map((c) => `<th style="text-align:${c.align || 'left'}">${c.label}</th>`).join('')
-  const cell = (v: string | number, i: number) => `<td style="text-align:${columnas[i]?.align || 'left'}">${v ?? ''}</td>`
+  // Escapa HTML para evitar inyección (XSS) con datos del usuario en el reporte
+  const esc = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const th = columnas.map((c) => `<th style="text-align:${c.align || 'left'}">${esc(c.label)}</th>`).join('')
+  const cell = (v: string | number, i: number) => `<td style="text-align:${columnas[i]?.align || 'left'}">${esc(v)}</td>`
   const body = filas.map((f) => `<tr>${f.map(cell).join('')}</tr>`).join('')
   const pieRow = pie ? `<tr class="tot">${pie.map(cell).join('')}</tr>` : ''
   const fecha = new Date().toLocaleString('es-DO')
@@ -48,7 +50,7 @@ export function imprimirTabla(opts: {
     alert('Permite las ventanas emergentes para imprimir o guardar el PDF.')
     return
   }
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${titulo}</title>
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(titulo)}</title>
   <style>
     @page { size: A4 ${orientacion}; margin: 12mm; }
     * { box-sizing: border-box; }
@@ -66,12 +68,12 @@ export function imprimirTabla(opts: {
     .foot { margin-top:14px; font-size:10px; color:#888; text-align:center; }
   </style></head><body>
     <div class="hd">
-      <h2>${negocio.nombre ?? ''}</h2>
-      ${negocio.rnc ? `<p>RNC: ${negocio.rnc}</p>` : ''}
-      ${negocio.direccion ? `<p>${negocio.direccion}${negocio.telefono ? ' · Tel ' + negocio.telefono : ''}</p>` : ''}
+      <h2>${esc(negocio.nombre)}</h2>
+      ${negocio.rnc ? `<p>RNC: ${esc(negocio.rnc)}</p>` : ''}
+      ${negocio.direccion ? `<p>${esc(negocio.direccion)}${negocio.telefono ? ' · Tel ' + esc(negocio.telefono) : ''}</p>` : ''}
     </div>
-    <h1>${titulo}</h1>
-    ${subtitulo ? `<p class="sub">${subtitulo}</p>` : ''}
+    <h1>${esc(titulo)}</h1>
+    ${subtitulo ? `<p class="sub">${esc(subtitulo)}</p>` : ''}
     <table><thead><tr>${th}</tr></thead><tbody>${body}${pieRow}</tbody></table>
     <p class="foot">Generado el ${fecha}</p>
     <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script>
