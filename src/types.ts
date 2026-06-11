@@ -23,6 +23,8 @@ export interface Servicio {
   descripcion: string | null
   duracion_min: number
   precio: number
+  // % de comisión propio del servicio. Si es null, se usa el % del empleado.
+  comision_pct: number | null
   activo: boolean
   created_at: string
   updated_at: string
@@ -190,6 +192,9 @@ export interface PagoEmpleado {
   monto: number
   metodo_pago: string | null
   notas: string | null
+  // Para tipo COMISION: rango de fechas que cubre el pago (control de "ya pagado")
+  comision_desde: string | null
+  comision_hasta: string | null
   created_at: string
 }
 

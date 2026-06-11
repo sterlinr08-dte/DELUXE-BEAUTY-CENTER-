@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Empleado, PagoEmpleado, TipoPagoEmpleado } from '../types'
 import { money, fechaCorta, fechaHora, hoyISO, codigoFactura } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
+import { pctComisionServicio, comisionLinea, rangosSeSolapan } from '../lib/comisiones'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
@@ -41,11 +42,13 @@ export default function Nomina() {
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
 
-  // Resumen de comisión: servicios/facturas realizados por el empleado en un rango
+  // Resumen de comisión: servicios realizados por el empleado en un rango
   const [comDesde, setComDesde] = useState(hoyISO().slice(0, 7) + '-01')
   const [comHasta, setComHasta] = useState(hoyISO())
   const [comItems, setComItems] = useState<any[]>([])
   const [comLoading, setComLoading] = useState(false)
+  // Comisiones ya pagadas a este empleado (para avisar si el periodo se solapa)
+  const [comPagadas, setComPagadas] = useState<PagoEmpleado[]>([])
 
   async function cargar() {
     setLoading(true)
@@ -64,25 +67,37 @@ export default function Nomina() {
     cargarEmpleados()
   }, [])
 
-  // Carga los servicios realizados por el empleado (facturas pagadas) en el rango
+  // Carga los SERVICIOS realizados por el empleado (facturas pagadas) en el rango.
+  // Solo servicios pagan comisión; los productos quedan fuera.
   useEffect(() => {
     if (!open || !form.empleado_id) {
       setComItems([])
+      setComPagadas([])
       return
     }
     let cancel = false
     ;(async () => {
       setComLoading(true)
-      const { data } = await supabase
-        .from('factura_items')
-        .select('descripcion,cantidad,importe, facturas!inner(numero,tipo_venta,serie,fecha,estado)')
-        .eq('empleado_id', form.empleado_id)
-        .eq('facturas.estado', 'PAGADA')
-        .gte('facturas.fecha', comDesde)
-        .lte('facturas.fecha', comHasta)
-        .order('fecha', { foreignTable: 'facturas', ascending: true })
+      const [items, pagadas] = await Promise.all([
+        supabase
+          .from('factura_items')
+          .select('descripcion,cantidad,importe,servicio_id, servicios(comision_pct), facturas!inner(numero,tipo_venta,serie,fecha,estado)')
+          .eq('empleado_id', form.empleado_id)
+          .is('articulo_id', null)
+          .eq('facturas.estado', 'PAGADA')
+          .gte('facturas.fecha', comDesde)
+          .lte('facturas.fecha', comHasta)
+          .order('fecha', { foreignTable: 'facturas', ascending: true }),
+        supabase
+          .from('pagos_empleados')
+          .select('*')
+          .eq('empleado_id', form.empleado_id)
+          .eq('tipo', 'COMISION')
+          .not('comision_desde', 'is', null),
+      ])
       if (!cancel) {
-        setComItems(data ?? [])
+        setComItems(items.data ?? [])
+        setComPagadas((pagadas.data ?? []) as PagoEmpleado[])
         setComLoading(false)
       }
     })()
@@ -92,9 +107,13 @@ export default function Nomina() {
   }, [open, form.empleado_id, comDesde, comHasta])
 
   const empSel = empleados.find((e) => e.id === form.empleado_id)
+  const empPct = Number(empSel?.comision_pct ?? 0)
+  // % por línea: el del servicio si lo tiene, si no el del empleado
+  const lineaPct = (it: any) => pctComisionServicio(it.servicios?.comision_pct, empPct)
   const comTotal = comItems.reduce((s, it) => s + Number(it.importe), 0)
-  const comPct = Number(empSel?.comision_pct ?? 0)
-  const comMonto = Math.round((comTotal * comPct) / 100)
+  const comMonto = comItems.reduce((s, it) => s + comisionLinea(it.importe, lineaPct(it)), 0)
+  // Pagos de comisión cuyo periodo se solapa con el rango elegido
+  const comSolapadas = comPagadas.filter((p) => rangosSeSolapan(comDesde, comHasta, p.comision_desde, p.comision_hasta))
 
   const totalMes = items
     .filter((p) => p.fecha.slice(0, 7) === hoyISO().slice(0, 7))
@@ -134,6 +153,9 @@ export default function Nomina() {
       monto: form.monto,
       metodo_pago: form.metodo_pago,
       notas: form.notas || null,
+      // Para comisiones guardamos el periodo cubierto (control de "ya pagado")
+      comision_desde: form.tipo === 'COMISION' ? comDesde : null,
+      comision_hasta: form.tipo === 'COMISION' ? comHasta : null,
     }
     const { error } = editId
       ? await supabase.from('pagos_empleados').update(payload).eq('id', editId)
@@ -254,7 +276,7 @@ export default function Nomina() {
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
               <div className="mb-2 flex items-center justify-between">
                 <label className="label !mb-0">Servicios realizados (para comisión)</label>
-                <span className="text-xs text-slate-500">Comisión: {comPct}%</span>
+                <span className="text-xs text-slate-500">% empleado: {empPct}%</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -266,6 +288,18 @@ export default function Nomina() {
                   <input type="date" className="input" value={comHasta} onChange={(e) => setComHasta(e.target.value)} />
                 </div>
               </div>
+
+              {comSolapadas.length > 0 && (
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  ⚠️ Ya registraste comisión a este empleado que cubre parte de este periodo:
+                  {comSolapadas.map((p) => (
+                    <span key={p.id} className="ml-1 font-semibold">
+                      {fechaCorta(p.comision_desde!)}–{fechaCorta(p.comision_hasta!)} ({money(p.monto)})
+                    </span>
+                  ))}
+                  . Revisa para no pagar dos veces.
+                </div>
+              )}
 
               {comLoading ? (
                 <p className="mt-2 text-sm text-slate-500">Calculando…</p>
@@ -280,6 +314,7 @@ export default function Nomina() {
                           <tr key={idx}>
                             <td className="px-2 py-1 text-slate-600">{fechaCorta(it.facturas?.fecha)} · {it.facturas ? codigoFactura(it.facturas) : ''}</td>
                             <td className="px-2 py-1 text-slate-700">{it.descripcion}{it.cantidad > 1 ? ` ×${it.cantidad}` : ''}</td>
+                            <td className="px-2 py-1 text-right text-slate-500">{lineaPct(it)}%</td>
                             <td className="px-2 py-1 text-right font-medium text-slate-700">{money(it.importe)}</td>
                           </tr>
                         ))}
@@ -288,7 +323,7 @@ export default function Nomina() {
                   </div>
                   <div className="mt-2 space-y-0.5 text-sm">
                     <div className="flex justify-between text-slate-600"><span>{comItems.length} servicio(s) · ventas</span><span>{money(comTotal)}</span></div>
-                    <div className="flex justify-between font-semibold text-emerald-700"><span>Comisión ({comPct}%)</span><span>{money(comMonto)}</span></div>
+                    <div className="flex justify-between font-semibold text-emerald-700"><span>Comisión a pagar</span><span>{money(comMonto)}</span></div>
                   </div>
                   <button
                     className="btn-ghost mt-2 w-full"

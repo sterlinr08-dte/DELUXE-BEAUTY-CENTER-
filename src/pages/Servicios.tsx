@@ -14,6 +14,7 @@ const vacio = {
   descripcion: '',
   duracion_min: 30,
   precio: 0,
+  comision_pct: '' as number | '',
   activo: true,
 }
 
@@ -64,6 +65,7 @@ export default function Servicios() {
       descripcion: s.descripcion ?? '',
       duracion_min: s.duracion_min,
       precio: Number(s.precio),
+      comision_pct: s.comision_pct == null ? '' : Number(s.comision_pct),
       activo: s.activo,
     })
     setOpen(true)
@@ -72,7 +74,11 @@ export default function Servicios() {
   async function guardar() {
     if (!form.nombre.trim()) return alert('El nombre es obligatorio')
     setSaving(true)
-    const payload = { ...form, descripcion: form.descripcion || null }
+    const payload = {
+      ...form,
+      descripcion: form.descripcion || null,
+      comision_pct: form.comision_pct === '' ? null : Number(form.comision_pct),
+    }
     const { error } = editId
       ? await supabase.from('servicios').update(payload).eq('id', editId)
       : await supabase.from('servicios').insert(payload)
@@ -128,6 +134,7 @@ export default function Servicios() {
                 <th className="px-5 py-3">Servicio</th>
                 <th className="px-5 py-3">Categoría</th>
                 <th className="px-5 py-3">Duración</th>
+                <th className="px-5 py-3 text-right">Comisión</th>
                 <th className="px-5 py-3 text-right">Precio</th>
                 <th className="px-5 py-3"></th>
               </tr>
@@ -143,6 +150,9 @@ export default function Servicios() {
                     <span className="badge bg-brand-50 text-brand-700">{s.categoria}</span>
                   </td>
                   <td className="px-5 py-3 text-slate-600">{s.duracion_min} min</td>
+                  <td className="px-5 py-3 text-right text-slate-600">
+                    {s.comision_pct == null ? <span className="text-slate-400">— empleado</span> : `${Number(s.comision_pct)}%`}
+                  </td>
                   <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(s.precio)}</td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
@@ -195,9 +205,25 @@ export default function Servicios() {
               <input type="number" min={5} step={5} className="input" value={form.duracion_min || ''} onChange={(e) => setForm({ ...form, duracion_min: Number(e.target.value) })} />
             </div>
           </div>
-          <div>
-            <label className="label">Precio (RD$)</label>
-            <input type="number" min={0} step={50} className="input" value={form.precio || ''} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Precio (RD$)</label>
+              <input type="number" min={0} step={50} className="input" value={form.precio || ''} onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })} />
+            </div>
+            <div>
+              <label className="label">% Comisión</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                className="input"
+                value={form.comision_pct}
+                onChange={(e) => setForm({ ...form, comision_pct: e.target.value === '' ? '' : Number(e.target.value) })}
+                placeholder="Usa el % del empleado"
+              />
+              <p className="mt-1 text-xs text-slate-500">Déjalo vacío para usar el % de cada empleado.</p>
+            </div>
           </div>
           <div>
             <label className="label">Descripción</label>
