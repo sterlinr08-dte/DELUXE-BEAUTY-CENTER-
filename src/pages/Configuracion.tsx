@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText, Percent } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado, Proveedor, Auditoria } from '../types'
@@ -31,7 +31,7 @@ interface UsuarioRow {
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
   const { recargarNegocio } = useNegocio()
-  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'categorias' | 'auditoria'>('usuarios')
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'categorias' | 'comisiones' | 'auditoria'>('usuarios')
   const [auditoria, setAuditoria] = useState<Auditoria[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
@@ -54,6 +54,12 @@ export default function Configuracion() {
   const [catNombre, setCatNombre] = useState('')
   const [catTipo, setCatTipo] = useState<'articulo' | 'servicio'>('articulo')
 
+  // comisiones (% por empleado y por servicio, editables en una sola pantalla)
+  const [servicios, setServicios] = useState<{ id: string; nombre: string; categoria: string; comision_pct: number | null }[]>([])
+  const [comEmp, setComEmp] = useState<Record<string, string>>({})
+  const [comServ, setComServ] = useState<Record<string, string>>({})
+  const [savingCom, setSavingCom] = useState(false)
+
   // modal usuario
   const [openU, setOpenU] = useState(false)
   const [editU, setEditU] = useState<UsuarioRow | null>(null)
@@ -75,7 +81,13 @@ export default function Configuracion() {
     ])
     setUsuarios((u.data as any) ?? [])
     setRoles((r.data as any) ?? [])
-    setEmpleados((e.data as any) ?? [])
+    const emps = (e.data as Empleado[]) ?? []
+    setEmpleados(emps)
+    setComEmp(Object.fromEntries(emps.map((emp) => [emp.id, String(Number(emp.comision_pct ?? 0))])))
+    const { data: servs } = await supabase.from('servicios').select('id,nombre,categoria,comision_pct').eq('activo', true).order('categoria').order('nombre')
+    const sl = (servs as any[]) ?? []
+    setServicios(sl)
+    setComServ(Object.fromEntries(sl.map((s) => [s.id, s.comision_pct == null ? '' : String(Number(s.comision_pct))])))
     const { data: neg } = await supabase.from('ajustes_negocio').select('*').maybeSingle()
     if (neg) setFormNeg({
       nombre: neg.nombre ?? '', direccion: neg.direccion ?? '', referencia: neg.referencia ?? '',
@@ -139,6 +151,42 @@ export default function Configuracion() {
     const { error } = await supabase.from('categorias').delete().eq('id', id)
     if (error) return alert('Error: ' + error.message)
     cargar()
+  }
+
+  // ---------- COMISIONES ----------
+  // Valida un % escrito: '' permitido (en servicios = heredar). Devuelve número o null, o false si inválido.
+  function parsePct(valor: string, permitirVacio: boolean): number | null | false {
+    const v = valor.trim()
+    if (v === '') return permitirVacio ? null : 0
+    const n = Number(v)
+    if (!Number.isFinite(n) || n < 0 || n > 100) return false
+    return n
+  }
+
+  async function guardarComisiones() {
+    // Empleados: vacío = 0%. Servicios: vacío = hereda del empleado.
+    const empUpd: { id: string; comision_pct: number }[] = []
+    for (const emp of empleados) {
+      const p = parsePct(comEmp[emp.id] ?? '', false)
+      if (p === false) return alert(`El % de ${emp.nombre} debe ser un número entre 0 y 100.`)
+      empUpd.push({ id: emp.id, comision_pct: p as number })
+    }
+    const servUpd: { id: string; comision_pct: number | null }[] = []
+    for (const s of servicios) {
+      const p = parsePct(comServ[s.id] ?? '', true)
+      if (p === false) return alert(`El % de "${s.nombre}" debe estar entre 0 y 100, o vacío para heredar.`)
+      servUpd.push({ id: s.id, comision_pct: p as number | null })
+    }
+    setSavingCom(true)
+    const res = await Promise.all([
+      ...empUpd.map((u) => supabase.from('empleados').update({ comision_pct: u.comision_pct }).eq('id', u.id)),
+      ...servUpd.map((u) => supabase.from('servicios').update({ comision_pct: u.comision_pct }).eq('id', u.id)),
+    ])
+    setSavingCom(false)
+    const err = res.find((r) => r.error)
+    if (err?.error) return alert('Error al guardar: ' + err.error.message)
+    cargar()
+    alert('Comisiones actualizadas ✓')
   }
 
   async function guardarNegocio() {
@@ -260,6 +308,9 @@ export default function Configuracion() {
         </button>
         <button onClick={() => setTab('categorias')} className={tab === 'categorias' ? 'btn-primary' : 'btn-ghost'}>
           <Tags size={16} /> Categorías
+        </button>
+        <button onClick={() => setTab('comisiones')} className={tab === 'comisiones' ? 'btn-primary' : 'btn-ghost'}>
+          <Percent size={16} /> Comisiones
         </button>
         {perfil?.es_admin && (
           <button onClick={() => setTab('auditoria')} className={tab === 'auditoria' ? 'btn-primary' : 'btn-ghost'}>
@@ -453,6 +504,93 @@ export default function Configuracion() {
             { header: 'Detalle', cell: (a) => <span className="text-slate-600">{a.descripcion}</span>, sortValue: (a) => a.descripcion ?? '' },
           ]}
         />
+      ) : tab === 'comisiones' ? (
+        <div className="space-y-5">
+          <p className="text-sm text-slate-600">
+            Define cuánto gana cada empleado por su trabajo. Solo los <strong>servicios</strong> pagan comisión (los productos no).
+            Si un servicio tiene su propio %, ese manda; si lo dejas vacío, usa el % del empleado que lo realiza.
+          </p>
+
+          <div className="card">
+            <h3 className="mb-3 font-display font-bold text-slate-800">% por empleado</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-100 text-sm">
+                <thead className="thead-3d">
+                  <tr>
+                    <th className="px-5 py-3">Empleado</th>
+                    <th className="px-5 py-3">Puesto</th>
+                    <th className="px-5 py-3 text-right">% Comisión</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {empleados.map((emp) => (
+                    <tr key={emp.id}>
+                      <td className="px-5 py-3 font-medium text-slate-800">{emp.nombre}</td>
+                      <td className="px-5 py-3 text-slate-600">{emp.puesto}</td>
+                      <td className="px-5 py-3">
+                        <div className="ml-auto flex w-28 items-center gap-1">
+                          <input
+                            type="number" min={0} max={100} step={1}
+                            className="input text-right"
+                            value={comEmp[emp.id] ?? ''}
+                            onChange={(e) => setComEmp({ ...comEmp, [emp.id]: e.target.value })}
+                          />
+                          <span className="text-slate-500">%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 className="mb-3 font-display font-bold text-slate-800">% por servicio <span className="font-normal text-slate-500">(opcional)</span></h3>
+            {servicios.length === 0 ? (
+              <p className="text-sm text-slate-600">No hay servicios activos.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-100 text-sm">
+                  <thead className="thead-3d">
+                    <tr>
+                      <th className="px-5 py-3">Servicio</th>
+                      <th className="px-5 py-3">Categoría</th>
+                      <th className="px-5 py-3 text-right">% Comisión</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {servicios.map((s) => (
+                      <tr key={s.id}>
+                        <td className="px-5 py-3 font-medium text-slate-800">{s.nombre}</td>
+                        <td className="px-5 py-3"><span className="badge bg-brand-50 text-brand-700">{s.categoria}</span></td>
+                        <td className="px-5 py-3">
+                          <div className="ml-auto flex w-40 items-center gap-1">
+                            <input
+                              type="number" min={0} max={100} step={1}
+                              className="input text-right"
+                              placeholder="Empleado"
+                              value={comServ[s.id] ?? ''}
+                              onChange={(e) => setComServ({ ...comServ, [s.id]: e.target.value })}
+                            />
+                            <span className="text-slate-500">%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="mt-3 text-xs text-slate-500">Deja el campo vacío para que el servicio use el % del empleado.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            <button className="btn-primary" onClick={guardarComisiones} disabled={savingCom}>
+              {savingCom ? 'Guardando…' : 'Guardar comisiones'}
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="max-w-2xl space-y-4">
           <div className="card space-y-3">
