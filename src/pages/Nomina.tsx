@@ -112,8 +112,8 @@ export default function Nomina() {
   const lineaPct = (it: any) => pctComisionServicio(it.servicios?.comision_pct, empPct)
   const comTotal = comItems.reduce((s, it) => s + Number(it.importe), 0)
   const comMonto = comItems.reduce((s, it) => s + comisionLinea(it.importe, lineaPct(it)), 0)
-  // Pagos de comisión cuyo periodo se solapa con el rango elegido
-  const comSolapadas = comPagadas.filter((p) => rangosSeSolapan(comDesde, comHasta, p.comision_desde, p.comision_hasta))
+  // Pagos de comisión cuyo periodo se solapa con el rango elegido (sin contar el que se está editando)
+  const comSolapadas = comPagadas.filter((p) => p.id !== editId && rangosSeSolapan(comDesde, comHasta, p.comision_desde, p.comision_hasta))
 
   const totalMes = items
     .filter((p) => p.fecha.slice(0, 7) === hoyISO().slice(0, 7))
@@ -136,6 +136,9 @@ export default function Nomina() {
       metodo_pago: p.metodo_pago ?? 'Efectivo',
       notas: p.notas ?? '',
     })
+    // Si es comisión con periodo guardado, recupéralo para no sobrescribirlo al guardar
+    if (p.comision_desde) setComDesde(p.comision_desde)
+    if (p.comision_hasta) setComHasta(p.comision_hasta)
     setOpen(true)
   }
 
