@@ -1,13 +1,22 @@
 // Constantes compartidas del sistema
 
+// Login por nombre de usuario: internamente se usa un correo "<usuario>@deluxe.local"
+export const DOMINIO_USUARIO = '@deluxe.local'
+export function usuarioAEmail(usuario: string): string {
+  return usuario.trim().toLowerCase() + DOMINIO_USUARIO
+}
+
+
 // Datos del negocio (aparecen en facturas, login y panel)
 export const NEGOCIO = {
   nombre: 'DeluXe Beauty Center',
   direccion: 'Av. Duarte #180, 2do nivel',
   referencia: 'Frente a Banco Popular',
+  telefono: '809-354-4083',
   whatsapp: '809-354-4083',
   instagram: '@centerdeluxebeauty',
-  logo: 'deluxe-tarjeta.png',
+  rnc: '', // Coloca aquí el RNC si aplica (aparece en los tickets)
+  logo: 'deluxe-logo.png',
 }
 
 

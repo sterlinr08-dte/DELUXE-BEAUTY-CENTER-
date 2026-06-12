@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Empleado, PagoEmpleado, TipoPagoEmpleado } from '../types'
-import { money, fechaCorta, hoyISO } from '../lib/format'
+import { money, fechaCorta, fechaHora, hoyISO, codigoFactura } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
+import { pctComisionServicio, comisionLinea, rangosSeSolapan } from '../lib/comisiones'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
+
+interface ReciboPago { empleado: string; tipo: string; periodo: string; monto: number; metodo: string; fecha: string; hora: string }
 
 const tipos: TipoPagoEmpleado[] = ['SALARIO', 'COMISION', 'ADELANTO', 'BONO']
 
@@ -27,6 +32,8 @@ const vacio = {
 }
 
 export default function Nomina() {
+  const { negocio } = useNegocio()
+  const [recibo, setRecibo] = useState<ReciboPago | null>(null)
   const [items, setItems] = useState<PagoEmpleado[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +41,14 @@ export default function Nomina() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
+
+  // Resumen de comisión: servicios realizados por el empleado en un rango
+  const [comDesde, setComDesde] = useState(hoyISO().slice(0, 7) + '-01')
+  const [comHasta, setComHasta] = useState(hoyISO())
+  const [comItems, setComItems] = useState<any[]>([])
+  const [comLoading, setComLoading] = useState(false)
+  // Comisiones ya pagadas a este empleado (para avisar si el periodo se solapa)
+  const [comPagadas, setComPagadas] = useState<PagoEmpleado[]>([])
 
   async function cargar() {
     setLoading(true)
@@ -51,6 +66,54 @@ export default function Nomina() {
     cargar()
     cargarEmpleados()
   }, [])
+
+  // Carga los SERVICIOS realizados por el empleado (facturas pagadas) en el rango.
+  // Solo servicios pagan comisión; los productos quedan fuera.
+  useEffect(() => {
+    if (!open || !form.empleado_id) {
+      setComItems([])
+      setComPagadas([])
+      return
+    }
+    let cancel = false
+    ;(async () => {
+      setComLoading(true)
+      const [items, pagadas] = await Promise.all([
+        supabase
+          .from('factura_items')
+          .select('descripcion,cantidad,importe,servicio_id, servicios(comision_pct), facturas!inner(numero,tipo_venta,serie,fecha,estado)')
+          .eq('empleado_id', form.empleado_id)
+          .is('articulo_id', null)
+          .eq('facturas.estado', 'PAGADA')
+          .gte('facturas.fecha', comDesde)
+          .lte('facturas.fecha', comHasta)
+          .order('fecha', { foreignTable: 'facturas', ascending: true }),
+        supabase
+          .from('pagos_empleados')
+          .select('*')
+          .eq('empleado_id', form.empleado_id)
+          .eq('tipo', 'COMISION')
+          .not('comision_desde', 'is', null),
+      ])
+      if (!cancel) {
+        setComItems(items.data ?? [])
+        setComPagadas((pagadas.data ?? []) as PagoEmpleado[])
+        setComLoading(false)
+      }
+    })()
+    return () => {
+      cancel = true
+    }
+  }, [open, form.empleado_id, comDesde, comHasta])
+
+  const empSel = empleados.find((e) => e.id === form.empleado_id)
+  const empPct = Number(empSel?.comision_pct ?? 0)
+  // % por línea: el del servicio si lo tiene, si no el del empleado
+  const lineaPct = (it: any) => pctComisionServicio(it.servicios?.comision_pct, empPct)
+  const comTotal = comItems.reduce((s, it) => s + Number(it.importe), 0)
+  const comMonto = comItems.reduce((s, it) => s + comisionLinea(it.importe, lineaPct(it)), 0)
+  // Pagos de comisión cuyo periodo se solapa con el rango elegido (sin contar el que se está editando)
+  const comSolapadas = comPagadas.filter((p) => p.id !== editId && rangosSeSolapan(comDesde, comHasta, p.comision_desde, p.comision_hasta))
 
   const totalMes = items
     .filter((p) => p.fecha.slice(0, 7) === hoyISO().slice(0, 7))
@@ -73,10 +136,13 @@ export default function Nomina() {
       metodo_pago: p.metodo_pago ?? 'Efectivo',
       notas: p.notas ?? '',
     })
+    // Si es comisión con periodo guardado, recupéralo para no sobrescribirlo al guardar
+    if (p.comision_desde) setComDesde(p.comision_desde)
+    if (p.comision_hasta) setComHasta(p.comision_hasta)
     setOpen(true)
   }
 
-  async function guardar() {
+  async function guardar(imprimir = false) {
     if (!form.empleado_id) return alert('Selecciona un empleado')
     if (form.monto <= 0) return alert('El monto debe ser mayor que 0')
     setSaving(true)
@@ -90,12 +156,19 @@ export default function Nomina() {
       monto: form.monto,
       metodo_pago: form.metodo_pago,
       notas: form.notas || null,
+      // Para comisiones guardamos el periodo cubierto (control de "ya pagado")
+      comision_desde: form.tipo === 'COMISION' ? comDesde : null,
+      comision_hasta: form.tipo === 'COMISION' ? comHasta : null,
     }
     const { error } = editId
       ? await supabase.from('pagos_empleados').update(payload).eq('id', editId)
       : await supabase.from('pagos_empleados').insert(payload)
     setSaving(false)
     if (error) return alert('Error al guardar: ' + error.message)
+    if (imprimir) {
+      setRecibo({ empleado: emp?.nombre ?? 'Empleado', tipo: form.tipo, periodo: form.periodo, monto: form.monto, metodo: form.metodo_pago, fecha: form.fecha, hora: new Date().toISOString() })
+      setTimeout(() => window.print(), 400)
+    }
     setOpen(false)
     cargar()
   }
@@ -120,16 +193,16 @@ export default function Nomina() {
       />
 
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : items.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 py-12 text-center">
           <Users className="text-brand-300" size={40} />
           <p className="text-slate-500">Aún no hay pagos registrados.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
+        <div className="overflow-x-auto panel-3d">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="thead-3d">
               <tr>
                 <th className="px-5 py-3">Fecha</th>
                 <th className="px-5 py-3">Empleado</th>
@@ -149,8 +222,8 @@ export default function Nomina() {
                   <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(p.monto)}</td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => abrirEditar(p)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
-                      <button onClick={() => eliminar(p)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
+                      <button onClick={() => abrirEditar(p)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600"><Pencil size={16} /></button>
+                      <button onClick={() => eliminar(p)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -167,7 +240,8 @@ export default function Nomina() {
         footer={
           <>
             <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="btn-primary" onClick={guardar} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+            <button className="btn-ghost" onClick={() => guardar(false)} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+            <button className="btn-primary" onClick={() => guardar(true)} disabled={saving}><Printer size={16} /> Guardar e imprimir</button>
           </>
         }
       >
@@ -188,7 +262,7 @@ export default function Nomina() {
             </div>
             <div>
               <label className="label">Monto (RD$)</label>
-              <input type="number" min={0} step={50} className="input" value={form.monto} onChange={(e) => setForm({ ...form, monto: Number(e.target.value) })} />
+              <input type="number" min={0} step={50} className="input" value={form.monto || ''} onChange={(e) => setForm({ ...form, monto: Number(e.target.value) })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -201,6 +275,71 @@ export default function Nomina() {
               <input className="input" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} placeholder="Ej: 1ra quincena junio" />
             </div>
           </div>
+          {form.empleado_id && (
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <label className="label !mb-0">Servicios realizados (para comisión)</label>
+                <span className="text-xs text-slate-500">% empleado: {empPct}%</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-xs text-slate-600">Desde</span>
+                  <input type="date" className="input" value={comDesde} onChange={(e) => setComDesde(e.target.value)} />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-600">Hasta</span>
+                  <input type="date" className="input" value={comHasta} onChange={(e) => setComHasta(e.target.value)} />
+                </div>
+              </div>
+
+              {comSolapadas.length > 0 && (
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  ⚠️ Ya registraste comisión a este empleado que cubre parte de este periodo:
+                  {comSolapadas.map((p) => (
+                    <span key={p.id} className="ml-1 font-semibold">
+                      {fechaCorta(p.comision_desde!)}–{fechaCorta(p.comision_hasta!)} ({money(p.monto)})
+                    </span>
+                  ))}
+                  . Revisa para no pagar dos veces.
+                </div>
+              )}
+
+              {comLoading ? (
+                <p className="mt-2 text-sm text-slate-500">Calculando…</p>
+              ) : comItems.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-500">No realizó servicios pagados en este rango.</p>
+              ) : (
+                <>
+                  <div className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-white/70">
+                    <table className="w-full text-xs">
+                      <tbody className="divide-y divide-slate-100">
+                        {comItems.map((it, idx) => (
+                          <tr key={idx}>
+                            <td className="px-2 py-1 text-slate-600">{fechaCorta(it.facturas?.fecha)} · {it.facturas ? codigoFactura(it.facturas) : ''}</td>
+                            <td className="px-2 py-1 text-slate-700">{it.descripcion}{it.cantidad > 1 ? ` ×${it.cantidad}` : ''}</td>
+                            <td className="px-2 py-1 text-right text-slate-500">{lineaPct(it)}%</td>
+                            <td className="px-2 py-1 text-right font-medium text-slate-700">{money(it.importe)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-2 space-y-0.5 text-sm">
+                    <div className="flex justify-between text-slate-600"><span>{comItems.length} servicio(s) · ventas</span><span>{money(comTotal)}</span></div>
+                    <div className="flex justify-between font-semibold text-emerald-700"><span>Comisión a pagar</span><span>{money(comMonto)}</span></div>
+                  </div>
+                  <button
+                    className="btn-ghost mt-2 w-full"
+                    onClick={() => setForm((f) => ({ ...f, tipo: 'COMISION', monto: comMonto, periodo: f.periodo || `${comDesde} a ${comHasta}` }))}
+                  >
+                    Usar comisión como monto ({money(comMonto)})
+                  </button>
+                  <p className="mt-1 text-xs text-slate-600">Para un incentivo/bono extra, cambia el tipo a BONO y ajusta el monto.</p>
+                </>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="label">Método de pago</label>
             <select className="input" value={form.metodo_pago} onChange={(e) => setForm({ ...form, metodo_pago: e.target.value })}>
@@ -212,6 +351,41 @@ export default function Nomina() {
             <textarea className="input" rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
           </div>
         </div>
+      </Modal>
+
+      {/* RECIBO DE PAGO A EMPLEADO (imprimible) */}
+      <Modal open={!!recibo} title="Recibo de pago" onClose={() => setRecibo(null)}>
+        {recibo && (
+          <div className="space-y-3">
+            <div id="recibo-pago" className="print-area space-y-2 rounded-xl border border-slate-100 p-3 text-sm">
+              <div className="text-center">
+                <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+                <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
+                {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+                <p className="mt-1 text-xs font-semibold text-slate-600">RECIBO DE PAGO</p>
+                <p className="text-xs text-slate-600">{fechaHora(recibo.hora)}</p>
+              </div>
+              <p className="text-slate-600"><span className="font-medium">Empleado:</span> {recibo.empleado}</p>
+              <p className="text-slate-600"><span className="font-medium">Concepto:</span> {recibo.tipo}{recibo.periodo ? ` · ${recibo.periodo}` : ''}</p>
+              <div className="space-y-0.5 border-t pt-1">
+                <div className="flex justify-between text-base font-bold text-slate-800"><span>Monto pagado</span><span>{money(recibo.monto)}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Método</span><span>{recibo.metodo}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Fecha</span><span>{fechaCorta(recibo.fecha)}</span></div>
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-4 text-center text-xs text-slate-500">
+                <div className="border-t border-slate-300 pt-1">Firma empleado</div>
+                <div className="border-t border-slate-300 pt-1">Firma autoriza</div>
+              </div>
+              <div className="border-t pt-1 text-center text-xs text-slate-500">
+                <p>{negocio.direccion} · {negocio.referencia}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 no-print">
+              <button className="btn-ghost flex-1" onClick={() => setRecibo(null)}>Cerrar</button>
+              <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir</button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

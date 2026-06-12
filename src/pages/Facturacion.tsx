@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Receipt, Printer, Check, Ban, X } from 'lucide-react'
+import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { Cliente, Factura, FacturaItem, Servicio, EstadoFactura } from '../types'
-import { money, fechaCorta, hoyISO } from '../lib/format'
-import { METODOS_PAGO, ITBIS_RATE, NEGOCIO } from '../lib/constants'
+import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
+import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
+import { ITBIS_RATE } from '../lib/constants'
+import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
+import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
+import DataTable from '../components/DataTable'
 
 interface LineaTmp {
   servicio_id: string
+  articulo_id: string
   descripcion: string
   cantidad: number
   precio_unit: number
+  empleado_id: string
 }
+
+const lineaVacia: LineaTmp = { servicio_id: '', articulo_id: '', descripcion: '', cantidad: 1, precio_unit: 0, empleado_id: '' }
 
 const estadoBadge: Record<EstadoFactura, string> = {
   PENDIENTE: 'bg-amber-50 text-amber-700',
@@ -21,9 +29,20 @@ const estadoBadge: Record<EstadoFactura, string> = {
 }
 
 export default function Facturacion() {
+  const { puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
+  const puedeAnular = puedeAccion('facturas.anular')
+  const puedeEliminar = puedeAccion('facturas.eliminar')
+  const puedeEditar = puedeAccion('facturas.editar')
+  const puedeVenderSinExistencia = puedeAccion('facturas.vender_sin_existencia')
+  const puedeModificarLineas = puedeAccion('facturas.modificar_lineas')
+
   const [facturas, setFacturas] = useState<Factura[]>([])
+  const [verEstado, setVerEstado] = useState<'ABIERTAS' | 'PAGADAS' | 'TODAS'>('ABIERTAS')
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
+  const [articulos, setArticulos] = useState<Articulo[]>([])
+  const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -34,11 +53,114 @@ export default function Facturacion() {
   const [clienteId, setClienteId] = useState('')
   const [clienteNombre, setClienteNombre] = useState('')
   const [fecha, setFecha] = useState(hoyISO())
-  const [metodoPago, setMetodoPago] = useState('Efectivo')
+  const [tipoVenta, setTipoVenta] = useState<TipoVenta>('CONTADO')
   const [aplicaItbis, setAplicaItbis] = useState(false)
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
-  const [lineas, setLineas] = useState<LineaTmp[]>([{ servicio_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }])
+  const [lineas, setLineas] = useState<LineaTmp[]>([])
+  const [buscarItem, setBuscarItem] = useState('')
+  const [editId, setEditId] = useState<string | null>(null)
+  // Cantidad por artículo que ya tenía la factura al editar (para no bloquear de más la existencia)
+  const [cantOriginal, setCantOriginal] = useState<Record<string, number>>({})
+  // Cantidad de ítems que ya tenía la factura al abrir (los primeros N renglones son los previos)
+  const [lineasOriginales, setLineasOriginales] = useState(0)
+  // Catálogo completo (ventana de la lupa)
+  const [catalogoOpen, setCatalogoOpen] = useState(false)
+  const [catTab, setCatTab] = useState<'catalogo' | 'historial'>('catalogo')
+  const [buscarCat, setBuscarCat] = useState('')
+  // Crear cliente rápido (desde la factura)
+  const [crearClienteOpen, setCrearClienteOpen] = useState(false)
+  const [nuevoCli, setNuevoCli] = useState({ nombre: '', telefono: '', email: '' })
+  const [savingCli, setSavingCli] = useState(false)
+  // Buscador de cliente (combobox)
+  const [buscarCliente, setBuscarCliente] = useState('')
+  const [clienteFocus, setClienteFocus] = useState(false)
+
+  // Resultados del buscador (servicios + artículos)
+  const q = buscarItem.trim().toLowerCase()
+  const resultados = q
+    ? [
+        ...servicios
+          .filter((s) => s.nombre.toLowerCase().includes(q) || (s.categoria ?? '').toLowerCase().includes(q))
+          .map((s) => ({ tipo: 's' as const, id: s.id, nombre: s.nombre, precio: Number(s.precio), stock: null as number | null })),
+        ...articulos
+          .filter((a) => a.nombre.toLowerCase().includes(q) || a.categoria.toLowerCase().includes(q) || codigoArticulo(a.codigo).includes(q))
+          .map((a) => ({ tipo: 'a' as const, id: a.id, nombre: a.nombre, precio: Number(a.precio), stock: Number(a.stock) })),
+      ].slice(0, 8)
+    : []
+
+  // Lista completa para la ventana del catálogo (la lupa), con filtro propio
+  const qc = buscarCat.trim().toLowerCase()
+  const catalogo = [
+    ...servicios
+      .filter((s) => !qc || s.nombre.toLowerCase().includes(qc) || (s.categoria ?? '').toLowerCase().includes(qc))
+      .map((s) => ({ tipo: 's' as const, id: s.id, nombre: s.nombre, precio: Number(s.precio), stock: null as number | null })),
+    ...articulos
+      .filter((a) => !qc || a.nombre.toLowerCase().includes(qc) || a.categoria.toLowerCase().includes(qc) || codigoArticulo(a.codigo).includes(qc))
+      .map((a) => ({ tipo: 'a' as const, id: a.id, nombre: a.nombre, precio: Number(a.precio), stock: Number(a.stock) })),
+  ]
+
+  function agregarDesdeBusqueda(r: { tipo: 's' | 'a'; id: string; nombre: string; precio: number; stock?: number | null }) {
+    if (r.tipo === 'a' && (r.stock ?? 0) <= 0) {
+      if (!puedeVenderSinExistencia) {
+        alert(`"${r.nombre}" no tiene existencia. Solo administración puede facturar sin existencia.`)
+        return
+      }
+      if (!confirm(`"${r.nombre}" no tiene existencia (0). ¿Agregar de todos modos?`)) return
+    }
+    setLineas((prev) => {
+      // Si el mismo servicio/artículo ya está, suma la cantidad en vez de duplicar
+      const existe = prev.findIndex((l) =>
+        r.tipo === 's' ? l.servicio_id === r.id : l.articulo_id === r.id,
+      )
+      if (existe >= 0) {
+        return prev.map((l, idx) => (idx === existe ? { ...l, cantidad: l.cantidad + 1 } : l))
+      }
+      // Cada ítem nuevo entra SIN asignar; el usuario elige quién lo hizo
+      const linea: LineaTmp = {
+        servicio_id: r.tipo === 's' ? r.id : '',
+        articulo_id: r.tipo === 'a' ? r.id : '',
+        descripcion: r.nombre,
+        cantidad: 1,
+        precio_unit: r.precio,
+        empleado_id: '',
+      }
+      return [...prev, linea]
+    })
+    setBuscarItem('')
+  }
+
+  // Agrega un concepto manual (algo que no está en el catálogo)
+  function agregarManual() {
+    setLineas((prev) => [...prev, { ...lineaVacia }])
+  }
+
+  // Crear cliente rápido sin salir de la factura
+  function abrirCrearCliente() {
+    setNuevoCli({ nombre: clienteNombre || '', telefono: '', email: '' })
+    setCrearClienteOpen(true)
+  }
+  async function guardarNuevoCliente() {
+    if (!nuevoCli.nombre.trim()) return alert('El nombre del cliente es obligatorio')
+    setSavingCli(true)
+    const { data, error } = await supabase
+      .from('clientes')
+      .insert({ nombre: nuevoCli.nombre.trim(), telefono: nuevoCli.telefono || null, email: nuevoCli.email || null })
+      .select()
+      .single()
+    if (error || !data) {
+      setSavingCli(false)
+      return alert('Error al crear el cliente: ' + error?.message)
+    }
+    // Recargar la lista y dejar seleccionado el cliente recién creado
+    const { data: cls } = await supabase.from('clientes').select('*').order('nombre')
+    setClientes(cls ?? [])
+    setClienteId((data as any).id)
+    setClienteNombre('')
+    setBuscarCliente(`${codigoCliente((data as any).codigo)} · ${(data as any).nombre}`)
+    setSavingCli(false)
+    setCrearClienteOpen(false)
+  }
 
   async function cargar() {
     setLoading(true)
@@ -48,12 +170,16 @@ export default function Facturacion() {
   }
 
   async function cargarCatalogos() {
-    const [cl, se] = await Promise.all([
+    const [cl, se, ar, em] = await Promise.all([
       supabase.from('clientes').select('*').order('nombre'),
       supabase.from('servicios').select('*').eq('activo', true).order('nombre'),
+      supabase.from('articulos').select('*').eq('activo', true).order('nombre'),
+      supabase.from('empleados').select('*').eq('activo', true).order('nombre'),
     ])
     setClientes(cl.data ?? [])
     setServicios(se.data ?? [])
+    setArticulos(ar.data ?? [])
+    setEmpleados(em.data ?? [])
   }
 
   useEffect(() => {
@@ -65,16 +191,74 @@ export default function Facturacion() {
   const baseImponible = Math.max(0, subtotal - descuento)
   const itbis = aplicaItbis ? baseImponible * ITBIS_RATE : 0
   const total = baseImponible + itbis
+  // En una cuenta ya creada (editando), descuento e ITBIS quedan protegidos salvo autorización
+  const protegerCuenta = !!editId && !puedeModificarLineas
+
+  // Clientes que coinciden con la búsqueda (nombre, código o teléfono)
+  const clientesFiltrados = (() => {
+    const t = buscarCliente.trim().toLowerCase()
+    const base = !t
+      ? clientes
+      : clientes.filter((c) => c.nombre.toLowerCase().includes(t) || codigoCliente(c.codigo).includes(t) || (c.telefono ?? '').toLowerCase().includes(t))
+    return base.slice(0, 8)
+  })()
 
   function nuevaFactura() {
+    setEditId(null)
     setClienteId('')
     setClienteNombre('')
+    setBuscarCliente('')
     setFecha(hoyISO())
-    setMetodoPago('Efectivo')
+    setTipoVenta('CONTADO')
     setAplicaItbis(false)
     setDescuento(0)
     setNotas('')
-    setLineas([{ servicio_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }])
+    setLineas([])
+    setCantOriginal({})
+    setLineasOriginales(0)
+    setBuscarItem('')
+    setOpen(true)
+  }
+
+  // Editar una factura ya guardada (solo PENDIENTE y con permiso)
+  async function abrirEditar(f: Factura) {
+    if (f.estado !== 'PENDIENTE') return alert('Solo se pueden editar facturas pendientes (aún no cobradas).')
+    const { data, error } = await supabase
+      .from('factura_items')
+      .select('*')
+      .eq('factura_id', f.id)
+      .order('id')
+    if (error) return alert('Error al cargar la factura: ' + error.message)
+    setEditId(f.id)
+    setClienteId(f.cliente_id ?? '')
+    setClienteNombre(f.cliente_nombre ?? '')
+    {
+      const cl = f.cliente_id ? clientes.find((c) => c.id === f.cliente_id) : null
+      setBuscarCliente(cl ? `${codigoCliente(cl.codigo)} · ${cl.nombre}` : '')
+    }
+    setFecha(f.fecha)
+    setTipoVenta(f.tipo_venta ?? 'CONTADO')
+    setAplicaItbis(Number(f.itbis) > 0)
+    setDescuento(Number(f.descuento))
+    setNotas(f.notas ?? '')
+    setBuscarItem('')
+    setLineas(
+      (data ?? []).map((it: any) => ({
+        servicio_id: it.servicio_id ?? '',
+        articulo_id: it.articulo_id ?? '',
+        descripcion: it.descripcion,
+        cantidad: Number(it.cantidad),
+        precio_unit: Number(it.precio_unit),
+        empleado_id: it.empleado_id ?? '',
+      })),
+    )
+    // Guarda cuánto de cada artículo ya tenía esta factura (esa cantidad ya está descontada)
+    const orig: Record<string, number> = {}
+    for (const it of (data ?? []) as any[]) {
+      if (it.articulo_id) orig[it.articulo_id] = (orig[it.articulo_id] ?? 0) + Number(it.cantidad)
+    }
+    setCantOriginal(orig)
+    setLineasOriginales((data ?? []).length)
     setOpen(true)
   }
 
@@ -82,62 +266,118 @@ export default function Facturacion() {
     setLineas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
   }
 
-  function elegirServicio(i: number, servicioId: string) {
-    const s = servicios.find((x) => x.id === servicioId)
-    setLinea(i, {
-      servicio_id: servicioId,
-      descripcion: s ? s.nombre : '',
-      precio_unit: s ? Number(s.precio) : 0,
-    })
-  }
-
-  async function guardar() {
+  async function guardar(imprimir = false) {
     const items = lineas.filter((l) => l.descripcion.trim() && l.cantidad > 0)
-    if (items.length === 0) return alert('Agrega al menos un renglón con descripción')
-    setSaving(true)
-    const { data: factura, error } = await supabase
-      .from('facturas')
-      .insert({
-        cliente_id: clienteId || null,
-        cliente_nombre: clienteId ? clientes.find((c) => c.id === clienteId)?.nombre : clienteNombre || 'Cliente de contado',
-        fecha,
-        subtotal,
-        descuento,
-        itbis,
-        total,
-        estado: 'PENDIENTE',
-        metodo_pago: metodoPago,
-        notas: notas || null,
-      })
-      .select()
-      .single()
-    if (error || !factura) {
-      setSaving(false)
-      return alert('Error al crear factura: ' + error?.message)
+    if (items.length === 0) return alert('Agrega al menos un ítem con descripción')
+    // No permitir dejar la existencia en negativo (salvo administración)
+    if (!puedeVenderSinExistencia) {
+      for (const l of items) {
+        if (!l.articulo_id) continue
+        const art = articulos.find((a) => a.id === l.articulo_id)
+        if (!art) continue
+        const disponible = Number(art.stock) + (cantOriginal[l.articulo_id] ?? 0)
+        if (l.cantidad > disponible) {
+          return alert(`No hay suficiente existencia de "${l.descripcion}" (disponible: ${disponible}). Solo administración puede facturar dejándolo en negativo.`)
+        }
+      }
     }
+    setSaving(true)
+    const datos = {
+      cliente_id: clienteId || null,
+      cliente_nombre: clienteId ? clientes.find((c) => c.id === clienteId)?.nombre : clienteNombre || 'Cliente de contado',
+      fecha,
+      tipo_venta: tipoVenta,
+      subtotal,
+      descuento,
+      itbis,
+      total,
+      notas: notas || null,
+    }
+
+    let facturaId = editId
+    if (editId) {
+      // Editar: devolver el stock anterior, actualizar y reinsertar el detalle
+      await restaurarStock(editId)
+      const { error } = await supabase.from('facturas').update(datos).eq('id', editId)
+      if (error) {
+        setSaving(false)
+        return alert('Error al actualizar factura: ' + error.message)
+      }
+      const { error: eDel } = await supabase.from('factura_items').delete().eq('factura_id', editId)
+      if (eDel) {
+        setSaving(false)
+        return alert('Error al actualizar el detalle: ' + eDel.message)
+      }
+    } else {
+      const { data: factura, error } = await supabase
+        .from('facturas')
+        .insert({ ...datos, estado: 'PENDIENTE', metodo_pago: null })
+        .select()
+        .single()
+      if (error || !factura) {
+        setSaving(false)
+        return alert('Error al crear factura: ' + error?.message)
+      }
+      facturaId = factura.id
+    }
+
     const payload = items.map((l) => ({
-      factura_id: factura.id,
+      factura_id: facturaId,
       servicio_id: l.servicio_id || null,
+      articulo_id: l.articulo_id || null,
+      empleado_id: l.empleado_id || null,
       descripcion: l.descripcion,
       cantidad: l.cantidad,
       precio_unit: l.precio_unit,
       importe: l.cantidad * l.precio_unit,
     }))
     const { error: e2 } = await supabase.from('factura_items').insert(payload)
+    if (e2) {
+      setSaving(false)
+      return alert('Factura guardada pero falló el detalle: ' + e2.message)
+    }
+    // Descontar del stock los artículos vendidos
+    for (const l of items) {
+      if (l.articulo_id) {
+        await supabase.rpc('ajustar_stock', { p_articulo: l.articulo_id, p_delta: -l.cantidad })
+      }
+    }
     setSaving(false)
-    if (e2) return alert('Factura creada pero falló el detalle: ' + e2.message)
     setOpen(false)
-    cargar()
+    await cargar()
+    // Guardar e imprimir: abre el recibo de la factura recién guardada y lo manda a imprimir
+    if (imprimir && facturaId) {
+      await verDetalle({ id: facturaId } as Factura)
+      setTimeout(() => window.print(), 400)
+    }
+  }
+
+  // Devuelve al stock los artículos de una factura
+  async function restaurarStock(facturaId: string) {
+    const { data } = await supabase.from('factura_items').select('articulo_id, cantidad').eq('factura_id', facturaId)
+    for (const it of data ?? []) {
+      if ((it as any).articulo_id) {
+        await supabase.rpc('ajustar_stock', { p_articulo: (it as any).articulo_id, p_delta: Number((it as any).cantidad) })
+      }
+    }
   }
 
   async function cambiarEstado(f: Factura, estado: EstadoFactura) {
+    // Al anular, devolver los artículos al inventario
+    if (estado === 'ANULADA' && f.estado !== 'ANULADA') {
+      await restaurarStock(f.id)
+    }
     const { error } = await supabase.from('facturas').update({ estado }).eq('id', f.id)
     if (error) return alert('Error: ' + error.message)
     cargar()
   }
 
   async function eliminar(f: Factura) {
-    if (!confirm(`¿Eliminar la factura #${f.numero}?`)) return
+    if (!confirm(`¿Eliminar la factura ${codigoFactura(f)}?`)) return
+    // Si no estaba anulada, devolver el stock antes de borrar
+    if (f.estado !== 'ANULADA') {
+      await restaurarStock(f.id)
+    }
     const { error } = await supabase.from('facturas').delete().eq('id', f.id)
     if (error) return alert('Error al eliminar: ' + error.message)
     cargar()
@@ -145,14 +385,25 @@ export default function Facturacion() {
 
   async function verDetalle(f: Factura) {
     setVerId(f.id)
-    const { data } = await supabase.from('factura_items').select('*').eq('factura_id', f.id)
-    setVerItems(data ?? [])
+    const { data } = await supabase.from('factura_items').select('*, empleado:empleados(nombre)').eq('factura_id', f.id)
+    setVerItems((data as FacturaItem[]) ?? [])
   }
 
   const facturaVista = facturas.find((f) => f.id === verId)
 
+  // Cliente seleccionado en la factura en curso y su historial (para "ver cómo se arregló la última vez")
+  const clienteSel = clienteId ? clientes.find((c) => c.id === clienteId) ?? null : null
+  const histRows = clienteSel ? facturas.filter((f) => f.cliente_id === clienteSel.id) : facturas
+
+  // Cuentas abiertas = facturas PENDIENTES (en curso, a las que se les sigue agregando)
+  const abiertas = facturas.filter((f) => f.estado === 'PENDIENTE')
+  const totalAbiertas = abiertas.reduce((s, f) => s + Number(f.total), 0)
+  const facturasFiltradas =
+    verEstado === 'ABIERTAS' ? abiertas : verEstado === 'PAGADAS' ? facturas.filter((f) => f.estado === 'PAGADA') : facturas
+
   return (
     <div>
+      {!open && (<>
       <PageHeader
         title="Facturación"
         subtitle={`${facturas.length} factura(s)`}
@@ -163,91 +414,136 @@ export default function Facturacion() {
         }
       />
 
+      {/* Resumen de cuentas abiertas (compacto) */}
+      <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-2.5 py-1 text-xs">
+        <Receipt size={13} className="text-amber-600" />
+        <span className="font-semibold text-slate-700">{abiertas.length} cuenta(s) abierta(s)</span>
+        <span className="text-amber-300">·</span>
+        <span className="text-slate-500">Sin cobrar: <b className="text-slate-700">{money(totalAbiertas)}</b></span>
+      </div>
+
+      {/* Filtro de estado */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {([['ABIERTAS', `Abiertas (${abiertas.length})`], ['PAGADAS', 'Pagadas'], ['TODAS', 'Todas']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setVerEstado(key)} className={verEstado === key ? 'btn-primary' : 'btn-ghost'}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
-        <p className="text-slate-500">Cargando…</p>
-      ) : facturas.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 py-12 text-center">
-          <Receipt className="text-brand-300" size={40} />
-          <p className="text-slate-500">Aún no hay facturas.</p>
-        </div>
+        <Cargando />
       ) : (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-100">
-          <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-5 py-3">#</th>
-                <th className="px-5 py-3">Cliente</th>
-                <th className="px-5 py-3">Fecha</th>
-                <th className="px-5 py-3 text-right">Total</th>
-                <th className="px-5 py-3">Estado</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {facturas.map((f) => (
-                <tr key={f.id} className="hover:bg-slate-50/50">
-                  <td className="px-5 py-3 font-mono font-semibold text-slate-700">#{f.numero}</td>
-                  <td className="px-5 py-3">
-                    <button className="font-medium text-brand-700 hover:underline" onClick={() => verDetalle(f)}>
-                      {f.cliente_nombre || 'Cliente'}
+        <DataTable
+          rows={facturasFiltradas}
+          rowKey={(f) => f.id}
+          searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.estado} ${f.fecha}`}
+          searchPlaceholder="Buscar por código, cliente, estado o fecha…"
+          emptyText={verEstado === 'ABIERTAS' ? 'No hay cuentas abiertas.' : 'No hay facturas que coincidan.'}
+          initialSort={{ index: 0, dir: 'desc' }}
+          columns={[
+            { header: 'Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+            {
+              header: 'Cliente', sortValue: (f) => f.cliente_nombre ?? '', cell: (f) => (
+                <button className="font-medium text-brand-700 hover:underline" onClick={() => verDetalle(f)}>
+                  {f.cliente_nombre || 'Cliente'}
+                </button>
+              ),
+            },
+            { header: 'Fecha', cell: (f) => <span className="text-slate-600">{fechaCorta(f.fecha)}</span>, sortValue: (f) => f.fecha },
+            { header: 'Total', align: 'right', cell: (f) => <span className="font-semibold text-slate-800">{money(f.total)}</span>, sortValue: (f) => f.total },
+            { header: 'Estado', cell: (f) => <span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span>, sortValue: (f) => f.estado },
+            {
+              header: '', align: 'right', cell: (f) => (
+                <div className="flex justify-end gap-1">
+                  {f.estado === 'PENDIENTE' && puedeEditar && (
+                    <button title="Agregar más consumo a esta cuenta" onClick={() => abrirEditar(f)} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100">
+                      <Plus size={13} className="-mt-0.5 mr-0.5 inline" /> Agregar consumo
                     </button>
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">{fechaCorta(f.fecha)}</td>
-                  <td className="px-5 py-3 text-right font-semibold text-slate-800">{money(f.total)}</td>
-                  <td className="px-5 py-3">
-                    <span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex justify-end gap-1">
-                      {f.estado === 'PENDIENTE' && (
-                        <button title="Marcar pagada" onClick={() => cambiarEstado(f, 'PAGADA')} className="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600">
-                          <Check size={16} />
-                        </button>
-                      )}
-                      {f.estado !== 'ANULADA' && (
-                        <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-400 hover:bg-amber-50 hover:text-amber-600">
-                          <Ban size={16} />
-                        </button>
-                      )}
-                      <button title="Ver / imprimir" onClick={() => verDetalle(f)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-600">
-                        <Printer size={16} />
-                      </button>
-                      <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                  {f.estado !== 'ANULADA' && puedeAnular && (
+                    <button title="Anular" onClick={() => cambiarEstado(f, 'ANULADA')} className="rounded-lg p-2 text-slate-600 hover:bg-amber-50 hover:text-amber-600">
+                      <Ban size={16} />
+                    </button>
+                  )}
+                  <button title="Ver / imprimir" onClick={() => verDetalle(f)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-brand-600">
+                    <Printer size={16} />
+                  </button>
+                  {puedeEliminar && (
+                    <button title="Eliminar" onClick={() => eliminar(f)} className="rounded-lg p-2 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
       )}
 
-      {/* Modal NUEVA FACTURA */}
-      <Modal
-        open={open}
-        title="Nueva factura"
-        onClose={() => setOpen(false)}
-        footer={
-          <>
-            <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="btn-primary" onClick={guardar} disabled={saving}>
-              {saving ? 'Guardando…' : `Guardar (${money(total)})`}
+      </>)}
+
+      {/* PANTALLA DE VENTA (a página completa, ya no es ventana emergente) */}
+      {open && (
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-bold uppercase text-slate-800">{editId ? 'Editar factura' : 'Nueva venta'}</h2>
+              <p className="text-sm text-slate-600">Registra los servicios y productos a cobrar.</p>
+            </div>
+            <button className="btn-ghost shrink-0" onClick={() => setOpen(false)}>
+              <X size={16} /> Cerrar
             </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
+          </div>
+          <div className="card space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Cliente</label>
-              <select className="input" value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-                <option value="">— De contado —</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                  <input
+                    className="input pl-9"
+                    placeholder="Buscar cliente por nombre o código… (vacío = de contado)"
+                    value={buscarCliente}
+                    onChange={(e) => { setBuscarCliente(e.target.value); setClienteId('') }}
+                    onFocus={() => setClienteFocus(true)}
+                    onBlur={() => setTimeout(() => setClienteFocus(false), 150)}
+                  />
+                  {clienteId && (
+                    <button type="button" onClick={() => { setClienteId(''); setBuscarCliente('') }} title="Quitar cliente" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600">
+                      <X size={15} />
+                    </button>
+                  )}
+                  {clienteFocus && (
+                    <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-pink-100 bg-white shadow-card">
+                      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setClienteId(''); setBuscarCliente(''); setClienteFocus(false) }} className="block w-full px-3 py-2 text-left text-sm text-slate-500 hover:bg-pink-50">
+                        — De contado —
+                      </button>
+                      {clientesFiltrados.length === 0 ? (
+                        <p className="px-3 py-2 text-sm text-slate-500">Sin coincidencias</p>
+                      ) : (
+                        clientesFiltrados.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setClienteId(c.id); setBuscarCliente(`${codigoCliente(c.codigo)} · ${c.nombre}`); setClienteFocus(false) }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-pink-50"
+                          >
+                            <span className="font-mono font-semibold text-brand-700">{codigoCliente(c.codigo)}</span>
+                            <span className="truncate text-slate-700">{c.nombre}</span>
+                            {c.telefono && <span className="ml-auto shrink-0 text-xs text-slate-500">{c.telefono}</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button type="button" onClick={abrirCrearCliente} title="Crear cliente nuevo" className="btn-ghost shrink-0">
+                  <UserPlus size={16} /> Crear
+                </button>
+              </div>
             </div>
             <div>
               <label className="label">Fecha</label>
@@ -262,76 +558,166 @@ export default function Facturacion() {
           )}
 
           <div>
-            <label className="label">Renglones</label>
-            <div className="space-y-2">
-              {lineas.map((l, i) => (
-                <div key={i} className="rounded-lg border border-slate-200 p-2">
-                  <div className="flex gap-2">
-                    <select
-                      className="input flex-1"
-                      value={l.servicio_id}
-                      onChange={(e) => elegirServicio(i, e.target.value)}
-                    >
-                      <option value="">Servicio / manual…</option>
-                      {servicios.map((s) => (
-                        <option key={s.id} value={s.id}>{s.nombre} · {money(s.precio)}</option>
-                      ))}
-                    </select>
-                    {lineas.length > 1 && (
-                      <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg px-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                        <X size={16} />
+            <label className="label">Tipo de venta</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTipoVenta('CONTADO')}
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${tipoVenta === 'CONTADO' ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+              >
+                Contado <span className="font-mono text-xs opacity-70">CO</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTipoVenta('CREDITO')}
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${tipoVenta === 'CREDITO' ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+              >
+                Crédito <span className="font-mono text-xs opacity-70">CR</span>
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-600">Un solo correlativo; solo cambia la letra: {tipoVenta === 'CREDITO' ? 'CR (crédito)' : 'CO (contado)'}.</p>
+          </div>
+
+          <div>
+            <label className="label">Buscar servicio o artículo</label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => { setBuscarCat(''); setCatTab('catalogo'); setCatalogoOpen(true) }}
+                title="Ver catálogo e historial de facturas"
+                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-600 transition hover:bg-brand-50 hover:text-brand-600"
+              >
+                <Search size={16} />
+              </button>
+              <input
+                className="input pl-9"
+                placeholder="Toca la lupa para ver todo, o escribe para buscar…"
+                value={buscarItem}
+                onChange={(e) => setBuscarItem(e.target.value)}
+              />
+              {q && (
+                <div className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-pink-100 bg-white shadow-card">
+                  {resultados.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-slate-600">Sin coincidencias</p>
+                  ) : (
+                    resultados.map((r) => (
+                      <button
+                        key={`${r.tipo}:${r.id}`}
+                        type="button"
+                        onClick={() => agregarDesdeBusqueda(r)}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-pink-50"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className={`badge ${r.tipo === 's' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
+                            {r.tipo === 's' ? 'Servicio' : 'Artículo'}
+                          </span>
+                          <span className="truncate text-slate-700">{r.nombre}</span>
+                          {r.tipo === 'a' && (
+                            <span className={`text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-600'}`}>
+                              {(r.stock ?? 0) <= 0 ? 'Sin existencia' : `Existencia: ${r.stock}`}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 font-semibold text-slate-800">{money(r.precio)}</span>
                       </button>
-                    )}
-                  </div>
-                  <input
-                    className="input mt-2"
-                    placeholder="Descripción"
-                    value={l.descripcion}
-                    onChange={(e) => setLinea(i, { descripcion: e.target.value })}
-                  />
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    <div>
-                      <span className="text-xs text-slate-400">Cant.</span>
-                      <input type="number" min={1} className="input" value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400">Precio</span>
-                      <input type="number" min={0} step={50} className="input" value={l.precio_unit} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <span className="text-xs text-slate-400">Importe</span>
-                      <input className="input bg-slate-50" value={money(l.cantidad * l.precio_unit)} readOnly />
-                    </div>
-                  </div>
+                    ))
+                  )}
                 </div>
-              ))}
-            </div>
-            <button
-              className="btn-ghost mt-2"
-              onClick={() => setLineas([...lineas, { servicio_id: '', descripcion: '', cantidad: 1, precio_unit: 0 }])}
-            >
-              <Plus size={14} /> Agregar renglón
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Método de pago</label>
-              <select className="input" value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)}>
-                {METODOS_PAGO.map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Descuento (RD$)</label>
-              <input type="number" min={0} step={50} className="input" value={descuento} onChange={(e) => setDescuento(Number(e.target.value))} />
+              )}
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={aplicaItbis} onChange={(e) => setAplicaItbis(e.target.checked)} />
-            Aplicar ITBIS (18%)
+          <div>
+            <label className="label">Artículos o servicios agregados</label>
+            {editId && lineasOriginales > 0 && !puedeModificarLineas && (
+              <p className="mb-2 text-xs font-medium text-amber-600">Lo ya agregado (🔒) no se puede modificar ni eliminar sin autorización. Puedes seguir agregando consumo.</p>
+            )}
+            {lineas.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">
+                Busca arriba y toca un servicio o producto para agregarlo aquí.
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {lineas.map((l, i) => {
+                  const esManual = !l.servicio_id && !l.articulo_id
+                  // Renglón ya agregado antes (cuenta abierta): no se puede modificar/eliminar sin autorización
+                  const bloqueado = i < lineasOriginales && !puedeModificarLineas
+                  return (
+                    <div key={i} className={`rounded-xl border-2 p-3 shadow-sm ${bloqueado ? 'border-slate-100 bg-slate-50' : 'border-slate-200 bg-white'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        {esManual ? (
+                          <input
+                            className="input flex-1"
+                            placeholder="Concepto (ej: ajuste, recargo…)"
+                            value={l.descripcion}
+                            readOnly={bloqueado}
+                            onChange={(e) => setLinea(i, { descripcion: e.target.value })}
+                          />
+                        ) : (
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-slate-800">
+                            <span className={`badge ${l.servicio_id ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
+                              {l.servicio_id ? 'Servicio' : 'Producto'}
+                            </span>
+                            <span className="truncate">{l.descripcion}</span>
+                          </span>
+                        )}
+                        {bloqueado ? (
+                          <span className="badge shrink-0 bg-slate-200 text-slate-500" title="Ya agregado · requiere autorización para modificar">🔒 Agregado</span>
+                        ) : (
+                          <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600">
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="mt-2">
+                        <span className="text-xs font-medium text-slate-600">Realizado por</span>
+                        <select className="input" value={l.empleado_id} onChange={(e) => setLinea(i, { empleado_id: e.target.value })}>
+                          <option value="">— Sin asignar —</option>
+                          {empleados.map((e) => (
+                            <option key={e.id} value={e.id}>{e.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        <div>
+                          <span className="text-xs font-medium text-slate-600">Cant.</span>
+                          <input type="number" min={1} className={`input ${bloqueado ? 'bg-slate-100 text-slate-500' : ''}`} value={l.cantidad || ''} readOnly={bloqueado} onChange={(e) => setLinea(i, { cantidad: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-slate-600">Precio</span>
+                          <input type="number" min={0} step={50} className={`input ${bloqueado ? 'bg-slate-100 text-slate-500' : ''}`} value={l.precio_unit || ''} readOnly={bloqueado} onChange={(e) => setLinea(i, { precio_unit: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-slate-600">Importe</span>
+                          <input className="input bg-slate-50" value={money(l.cantidad * l.precio_unit)} readOnly />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button className="btn-ghost" onClick={() => { setBuscarCat(''); setCatTab('catalogo'); setCatalogoOpen(true) }}>
+                <Search size={14} /> Agregar artículo o servicio
+              </button>
+              <button className="btn-ghost" onClick={agregarManual}>
+                <Plus size={14} /> Concepto manual
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Descuento (RD$)</label>
+            <input type="number" min={0} step={50} className={`input w-32 ${protegerCuenta ? 'bg-slate-100 text-slate-500' : ''}`} value={descuento || ''} readOnly={protegerCuenta} onChange={(e) => setDescuento(Number(e.target.value))} />
+            <p className="mt-1 text-xs text-slate-600">{protegerCuenta ? '🔒 El descuento no se puede cambiar sin autorización.' : 'El método de pago se elige al cobrar en Caja.'}</p>
+          </div>
+
+          <label className={`flex items-center gap-2 text-sm text-slate-600 ${protegerCuenta ? 'opacity-60' : ''}`}>
+            <input type="checkbox" checked={aplicaItbis} disabled={protegerCuenta} onChange={(e) => setAplicaItbis(e.target.checked)} />
+            Aplicar ITBIS (18%) {protegerCuenta && <span className="text-xs">🔒</span>}
           </label>
 
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
@@ -345,32 +731,133 @@ export default function Facturacion() {
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
           </div>
+          </div>
+
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
+              className="text-xs font-semibold text-brand-600 hover:underline"
+            >
+              {clienteSel ? `Ver historial de ${clienteSel.nombre}` : 'Ver historial de facturas'}
+            </button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-lg font-bold text-slate-800">Total: {money(total)}</p>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={() => guardar(false)} disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar factura'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VENTANA DE LA LUPA: catálogo de servicios/artículos (o historial, según se abra) */}
+      <Modal open={catalogoOpen} title={catTab === 'historial' ? (clienteSel ? `Historial de ${clienteSel.nombre}` : 'Historial de facturas') : 'Buscar servicio o artículo'} onClose={() => setCatalogoOpen(false)}>
+        <div className="space-y-3">
+          {catTab === 'catalogo' && (
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+              <input
+                className="input pl-9"
+                placeholder="Filtrar por nombre, categoría o código…"
+                value={buscarCat}
+                onChange={(e) => setBuscarCat(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
+
+          {catTab === 'catalogo' ? (
+            <>
+              <div className="max-h-[55vh] divide-y divide-slate-50 overflow-y-auto rounded-xl border border-slate-100">
+                {catalogo.length === 0 ? (
+                  <p className="px-3 py-6 text-center text-slate-600">Sin coincidencias</p>
+                ) : (
+                  catalogo.map((r) => (
+                    <button
+                      key={`${r.tipo}:${r.id}`}
+                      type="button"
+                      onClick={() => { agregarDesdeBusqueda(r); setCatalogoOpen(false) }}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-pink-50"
+                    >
+                      <span className="flex min-w-0 flex-col">
+                        <span className="flex items-center gap-2">
+                          <span className={`badge ${r.tipo === 's' ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-700'}`}>
+                            {r.tipo === 's' ? 'Servicio' : 'Artículo'}
+                          </span>
+                          <span className="truncate font-medium text-slate-800">{r.nombre}</span>
+                        </span>
+                        {r.tipo === 'a' && (
+                          <span className={`mt-0.5 text-xs ${(r.stock ?? 0) <= 0 ? 'text-rose-500' : 'text-slate-600'}`}>
+                            {(r.stock ?? 0) <= 0 ? 'Sin existencia' : `Existencia: ${r.stock}`}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 font-semibold text-slate-800">{money(r.precio)}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <p className="text-xs text-slate-600">Toca un servicio o artículo y se agrega a la factura.</p>
+            </>
+          ) : (
+            <DataTable
+              rows={histRows}
+              rowKey={(f) => f.id}
+              searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.fecha} ${f.estado}`}
+              searchPlaceholder="Filtrar por código, cliente, fecha o estado…"
+              emptyText={clienteSel ? 'Este cliente no tiene facturas anteriores.' : 'Sin facturas'}
+              pageSize={8}
+              initialSort={{ index: 0, dir: 'desc' }}
+              onRowClick={(f) => { setCatalogoOpen(false); verDetalle(f) }}
+              columns={[
+                { header: 'Factura', cell: (f) => <span className="font-mono font-semibold text-slate-700">{codigoFactura(f)}</span>, sortValue: (f) => f.numero ?? 0 },
+                { header: 'Cliente', cell: (f) => <span className="text-slate-600">{f.cliente_nombre || 'Cliente'}</span>, sortValue: (f) => f.cliente_nombre ?? '' },
+                { header: 'Fecha', cell: (f) => <span className="text-slate-500">{fechaCorta(f.fecha)}</span>, sortValue: (f) => f.fecha },
+                { header: 'Total', align: 'right', cell: (f) => money(f.total), sortValue: (f) => f.total },
+                { header: 'Estado', cell: (f) => <span className={`badge ${estadoBadge[f.estado]}`}>{f.estado}</span>, sortValue: (f) => f.estado },
+              ]}
+            />
+          )}
+
+          <div className="flex justify-end">
+            <button className="btn-primary" onClick={() => setCatalogoOpen(false)}>Listo</button>
+          </div>
         </div>
       </Modal>
 
       {/* Modal VER / IMPRIMIR */}
-      <Modal open={!!verId} title={`Factura #${facturaVista?.numero ?? ''}`} onClose={() => setVerId(null)}>
+      <Modal open={!!verId} title={`Factura ${facturaVista ? codigoFactura(facturaVista) : ''}`} onClose={() => setVerId(null)}>
         {facturaVista && (
-          <div id="factura-print" className="space-y-3">
+          <div id="factura-print" className="print-area space-y-3">
             <div className="text-center">
-              <p className="font-display text-xl font-bold text-brand-800">{NEGOCIO.nombre}</p>
-              <p className="text-xs text-slate-500">{NEGOCIO.direccion} · {NEGOCIO.referencia}</p>
-              <p className="text-xs text-slate-500">WhatsApp {NEGOCIO.whatsapp} · {NEGOCIO.instagram}</p>
-              <p className="mt-1 text-xs font-medium text-slate-400">Factura #{facturaVista.numero} · {fechaCorta(facturaVista.fecha)}</p>
+              <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-2 h-20 rounded-lg bg-black object-contain" />
+              <p className="font-display text-xl font-bold text-brand-800">{negocio.nombre}</p>
+              {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+              <p className="text-xs text-slate-500">{negocio.direccion} · {negocio.referencia}</p>
+              <p className="text-xs text-slate-500">Tel {negocio.telefono} · WhatsApp {negocio.whatsapp} · {negocio.instagram}</p>
+              <p className="mt-1 text-xs font-medium text-slate-600">Factura {codigoFactura(facturaVista)} · {facturaVista.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · {fechaCorta(facturaVista.fecha)}</p>
             </div>
             <div className="text-sm text-slate-600">
-              <p><span className="font-medium">Cliente:</span> {facturaVista.cliente_nombre}</p>
+              <p><span className="font-medium">Cliente:</span> {(() => { const cl = clientes.find((c) => c.id === facturaVista.cliente_id); return cl ? `${codigoCliente(cl.codigo)} · ${facturaVista.cliente_nombre}` : facturaVista.cliente_nombre })()}</p>
               <p><span className="font-medium">Estado:</span> {facturaVista.estado}</p>
               <p><span className="font-medium">Pago:</span> {facturaVista.metodo_pago}</p>
             </div>
             <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs text-slate-400">
+              <thead className="border-b text-left text-xs text-slate-600">
                 <tr><th className="py-1">Descripción</th><th className="py-1 text-center">Cant.</th><th className="py-1 text-right">Importe</th></tr>
               </thead>
               <tbody>
                 {verItems.map((it) => (
                   <tr key={it.id} className="border-b border-slate-50">
-                    <td className="py-1">{it.descripcion}</td>
+                    <td className="py-1">
+                      {it.descripcion}
+                      {(it as any).empleado?.nombre && <span className="block text-xs text-slate-600">por {(it as any).empleado.nombre}</span>}
+                    </td>
                     <td className="py-1 text-center">{it.cantidad}</td>
                     <td className="py-1 text-right">{money(it.importe)}</td>
                   </tr>
@@ -383,11 +870,44 @@ export default function Facturacion() {
               {facturaVista.itbis > 0 && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(facturaVista.itbis)}</span></div>}
               <div className="flex justify-between border-t pt-1 text-base font-bold text-slate-800"><span>Total</span><span>{money(facturaVista.total)}</span></div>
             </div>
-            <button className="btn-primary w-full" onClick={() => window.print()}>
+            <button className="btn-primary no-print w-full" onClick={() => window.print()}>
               <Printer size={16} /> Imprimir
             </button>
           </div>
         )}
+      </Modal>
+
+      {/* CREAR CLIENTE RÁPIDO (desde la factura) */}
+      <Modal
+        open={crearClienteOpen}
+        title="Crear cliente"
+        onClose={() => setCrearClienteOpen(false)}
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setCrearClienteOpen(false)}>Cancelar</button>
+            <button className="btn-primary" onClick={guardarNuevoCliente} disabled={savingCli}>
+              <UserPlus size={16} /> {savingCli ? 'Guardando…' : 'Crear y seleccionar'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500">Se le asigna un código automático. Luego puedes completar sus datos en el módulo Clientes.</p>
+          <div>
+            <label className="label">Nombre</label>
+            <input className="input" value={nuevoCli.nombre} autoFocus onChange={(e) => setNuevoCli({ ...nuevoCli, nombre: e.target.value })} placeholder="Nombre del cliente" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Teléfono</label>
+              <input className="input" value={nuevoCli.telefono} onChange={(e) => setNuevoCli({ ...nuevoCli, telefono: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Email</label>
+              <input type="email" className="input" value={nuevoCli.email} onChange={(e) => setNuevoCli({ ...nuevoCli, email: e.target.value })} />
+            </div>
+          </div>
+        </div>
       </Modal>
     </div>
   )

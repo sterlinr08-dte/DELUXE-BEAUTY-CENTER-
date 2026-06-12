@@ -35,8 +35,37 @@ export function hora(h: string | null): string {
   return `${hour}:${mm} ${ampm}`
 }
 
+export function fechaHora(ts: string | null): string {
+  if (!ts) return ''
+  return new Date(ts).toLocaleString('es-DO', {
+    day: '2-digit',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 export function hoyISO(): string {
   const d = new Date()
   const off = d.getTimezoneOffset()
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10)
+}
+
+// Código de artículo a 4 dígitos con ceros a la izquierda: 0000, 0001, …
+export function codigoArticulo(n: number | null | undefined): string {
+  return String(n ?? 0).padStart(4, '0')
+}
+
+// Código de cliente a 4 dígitos con ceros a la izquierda: 0001, 0002, …
+export function codigoCliente(n: number | null | undefined): string {
+  return String(n ?? 0).padStart(4, '0')
+}
+
+// Código de factura: un solo correlativo (numero) y la letra cambia según el tipo
+// de venta -> contado = CO000001, crédito = CR000002, contado = CO000003, ...
+export function codigoFactura(f: { tipo_venta?: string | null; serie?: number | null; numero?: number | null }): string {
+  const prefijo = f.tipo_venta === 'CREDITO' ? 'CR' : 'CO'
+  const n = f.numero ?? f.serie ?? 0
+  return `${prefijo}${String(n).padStart(6, '0')}`
 }
