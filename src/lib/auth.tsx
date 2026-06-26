@@ -81,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     await supabase.auth.signOut()
     setPerfil(null)
+    // Volver a la puerta central (NEXUS) en vez de quedarse en el login de Deluxe.
+    window.location.href = 'https://nexusprord.com'
   }
 
   async function recargarPerfil() {
