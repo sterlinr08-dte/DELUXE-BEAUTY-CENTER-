@@ -3,7 +3,11 @@
 // Login por nombre de usuario: internamente se usa un correo "<usuario>@deluxe.local"
 export const DOMINIO_USUARIO = '@deluxe.local'
 export function usuarioAEmail(usuario: string): string {
-  return usuario.trim().toLowerCase() + DOMINIO_USUARIO
+  const u = usuario.trim().toLowerCase()
+  // Tolerante: si la persona ya escribió un correo completo (con "@"),
+  // se respeta tal cual; si solo escribió el usuario, se le agrega el dominio.
+  if (u.includes('@')) return u
+  return u + DOMINIO_USUARIO
 }
 
 
