@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText, Percent, Hash } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText, Percent, Hash, Printer, Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado, Proveedor, Auditoria } from '../types'
@@ -33,7 +33,8 @@ interface UsuarioRow {
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
   const { negocio, recargarNegocio } = useNegocio()
-  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'prefijos' | 'categorias' | 'comisiones' | 'auditoria'>('usuarios')
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'prefijos' | 'impresora' | 'categorias' | 'comisiones' | 'auditoria'>('usuarios')
+  const [pruebaOpen, setPruebaOpen] = useState(false)
   const [auditoria, setAuditoria] = useState<Auditoria[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
@@ -321,6 +322,9 @@ export default function Configuracion() {
         <button onClick={() => setTab('prefijos')} className={tab === 'prefijos' ? 'btn-primary' : 'btn-ghost'}>
           <Hash size={16} /> Prefijos
         </button>
+        <button onClick={() => setTab('impresora')} className={tab === 'impresora' ? 'btn-primary' : 'btn-ghost'}>
+          <Printer size={16} /> Impresora
+        </button>
         <button onClick={() => setTab('categorias')} className={tab === 'categorias' ? 'btn-primary' : 'btn-ghost'}>
           <Tags size={16} /> Categorías
         </button>
@@ -496,15 +500,7 @@ export default function Configuracion() {
               <label className="label">Referencia</label>
               <input className="input" value={formNeg.referencia} onChange={(e) => setFormNeg({ ...formNeg, referencia: e.target.value })} placeholder="Ej: Frente a Banco Popular" />
             </div>
-            <div>
-              <label className="label">Ancho del ticket (impresora térmica)</label>
-              <select className="input w-48" value={formNeg.ancho_ticket} onChange={(e) => setFormNeg({ ...formNeg, ancho_ticket: Number(e.target.value) })}>
-                <option value={58}>58 mm (portátil, ej. 2 Connect)</option>
-                <option value={80}>80 mm (estándar de mostrador)</option>
-              </select>
-              <p className="mt-1 text-xs text-slate-600">Ajusta el tamaño de los recibos y comprobantes para que impriman bien en tu impresora térmica.</p>
-            </div>
-            <p className="text-xs text-slate-600">Estos datos aparecen en los tickets de cobro, facturas, comprobantes de cierre, el panel y el inicio de sesión.</p>
+            <p className="text-xs text-slate-600">Estos datos aparecen en los tickets de cobro, facturas, comprobantes de cierre, el panel y el inicio de sesión. La configuración de impresora está en la pestaña <b>Impresora</b>.</p>
             <div className="flex justify-end">
               <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar cambios'}</button>
             </div>
@@ -547,6 +543,51 @@ export default function Configuracion() {
             <div className="flex justify-end">
               <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar prefijos'}</button>
             </div>
+          </div>
+        </div>
+      ) : tab === 'impresora' ? (
+        <div className="max-w-2xl space-y-4">
+          {/* Tamaño del ticket */}
+          <div className="card space-y-3">
+            <h3 className="font-display text-lg font-bold text-slate-800">Tamaño del ticket</h3>
+            <div>
+              <label className="label">Ancho del papel</label>
+              <select className="input w-64" value={formNeg.ancho_ticket} onChange={(e) => setFormNeg({ ...formNeg, ancho_ticket: Number(e.target.value) })}>
+                <option value={58}>58 mm (portátil, ej. 2 Connect)</option>
+                <option value={80}>80 mm (estándar de mostrador)</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-600">Ajusta el tamaño de recibos y comprobantes para tu impresora térmica. Guarda y luego usa “Imprimir prueba”.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-ghost" onClick={() => setPruebaOpen(true)}><Printer size={16} /> Imprimir prueba</button>
+              <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar'}</button>
+            </div>
+          </div>
+
+          {/* Impresión directa (sin cuadros de Windows) */}
+          <div className="card space-y-3">
+            <h3 className="font-display text-lg font-bold text-slate-800">Impresión directa (sin cuadros)</h3>
+            <p className="text-sm text-slate-600">
+              Para que los recibos salgan <b>solos</b> en la impresora térmica, <b>sin el cuadro de Windows</b>,
+              se usa el modo de impresión directa de Google Chrome. Es <b>gratis</b> y no se instala ningún programa.
+            </p>
+            <ol className="ml-5 list-decimal space-y-1.5 text-sm text-slate-700">
+              <li>Pon tu impresora térmica como <b>predeterminada</b> en Windows.</li>
+              <li>Descarga y abre (doble clic) el <b>instalador</b> de abajo: crea un ícono <b>“DeluXe Caja”</b> en el escritorio.</li>
+              <li>Abre la app <b>siempre desde ese ícono</b>. Listo: al imprimir, sale directo, sin cuadros.</li>
+            </ol>
+            <div className="flex flex-wrap gap-2">
+              <a href={`${import.meta.env.BASE_URL}impresion-directa/crear-acceso-directo.bat`} download className="btn-primary">
+                <Download size={16} /> Descargar instalador
+              </a>
+              <a href={`${import.meta.env.BASE_URL}impresion-directa/LEEME-impresion-directa.txt`} download className="btn-ghost">
+                <Download size={16} /> Descargar guía
+              </a>
+            </div>
+            <p className="text-xs text-slate-500">
+              Al abrir el instalador, Windows puede avisar que es un archivo descargado → “Más información” →
+              “Ejecutar de todas formas”. Es seguro: solo crea un acceso directo de Chrome.
+            </p>
           </div>
         </div>
       ) : tab === 'auditoria' ? (
@@ -817,6 +858,25 @@ export default function Configuracion() {
               Proveedor activo
             </label>
           )}
+        </div>
+      </Modal>
+
+      {/* PÁGINA DE PRUEBA DE IMPRESIÓN */}
+      <Modal open={pruebaOpen} title="Página de prueba" onClose={() => setPruebaOpen(false)}>
+        <div className="space-y-3">
+          <div className="print-area space-y-1 rounded-xl border border-slate-100 p-3 text-center text-sm">
+            <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+            <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
+            <p className="text-xs font-semibold text-slate-600">PRUEBA DE IMPRESIÓN</p>
+            <p className="text-xs text-slate-600">Ancho configurado: {negocio.ancho_ticket} mm</p>
+            <p className="text-xs text-slate-600">Si lees esto completo y centrado, la impresora quedó bien. ✅</p>
+            <p className="text-xs text-slate-500">{negocio.direccion} · {negocio.telefono}</p>
+          </div>
+          <p className="text-xs text-slate-500 no-print">Si cambiaste el ancho, pulsa <b>Guardar</b> antes de imprimir la prueba.</p>
+          <div className="no-print flex gap-2">
+            <button className="btn-ghost flex-1" onClick={() => setPruebaOpen(false)}>Cerrar</button>
+            <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir</button>
+          </div>
         </div>
       </Modal>
     </div>
