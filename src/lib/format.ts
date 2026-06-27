@@ -62,6 +62,11 @@ export function codigoCliente(n: number | null | undefined): string {
   return String(n ?? 0).padStart(4, '0')
 }
 
+// Correlativo genérico a 4 dígitos (gastos, nómina, citas, proveedores): 0001, 0002, …
+export function codigo4(n: number | null | undefined): string {
+  return String(n ?? 0).padStart(4, '0')
+}
+
 // Código de factura: secuencia INDEPENDIENTE por tipo de venta (serie), a 6 dígitos.
 //   contado -> CO000001, CO000002, ...   (cuenta aparte)
 //   crédito -> CR000001, CR000002, ...   (cuenta aparte)
