@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, Receipt, HandCoins, Printer, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CajaSesion, CajaMovimiento, Factura, FacturaItem } from '../types'
-import { money, fechaHora, codigoFactura } from '../lib/format'
+import { money, fechaHora, codigoFactura, conPrefijo } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
@@ -359,7 +359,7 @@ export default function Caja() {
           </div>
 
           <p className="text-xs text-slate-600">
-            Caja {sesion.numero} · abierta por {sesion.abierta_por} · {fechaHora(sesion.abierta_at)}
+            Caja {conPrefijo(negocio.prefijo_caja, sesion.numero)} · abierta por {sesion.abierta_por} · {fechaHora(sesion.abierta_at)}
           </p>
 
           {/* Resumen de cobros por método de pago */}
@@ -743,7 +743,7 @@ export default function Caja() {
       </Modal>
 
       {/* Comprobante de cierre (imprimible) */}
-      <Modal open={!!verCierre} title={`Cierre de caja ${verCierre?.numero ?? ''}`} onClose={() => setVerCierre(null)}>
+      <Modal open={!!verCierre} title={`Cierre de caja ${conPrefijo(negocio.prefijo_caja, verCierre?.numero)}`} onClose={() => setVerCierre(null)}>
         {verCierre && (() => {
           const ent = cierreMovs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
           const sal = cierreMovs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
@@ -756,7 +756,7 @@ export default function Caja() {
               <div className="text-center">
                 <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-2 h-16 rounded-lg bg-black object-contain" />
                 <p className="font-display text-lg font-bold text-brand-800">{negocio.nombre}</p>
-                <p className="text-xs font-medium text-slate-600">Comprobante de cierre de caja {verCierre.numero}</p>
+                <p className="text-xs font-medium text-slate-600">Comprobante de cierre de caja {conPrefijo(negocio.prefijo_caja, verCierre.numero)}</p>
               </div>
               <div className="text-sm text-slate-600">
                 <p><span className="font-medium">Abierta:</span> {fechaHora(verCierre.abierta_at)} · {verCierre.abierta_por}</p>

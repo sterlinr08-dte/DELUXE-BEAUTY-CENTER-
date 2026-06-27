@@ -67,6 +67,14 @@ export function codigo4(n: number | null | undefined): string {
   return String(n ?? 0).padStart(4, '0')
 }
 
+// Número con prefijo configurable: PREFIJO + 4 dígitos (ej. CJ0001).
+// Si el prefijo está vacío, devuelve solo el número (0001).
+export function conPrefijo(prefijo: string | null | undefined, n: number | null | undefined): string {
+  const num = String(n ?? 0).padStart(4, '0')
+  const p = (prefijo ?? '').trim()
+  return p ? `${p}${num}` : num
+}
+
 // Código de factura: secuencia INDEPENDIENTE por tipo de venta (serie), a 6 dígitos.
 //   contado -> CO000001, CO000002, ...   (cuenta aparte)
 //   crédito -> CR000001, CR000002, ...   (cuenta aparte)

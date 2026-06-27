@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, CalendarDays, Clock, Receipt } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones, Cliente, Empleado, EstadoCita, Servicio } from '../types'
-import { hora, money, fechaLarga, hoyISO, codigoFactura, codigo4 } from '../lib/format'
+import { hora, money, fechaLarga, hoyISO, codigoFactura, conPrefijo } from '../lib/format'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
@@ -46,6 +47,7 @@ const vacio = {
 
 export default function Citas() {
   const { puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const puedeEliminar = puedeAccion('citas.eliminar')
   const [items, setItems] = useState<CitaConRelaciones[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -279,7 +281,7 @@ export default function Citas() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold text-brand-700">{codigo4(c.numero)}</span>
+                  <span className="font-mono font-semibold text-brand-700">{conPrefijo(negocio.prefijo_cita, c.numero)}</span>
                   <p className="font-semibold text-slate-800">{c.cliente?.nombre ?? 'Cliente eliminado'}</p>
                 </div>
                 <p className="text-sm text-slate-500">
