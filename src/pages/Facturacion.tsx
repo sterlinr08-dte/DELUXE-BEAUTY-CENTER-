@@ -533,10 +533,10 @@ export default function Facturacion() {
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={`badge ${qzListo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
-              title={qzListo ? 'Impresión directa conectada (QZ Tray)' : 'Impresión directa no conectada — usará el diálogo normal. Configúrala con el engranaje.'}
+              title={qzListo ? 'Impresora conectada' : 'Impresora no conectada'}
             >
-              <span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${qzListo ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-              <Printer size={13} className="mr-1 inline -mt-0.5" /> Impresora {qzListo ? 'lista' : 'sin conectar'}
+              <Printer size={16} className="inline" />
+              <span className={`ml-1.5 inline-block h-2.5 w-2.5 rounded-full ${qzListo ? 'bg-emerald-500' : 'bg-slate-400'}`} />
             </span>
             <Link
               to="/configuracion?tab=impresora"
