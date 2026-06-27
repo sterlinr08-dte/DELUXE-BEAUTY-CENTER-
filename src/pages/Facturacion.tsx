@@ -55,7 +55,9 @@ export default function Facturacion() {
   const [fecha, setFecha] = useState(hoyISO())
   const [tipoVenta, setTipoVenta] = useState<TipoVenta>('CONTADO')
   const [aplicaItbis, setAplicaItbis] = useState(false)
-  const [descuento, setDescuento] = useState(0)
+  const [descuento, setDescuento] = useState(0)               // descuento como monto (RD$)
+  const [descuentoModo, setDescuentoModo] = useState<'monto' | 'pct'>('monto')
+  const [descuentoPct, setDescuentoPct] = useState(0)          // descuento como % del subtotal
   const [notas, setNotas] = useState('')
   const [lineas, setLineas] = useState<LineaTmp[]>([])
   const [buscarItem, setBuscarItem] = useState('')
@@ -188,7 +190,9 @@ export default function Facturacion() {
   }, [])
 
   const subtotal = lineas.reduce((s, l) => s + l.cantidad * l.precio_unit, 0)
-  const baseImponible = Math.max(0, subtotal - descuento)
+  // Descuento efectivo en RD$: por % del subtotal o por monto fijo (nunca mayor que el subtotal)
+  const descuentoMonto = Math.min(subtotal, descuentoModo === 'pct' ? subtotal * (descuentoPct / 100) : descuento)
+  const baseImponible = Math.max(0, subtotal - descuentoMonto)
   const itbis = aplicaItbis ? baseImponible * ITBIS_RATE : 0
   const total = baseImponible + itbis
   // En una cuenta ya creada (editando), descuento e ITBIS quedan protegidos salvo autorización
@@ -212,6 +216,8 @@ export default function Facturacion() {
     setTipoVenta('CONTADO')
     setAplicaItbis(false)
     setDescuento(0)
+    setDescuentoModo('monto')
+    setDescuentoPct(0)
     setNotas('')
     setLineas([])
     setCantOriginal({})
@@ -240,6 +246,8 @@ export default function Facturacion() {
     setTipoVenta(f.tipo_venta ?? 'CONTADO')
     setAplicaItbis(Number(f.itbis) > 0)
     setDescuento(Number(f.descuento))
+    setDescuentoModo('monto')
+    setDescuentoPct(0)
     setNotas(f.notas ?? '')
     setBuscarItem('')
     setLineas(
@@ -288,7 +296,7 @@ export default function Facturacion() {
       fecha,
       tipo_venta: tipoVenta,
       subtotal,
-      descuento,
+      descuento: descuentoMonto,
       itbis,
       total,
       notas: notas || null,
@@ -717,8 +725,21 @@ export default function Facturacion() {
           </div>
 
           <div>
-            <label className="label">Descuento (RD$)</label>
-            <input type="number" min={0} step={50} className={`input w-32 ${protegerCuenta ? 'bg-slate-100 text-slate-500' : ''}`} value={descuento || ''} readOnly={protegerCuenta} onChange={(e) => setDescuento(Number(e.target.value))} />
+            <label className="label">Descuento</label>
+            <div className="flex items-center gap-2">
+              <div className="flex overflow-hidden rounded-lg ring-1 ring-slate-200">
+                <button type="button" disabled={protegerCuenta} onClick={() => setDescuentoModo('monto')} className={`px-3 py-2 text-sm font-semibold transition ${descuentoModo === 'monto' ? 'bg-brand-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>RD$</button>
+                <button type="button" disabled={protegerCuenta} onClick={() => setDescuentoModo('pct')} className={`px-3 py-2 text-sm font-semibold transition ${descuentoModo === 'pct' ? 'bg-brand-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>%</button>
+              </div>
+              {descuentoModo === 'monto' ? (
+                <input type="number" min={0} step={50} className={`input w-32 ${protegerCuenta ? 'bg-slate-100 text-slate-500' : ''}`} value={descuento || ''} readOnly={protegerCuenta} onChange={(e) => setDescuento(Number(e.target.value))} />
+              ) : (
+                <>
+                  <input type="number" min={0} max={100} step={1} className={`input w-24 ${protegerCuenta ? 'bg-slate-100 text-slate-500' : ''}`} value={descuentoPct || ''} readOnly={protegerCuenta} onChange={(e) => setDescuentoPct(Math.min(100, Math.max(0, Number(e.target.value))))} />
+                  <span className="text-sm font-medium text-slate-600">= {money(descuentoMonto)}</span>
+                </>
+              )}
+            </div>
             <p className="mt-1 text-xs text-slate-600">{protegerCuenta ? '🔒 El descuento no se puede cambiar sin autorización.' : 'El método de pago se elige al cobrar en Caja.'}</p>
           </div>
 
@@ -729,7 +750,7 @@ export default function Facturacion() {
 
           <div className="rounded-lg bg-slate-50 p-3 text-sm">
             <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>{money(subtotal)}</span></div>
-            {descuento > 0 && <div className="flex justify-between text-slate-600"><span>Descuento</span><span>- {money(descuento)}</span></div>}
+            {descuentoMonto > 0 && <div className="flex justify-between text-slate-600"><span>Descuento{descuentoModo === 'pct' ? ` (${descuentoPct}%)` : ''}</span><span>- {money(descuentoMonto)}</span></div>}
             {aplicaItbis && <div className="flex justify-between text-slate-600"><span>ITBIS (18%)</span><span>{money(itbis)}</span></div>}
             <div className="mt-1 flex justify-between border-t border-slate-200 pt-1 text-base font-bold text-slate-800"><span>Total</span><span>{money(total)}</span></div>
           </div>
