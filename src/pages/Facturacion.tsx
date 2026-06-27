@@ -575,7 +575,7 @@ export default function Facturacion() {
                 Crédito <span className="font-mono text-xs opacity-70">CR</span>
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-600">Un solo correlativo; solo cambia la letra: {tipoVenta === 'CREDITO' ? 'CR (crédito)' : 'CO (contado)'}.</p>
+            <p className="mt-1 text-xs text-slate-600">Secuencia independiente por tipo: {tipoVenta === 'CREDITO' ? 'CR000001, CR000002… (crédito)' : 'CO000001, CO000002… (contado)'}.</p>
           </div>
 
           <div>
