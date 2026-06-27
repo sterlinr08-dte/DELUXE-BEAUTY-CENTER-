@@ -429,6 +429,13 @@ export default function Facturacion() {
             {label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
+          className="btn-ghost"
+        >
+          Ver historial
+        </button>
       </div>
 
       {loading ? (
@@ -575,7 +582,7 @@ export default function Facturacion() {
                 Crédito <span className="font-mono text-xs opacity-70">CR</span>
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-600">Un solo correlativo; solo cambia la letra: {tipoVenta === 'CREDITO' ? 'CR (crédito)' : 'CO (contado)'}.</p>
+            <p className="mt-1 text-xs text-slate-600">Secuencia independiente por tipo: {tipoVenta === 'CREDITO' ? 'CR000001, CR000002… (crédito)' : 'CO000001, CO000002… (contado)'}.</p>
           </div>
 
           <div>
@@ -731,16 +738,6 @@ export default function Facturacion() {
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
           </div>
-          </div>
-
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
-              className="text-xs font-semibold text-brand-600 hover:underline"
-            >
-              {clienteSel ? `Ver historial de ${clienteSel.nombre}` : 'Ver historial de facturas'}
-            </button>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

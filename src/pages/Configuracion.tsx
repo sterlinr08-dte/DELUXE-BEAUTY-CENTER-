@@ -3,13 +3,14 @@ import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store,
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado, Proveedor, Auditoria } from '../types'
-import { fechaHora } from '../lib/format'
+import { fechaHora, codigo4 } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
 import DataTable from '../components/DataTable'
+import Paginacion, { usePaginacion } from '../components/Paginacion'
 
 const MODULO_LABEL: Record<string, string> = {
   facturas: 'Facturación', compras: 'Compras', pagos_empleados: 'Pagos a empleados', caja_sesiones: 'Caja',
@@ -44,6 +45,7 @@ export default function Configuracion() {
   const [editP, setEditP] = useState<Proveedor | null>(null)
   const [formP, setFormP] = useState({ nombre: '', telefono: '', contacto: '', notas: '', activo: true })
   const [savingP, setSavingP] = useState(false)
+  const pagProv = usePaginacion(proveedores, 10)
 
   // datos del negocio
   const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '' })
@@ -412,6 +414,7 @@ export default function Configuracion() {
               <table className="min-w-full divide-y divide-slate-100 text-sm">
                 <thead className="thead-3d">
                   <tr>
+                    <th className="px-5 py-3">Código</th>
                     <th className="px-5 py-3">Proveedor</th>
                     <th className="px-5 py-3">Teléfono</th>
                     <th className="px-5 py-3">Contacto</th>
@@ -420,8 +423,9 @@ export default function Configuracion() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {proveedores.map((p) => (
+                  {pagProv.visibles.map((p) => (
                     <tr key={p.id} className={p.activo ? '' : 'opacity-60'}>
+                      <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{codigo4(p.codigo)}</span></td>
                       <td className="px-5 py-3 font-medium text-slate-800">{p.nombre}</td>
                       <td className="px-5 py-3 text-slate-600">{p.telefono || '—'}</td>
                       <td className="px-5 py-3 text-slate-600">{p.contacto || '—'}</td>
@@ -440,6 +444,7 @@ export default function Configuracion() {
                   ))}
                 </tbody>
               </table>
+              <Paginacion pagina={pagProv.pagina} totalPaginas={pagProv.totalPaginas} total={pagProv.total} desde={pagProv.desde} pageSize={pagProv.pageSize} onPagina={pagProv.setPagina} />
             </div>
           )}
         </div>
