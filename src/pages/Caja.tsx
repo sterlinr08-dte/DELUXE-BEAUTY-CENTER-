@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, Receipt, HandCoins, Printer, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, CheckCircle2 } from 'lucide-react'
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Lock, Unlock, Receipt, HandCoins, Printer, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, CheckCircle2, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { CajaSesion, CajaMovimiento, Factura, FacturaItem } from '../types'
+import { CajaSesion, CajaMovimiento, Factura, FacturaItem, FacturaPago } from '../types'
 import { money, fechaHora, codigoFactura, conPrefijo } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
@@ -22,13 +22,20 @@ const METODO_ICONO: Record<string, typeof Banknote> = {
   Otro: MoreHorizontal,
 }
 
-// Desglose de cobros por método de pago
-function desglosePorMetodo(lista: Factura[]) {
-  return METODOS_PAGO.map((m) => ({
-    metodo: m,
-    cantidad: lista.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).length,
-    total: lista.filter((f) => (f.metodo_pago ?? 'Efectivo') === m).reduce((s, f) => s + Number(f.total), 0),
-  })).filter((x) => x.cantidad > 0)
+// Línea normalizada para el desglose (vale para pagos de contado y abonos de crédito)
+type LineaCobro = { metodo: string; monto: number; factura_id: string }
+
+// Desglose de cobros por método de pago, a partir de las líneas de pago
+// (soporta pago dividido: una factura puede tener varios métodos).
+function desgloseDePagos(pagos: LineaCobro[]) {
+  return METODOS_PAGO.map((m) => {
+    const lineas = pagos.filter((p) => (p.metodo ?? 'Efectivo') === m)
+    return {
+      metodo: m,
+      cantidad: new Set(lineas.map((p) => p.factura_id)).size,
+      total: lineas.reduce((s, p) => s + Number(p.monto), 0),
+    }
+  }).filter((x) => x.total > 0)
 }
 
 export default function Caja() {
@@ -45,6 +52,8 @@ export default function Caja() {
   const [movs, setMovs] = useState<CajaMovimiento[]>([])
   const [pendientes, setPendientes] = useState<Factura[]>([])
   const [cobros, setCobros] = useState<Factura[]>([])
+  const [pagosSesion, setPagosSesion] = useState<FacturaPago[]>([])
+  const [abonosSesion, setAbonosSesion] = useState<LineaCobro[]>([])  // abonos de crédito de esta caja
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -54,7 +63,8 @@ export default function Caja() {
   const [cerrarOpen, setCerrarOpen] = useState(false)
   const [cobrarFactura, setCobrarFactura] = useState<Factura | null>(null)
   const [cobroItems, setCobroItems] = useState<FacturaItem[]>([])
-  const [metodoCobro, setMetodoCobro] = useState('Efectivo')
+  const [metodoCobro, setMetodoCobro] = useState('Efectivo')   // método del abono (crédito)
+  const [pagos, setPagos] = useState<{ metodo: string; monto: number }[]>([{ metodo: 'Efectivo', monto: 0 }])  // pago dividido (contado)
   const [efectivoRecibido, setEfectivoRecibido] = useState(0)
   const [cobroAbonado, setCobroAbonado] = useState(0)   // abonos previos (crédito)
   const [abonoCredito, setAbonoCredito] = useState(0)   // monto a abonar ahora (crédito)
@@ -65,6 +75,7 @@ export default function Caja() {
   const [verCierre, setVerCierre] = useState<CajaSesion | null>(null)
   const [cierreCobros, setCierreCobros] = useState<Factura[]>([])
   const [cierreMovs, setCierreMovs] = useState<CajaMovimiento[]>([])
+  const [pagosCierre, setPagosCierre] = useState<LineaCobro[]>([])
 
   // formularios
   const [montoInicial, setMontoInicial] = useState(0)
@@ -85,15 +96,21 @@ export default function Caja() {
       .maybeSingle()
 
     if (abierta) {
-      const [{ data: m }, { data: c }] = await Promise.all([
+      const [{ data: m }, { data: c }, { data: fp }, { data: ab }] = await Promise.all([
         supabase.from('caja_movimientos').select('*').eq('caja_id', abierta.id).order('created_at', { ascending: false }),
         supabase.from('facturas').select('*').eq('caja_id', abierta.id).eq('estado', 'PAGADA'),
+        supabase.from('factura_pagos').select('*').eq('caja_id', abierta.id),
+        supabase.from('factura_abonos').select('factura_id, monto, metodo_pago').eq('caja_id', abierta.id),
       ])
       setMovs(m ?? [])
       setCobros(c ?? [])
+      setPagosSesion(fp ?? [])
+      setAbonosSesion((ab ?? []).map((a: any) => ({ metodo: a.metodo_pago ?? 'Efectivo', monto: Number(a.monto), factura_id: a.factura_id })))
     } else {
       setMovs([])
       setCobros([])
+      setPagosSesion([])
+      setAbonosSesion([])
     }
     setSesion(abierta ?? null)
 
@@ -113,10 +130,11 @@ export default function Caja() {
 
   const entradas = movs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
   const salidas = movs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
-  // Cobros del día agrupados por método de pago
-  const porMetodo = desglosePorMetodo(cobros)
+  // Cobros del día agrupados por método de pago: pagos de contado + abonos de crédito
+  const cobrosLineas: LineaCobro[] = [...pagosSesion, ...abonosSesion]
+  const porMetodo = desgloseDePagos(cobrosLineas)
   const totalCobrado = cobros.reduce((s, f) => s + Number(f.total), 0)
-  const cobrosOtros = cobros.filter((f) => (f.metodo_pago ?? 'Efectivo') !== 'Efectivo').reduce((s, f) => s + Number(f.total), 0)
+  const cobrosOtros = cobrosLineas.filter((p) => (p.metodo ?? 'Efectivo') !== 'Efectivo').reduce((s, p) => s + Number(p.monto), 0)
 
   // Derivados del cobro en curso (mini-POS)
   const esCredito = cobrarFactura?.tipo_venta === 'CREDITO'
@@ -124,12 +142,21 @@ export default function Caja() {
   const cobroSaldoPrevio = Math.max(0, cobroFull - cobroAbonado)
   // Monto a pagar AHORA: en crédito es el abono; en contado es el total completo
   const cobroTotal = esCredito ? abonoCredito : cobroFull
-  const cobroEsEfectivo = metodoCobro === 'Efectivo'
-  const cobroCambio = efectivoRecibido - cobroTotal
-  const cobroPuede =
-    cobroTotal > 0 &&
-    (!cobroEsEfectivo || efectivoRecibido >= cobroTotal) &&
-    (!esCredito || cobroTotal <= cobroSaldoPrevio + 0.01)
+  // Pago dividido (contado): suma de las líneas y porción en efectivo
+  const pagosSuma = pagos.reduce((s, p) => s + Number(p.monto || 0), 0)
+  const pagoEfectivo = pagos.filter((p) => p.metodo === 'Efectivo').reduce((s, p) => s + Number(p.monto || 0), 0)
+  // En crédito el abono usa un solo método; en contado se usan las líneas de `pagos`.
+  const cobroEsEfectivo = esCredito ? metodoCobro === 'Efectivo' : pagoEfectivo > 0
+  const efectivoAPagar = esCredito ? (cobroEsEfectivo ? cobroTotal : 0) : pagoEfectivo
+  const cobroCambio = efectivoRecibido - efectivoAPagar
+  const cobroPuede = esCredito
+    ? (cobroTotal > 0 &&
+       (!cobroEsEfectivo || efectivoRecibido >= cobroTotal) &&
+       cobroTotal <= cobroSaldoPrevio + 0.01)
+    : (cobroFull > 0 &&
+       Math.abs(pagosSuma - cobroFull) < 0.01 &&
+       pagos.every((p) => Number(p.monto) > 0) &&
+       (pagoEfectivo <= 0 || efectivoRecibido >= pagoEfectivo))
 
   const esperado = (sesion ? Number(sesion.monto_inicial) : 0) + entradas - salidas
   const contado = DENOMS.reduce((s, d) => s + d * (conteo[d] || 0), 0)
@@ -173,9 +200,25 @@ export default function Caja() {
     cargar()
   }
 
+  // Pago dividido (contado): agregar/editar/quitar líneas de método
+  function agregarPago() {
+    const restante = Math.max(0, cobroFull - pagosSuma)
+    const usados = pagos.map((p) => p.metodo)
+    const metodo = METODOS_PAGO.find((m) => !usados.includes(m)) ?? 'Tarjeta'
+    setPagos((prev) => [...prev, { metodo, monto: restante }])
+  }
+  function setPagoLinea(i: number, patch: Partial<{ metodo: string; monto: number }>) {
+    setPagos((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
+  }
+  function quitarPago(i: number) {
+    setPagos((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
   async function iniciarCobro(f: Factura) {
     setCobrarFactura(f)
     setMetodoCobro('Efectivo')
+    // Contado: arranca con una sola línea (Efectivo = total). La cajera puede dividir.
+    setPagos([{ metodo: 'Efectivo', monto: Number(f.total) }])
     setEfectivoRecibido(0)
     setCobroOk(false)
     setCobroItems([])
@@ -225,21 +268,35 @@ export default function Caja() {
         if (em) { setSaving(false); return alert('Abono guardado, pero falló el registro en caja: ' + em.message) }
       }
     } else {
-      // VENTA DE CONTADO: cobro total (marca PAGADA y la vincula a esta caja)
+      // VENTA DE CONTADO: cobro total con uno o varios métodos (pago dividido)
+      const lineas = pagos.filter((p) => Number(p.monto) > 0)
+      const metodoFactura = lineas.length === 1 ? lineas[0].metodo : 'Mixto'
       const { error: e1 } = await supabase
         .from('facturas')
-        .update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id })
+        .update({ estado: 'PAGADA', metodo_pago: metodoFactura, caja_id: sesion.id })
         .eq('id', cobrarFactura.id)
       if (e1) {
         setSaving(false)
         return alert('Error al cobrar: ' + e1.message)
       }
-      if (metodoCobro === 'Efectivo') {
+      // Guardar el desglose de pagos (una línea por método)
+      const { error: ep } = await supabase.from('factura_pagos').insert(
+        lineas.map((p) => ({
+          factura_id: cobrarFactura.id,
+          metodo: p.metodo,
+          monto: Number(p.monto),
+          caja_id: sesion.id,
+          registrado_por: usuario,
+        })),
+      )
+      if (ep) { setSaving(false); return alert('Factura cobrada, pero falló el desglose de pagos: ' + ep.message) }
+      // La parte en EFECTIVO entra a la caja (para el arqueo)
+      if (pagoEfectivo > 0) {
         const { error: em } = await supabase.from('caja_movimientos').insert({
           caja_id: sesion.id,
           tipo: 'ENTRADA',
           concepto: `Factura ${codigoFactura(cobrarFactura)} · ${cobrarFactura.cliente_nombre ?? 'Cliente'}`,
-          monto: cobrarFactura.total,
+          monto: pagoEfectivo,
           factura_id: cobrarFactura.id,
         })
         if (em) { setSaving(false); return alert('Factura cobrada, pero falló el registro en caja: ' + em.message) }
@@ -290,6 +347,7 @@ export default function Caja() {
     // Mostrar el comprobante del cierre recién hecho (con opción de imprimir)
     setCierreCobros(cobros)
     setCierreMovs(movs)
+    setPagosCierre([...pagosSesion, ...abonosSesion])
     setVerCierre({
       ...sesion,
       estado: 'CERRADA',
@@ -557,7 +615,13 @@ export default function Caja() {
                 {esCredito && (cobroSaldoPrevio - cobroTotal) > 0.01 && (
                   <div className="flex justify-between font-semibold text-rose-600"><span>Saldo pendiente</span><span>{money(cobroSaldoPrevio - cobroTotal)}</span></div>
                 )}
-                <div className="flex justify-between text-slate-600"><span>Método</span><span>{metodoCobro}</span></div>
+                {esCredito ? (
+                  <div className="flex justify-between text-slate-600"><span>Método</span><span>{metodoCobro}</span></div>
+                ) : (
+                  pagos.filter((p) => Number(p.monto) > 0).map((p, i) => (
+                    <div key={i} className="flex justify-between text-slate-600"><span>{p.metodo}</span><span>{money(p.monto)}</span></div>
+                  ))
+                )}
                 {cobroEsEfectivo && (
                   <>
                     <div className="flex justify-between text-slate-600"><span>Efectivo recibido</span><span>{money(efectivoRecibido)}</span></div>
@@ -613,36 +677,68 @@ export default function Caja() {
               <p className="text-3xl font-extrabold">{money(cobroTotal)}</p>
             </div>
 
-            {/* Método de pago como botones */}
-            <div>
-              <label className="label">Método de pago</label>
-              <div className="grid grid-cols-3 gap-2">
-                {METODOS_PAGO.map((m) => {
-                  const Icon = METODO_ICONO[m] ?? MoreHorizontal
-                  const activo = metodoCobro === m
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMetodoCobro(m)}
-                      className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-xs font-semibold transition ${
-                        activo
-                          ? 'border-brand-400 bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_6px_14px_-4px_rgba(236,72,153,0.35)]'
-                          : 'border-slate-200 bg-white text-slate-500 hover:border-pink-200'
-                      }`}
-                    >
-                      <Icon size={20} />
-                      {m}
-                    </button>
-                  )
-                })}
+            {/* Crédito: un solo método para el abono (botones) */}
+            {esCredito && (
+              <div>
+                <label className="label">Método de pago</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {METODOS_PAGO.map((m) => {
+                    const Icon = METODO_ICONO[m] ?? MoreHorizontal
+                    const activo = metodoCobro === m
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMetodoCobro(m)}
+                        className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-xs font-semibold transition ${
+                          activo
+                            ? 'border-brand-400 bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_6px_14px_-4px_rgba(236,72,153,0.35)]'
+                            : 'border-slate-200 bg-white text-slate-500 hover:border-pink-200'
+                        }`}
+                      >
+                        <Icon size={20} />
+                        {m}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Contado: pago dividido (uno o varios métodos) */}
+            {!esCredito && (
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="label !mb-0">Método de pago</label>
+                  <button type="button" onClick={agregarPago} className="text-xs font-semibold text-brand-600 hover:underline">+ Dividir / agregar método</button>
+                </div>
+                <div className="space-y-2">
+                  {pagos.map((p, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <select className="input flex-1" value={p.metodo} onChange={(e) => setPagoLinea(i, { metodo: e.target.value })}>
+                        {METODOS_PAGO.map((m) => <option key={m}>{m}</option>)}
+                      </select>
+                      <input type="number" min={0} step={50} className="input w-32" value={p.monto || ''} onChange={(e) => setPagoLinea(i, { monto: Number(e.target.value) })} />
+                      {pagos.length > 1 && (
+                        <button type="button" onClick={() => quitarPago(i)} className="rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><X size={16} /></button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className={`mt-2 flex items-center justify-between rounded-lg px-3 py-2 text-sm font-bold ${Math.abs(pagosSuma - cobroFull) < 0.01 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <span>Pagado {money(pagosSuma)} de {money(cobroFull)}</span>
+                  <span>{Math.abs(pagosSuma - cobroFull) < 0.01 ? 'Cuadra ✓' : pagosSuma < cobroFull ? `Falta ${money(cobroFull - pagosSuma)}` : `Sobra ${money(pagosSuma - cobroFull)}`}</span>
+                </div>
+              </div>
+            )}
 
             {/* Calculadora de cambio (solo efectivo) */}
             {cobroEsEfectivo ? (
               <div className="space-y-2 rounded-xl border border-pink-100 bg-pink-50/40 p-3">
-                <label className="label !mb-0">Efectivo recibido</label>
+                <div className="flex items-center justify-between">
+                  <label className="label !mb-0">Efectivo recibido</label>
+                  {!esCredito && pagos.length > 1 && <span className="text-xs text-slate-600">A pagar en efectivo: {money(efectivoAPagar)}</span>}
+                </div>
                 <input
                   type="number"
                   min={0}
@@ -652,8 +748,8 @@ export default function Caja() {
                   onChange={(e) => setEfectivoRecibido(Number(e.target.value))}
                 />
                 <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={() => setEfectivoRecibido(cobroTotal)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Exacto</button>
-                  {[100, 200, 500, 1000, 2000].filter((v) => v > cobroTotal).map((v) => (
+                  <button type="button" onClick={() => setEfectivoRecibido(efectivoAPagar)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Exacto</button>
+                  {[100, 200, 500, 1000, 2000].filter((v) => v > efectivoAPagar).map((v) => (
                     <button key={v} type="button" onClick={() => setEfectivoRecibido(v)} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">{money(v)}</button>
                   ))}
                 </div>
@@ -749,7 +845,7 @@ export default function Caja() {
           const sal = cierreMovs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
           const esp = Number(verCierre.monto_inicial) + ent - sal
           const dif = Number(verCierre.diferencia ?? 0)
-          const desg = desglosePorMetodo(cierreCobros)
+          const desg = desgloseDePagos(pagosCierre)
           const totalCob = cierreCobros.reduce((s, f) => s + Number(f.total), 0)
           return (
             <div className="print-area space-y-3">
