@@ -1,0 +1,45 @@
+============================================================
+  DELUXE BEAUTY CENTER — IMPRESIÓN DIRECTA (sin cuadros)
+============================================================
+
+Objetivo: que al imprimir un recibo salga SOLO en la impresora
+térmica (2 Connect), SIN el cuadro de Windows ni avisos molestos.
+Usa el modo "kiosko de impresión" de Google Chrome (gratis, sin
+instalar nada extra).
+
+------------------------------------------------------------
+PASOS (una sola vez, en la PC del salón)
+------------------------------------------------------------
+
+1) PONER LA IMPRESORA COMO PREDETERMINADA
+   - Abre:  Configuración > Bluetooth y dispositivos > Impresoras y escáneres
+   - Entra a la impresora "2 Connect" (o como aparezca tu térmica).
+   - Pulsa "Establecer como predeterminada".
+   (Si Windows tiene activado "Permitir que Windows administre mi
+    impresora predeterminada", desactívalo primero.)
+
+2) CREAR EL ACCESO DIRECTO
+   - Doble clic en el archivo:  crear-acceso-directo.bat
+   - Aparecerá en el Escritorio un ícono llamado "DeluXe Caja".
+   (Windows puede avisar que es un archivo descargado: pulsa
+    "Más información" > "Ejecutar de todas formas". Es seguro: solo
+    crea un acceso directo de Chrome.)
+
+3) USAR LA APP DESDE ESE ÍCONO
+   - Abre SIEMPRE la app con el ícono "DeluXe Caja" del Escritorio.
+   - Inicia sesión normal.
+   - Al imprimir un recibo, sale directo a la térmica, SIN cuadros.
+
+------------------------------------------------------------
+NOTAS
+------------------------------------------------------------
+- El ancho del papel (58mm) ya está configurado en la app:
+  Configuración > Negocio > "Ancho del ticket". Si tu papel fuera
+  80mm, cámbialo ahí.
+- Imprime siempre a la impresora PREDETERMINADA. Como la térmica es
+  la principal del salón, déjala predeterminada.
+- Si abres la app desde el Chrome normal (no desde el ícono),
+  volverá a salir el cuadro. Usa siempre el ícono "DeluXe Caja".
+- ¿Sigue saliendo el cuadro o algo no funciona? Avísanos y lo
+  ajustamos (hay un modo a pantalla completa que lo garantiza).
+============================================================
