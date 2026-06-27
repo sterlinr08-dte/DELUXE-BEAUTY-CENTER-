@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Users, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Empleado, PagoEmpleado, TipoPagoEmpleado } from '../types'
-import { money, fechaCorta, fechaHora, hoyISO, codigoFactura, codigo4 } from '../lib/format'
+import { money, fechaCorta, fechaHora, hoyISO, codigoFactura, conPrefijo } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { pctComisionServicio, comisionLinea, rangosSeSolapan } from '../lib/comisiones'
 import { useNegocio } from '../lib/negocio'
@@ -219,7 +219,7 @@ export default function Nomina() {
             <tbody className="divide-y divide-slate-50">
               {pag.visibles.map((p) => (
                 <tr key={p.id}>
-                  <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{codigo4(p.numero)}</span></td>
+                  <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{conPrefijo(negocio.prefijo_pago, p.numero)}</span></td>
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(p.fecha)}</td>
                   <td className="px-5 py-3 font-medium text-slate-800">{p.empleado_nombre || '—'}</td>
                   <td className="px-5 py-3"><span className={`badge ${tipoBadge[p.tipo]}`}>{p.tipo}</span></td>

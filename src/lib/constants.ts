@@ -24,6 +24,18 @@ export const NEGOCIO = {
 }
 
 
+// Prefijos por defecto de las secuencias (editables en Configuración → Prefijos)
+export const PREFIJOS_DEFAULT = {
+  prefijo_caja: 'CJ',
+  prefijo_gasto: 'GA',
+  prefijo_pago: 'NM',
+  prefijo_cita: 'CI',
+  prefijo_compra: 'CM',
+  prefijo_cliente: 'CL',
+  prefijo_proveedor: 'PR',
+  prefijo_articulo: 'AR',
+}
+
 export const METODOS_PAGO = ['Efectivo', 'Tarjeta', 'Transferencia', 'PayPal', 'Otro']
 
 export const ITBIS_RATE = 0.18 // 18% (RD)

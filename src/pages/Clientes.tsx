@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente } from '../types'
-import { fechaCorta, codigoCliente } from '../lib/format'
+import { fechaCorta, conPrefijo } from '../lib/format'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
@@ -19,6 +20,7 @@ const vacio = {
 
 export default function Clientes() {
   const { puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const puedeEliminar = puedeAccion('clientes.eliminar')
   const [items, setItems] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
@@ -101,11 +103,11 @@ export default function Clientes() {
         <DataTable
           rows={items}
           rowKey={(c) => c.id}
-          searchText={(c) => `${codigoCliente(c.codigo)} ${c.nombre} ${c.telefono ?? ''} ${c.email ?? ''}`}
+          searchText={(c) => `${conPrefijo(negocio.prefijo_cliente, c.codigo)} ${c.nombre} ${c.telefono ?? ''} ${c.email ?? ''}`}
           searchPlaceholder="Buscar por código, nombre, teléfono o email…"
           emptyText={items.length === 0 ? 'Aún no hay clientes.' : 'No hay clientes que coincidan.'}
           columns={[
-            { header: 'Código', cell: (c) => <span className="font-mono font-semibold text-brand-700">{codigoCliente(c.codigo)}</span>, sortValue: (c) => c.codigo },
+            { header: 'Código', cell: (c) => <span className="font-mono font-semibold text-brand-700">{conPrefijo(negocio.prefijo_cliente, c.codigo)}</span>, sortValue: (c) => c.codigo },
             { header: 'Nombre', cell: (c) => <span className="font-medium text-slate-800">{c.nombre}</span>, sortValue: (c) => c.nombre },
             { header: 'Teléfono', cell: (c) => <span className="text-slate-600">{c.telefono || '—'}</span>, sortValue: (c) => c.telefono ?? '' },
             { header: 'Email', cell: (c) => <span className="text-slate-600">{c.email || '—'}</span>, sortValue: (c) => c.email ?? '' },

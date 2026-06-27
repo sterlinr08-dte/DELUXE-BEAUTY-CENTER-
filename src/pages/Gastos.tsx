@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Wallet, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Gasto } from '../types'
-import { money, fechaCorta, hoyISO, codigo4 } from '../lib/format'
+import { money, fechaCorta, hoyISO, conPrefijo } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_GASTO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
@@ -22,6 +23,7 @@ const vacio = {
 
 export default function Gastos() {
   const { puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const puedeEliminar = puedeAccion('gastos.eliminar')
   const [items, setItems] = useState<Gasto[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -142,7 +144,7 @@ export default function Gastos() {
             <tbody className="divide-y divide-slate-50">
               {pag.visibles.map((g) => (
                 <tr key={g.id}>
-                  <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{codigo4(g.numero)}</span></td>
+                  <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{conPrefijo(negocio.prefijo_gasto, g.numero)}</span></td>
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(g.fecha)}</td>
                   <td className="px-5 py-3">
                     <p className="font-medium text-slate-800">{g.concepto}</p>

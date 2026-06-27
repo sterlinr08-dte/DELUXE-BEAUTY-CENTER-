@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText, Percent } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText, Percent, Hash } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado, Proveedor, Auditoria } from '../types'
-import { fechaHora, codigo4 } from '../lib/format'
+import { fechaHora, conPrefijo } from '../lib/format'
+import { PREFIJOS_DEFAULT } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
@@ -31,8 +32,8 @@ interface UsuarioRow {
 
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
-  const { recargarNegocio } = useNegocio()
-  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'categorias' | 'comisiones' | 'auditoria'>('usuarios')
+  const { negocio, recargarNegocio } = useNegocio()
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'prefijos' | 'categorias' | 'comisiones' | 'auditoria'>('usuarios')
   const [auditoria, setAuditoria] = useState<Auditoria[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
@@ -48,7 +49,7 @@ export default function Configuracion() {
   const pagProv = usePaginacion(proveedores, 10)
 
   // datos del negocio
-  const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '' })
+  const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '', ...PREFIJOS_DEFAULT })
   const [savingNeg, setSavingNeg] = useState(false)
 
   // categorías
@@ -94,6 +95,14 @@ export default function Configuracion() {
     if (neg) setFormNeg({
       nombre: neg.nombre ?? '', direccion: neg.direccion ?? '', referencia: neg.referencia ?? '',
       telefono: neg.telefono ?? '', whatsapp: neg.whatsapp ?? '', instagram: neg.instagram ?? '', rnc: neg.rnc ?? '',
+      prefijo_caja: neg.prefijo_caja ?? PREFIJOS_DEFAULT.prefijo_caja,
+      prefijo_gasto: neg.prefijo_gasto ?? PREFIJOS_DEFAULT.prefijo_gasto,
+      prefijo_pago: neg.prefijo_pago ?? PREFIJOS_DEFAULT.prefijo_pago,
+      prefijo_cita: neg.prefijo_cita ?? PREFIJOS_DEFAULT.prefijo_cita,
+      prefijo_compra: neg.prefijo_compra ?? PREFIJOS_DEFAULT.prefijo_compra,
+      prefijo_cliente: neg.prefijo_cliente ?? PREFIJOS_DEFAULT.prefijo_cliente,
+      prefijo_proveedor: neg.prefijo_proveedor ?? PREFIJOS_DEFAULT.prefijo_proveedor,
+      prefijo_articulo: neg.prefijo_articulo ?? PREFIJOS_DEFAULT.prefijo_articulo,
     })
     const { data: cats } = await supabase.from('categorias').select('id,nombre,tipo').order('tipo').order('nombre')
     setCategorias((cats as any) ?? [])
@@ -308,6 +317,9 @@ export default function Configuracion() {
         <button onClick={() => setTab('negocio')} className={tab === 'negocio' ? 'btn-primary' : 'btn-ghost'}>
           <Store size={16} /> Negocio
         </button>
+        <button onClick={() => setTab('prefijos')} className={tab === 'prefijos' ? 'btn-primary' : 'btn-ghost'}>
+          <Hash size={16} /> Prefijos
+        </button>
         <button onClick={() => setTab('categorias')} className={tab === 'categorias' ? 'btn-primary' : 'btn-ghost'}>
           <Tags size={16} /> Categorías
         </button>
@@ -425,7 +437,7 @@ export default function Configuracion() {
                 <tbody className="divide-y divide-slate-50">
                   {pagProv.visibles.map((p) => (
                     <tr key={p.id} className={p.activo ? '' : 'opacity-60'}>
-                      <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{codigo4(p.codigo)}</span></td>
+                      <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{conPrefijo(negocio.prefijo_proveedor, p.codigo)}</span></td>
                       <td className="px-5 py-3 font-medium text-slate-800">{p.nombre}</td>
                       <td className="px-5 py-3 text-slate-600">{p.telefono || '—'}</td>
                       <td className="px-5 py-3 text-slate-600">{p.contacto || '—'}</td>
@@ -486,6 +498,45 @@ export default function Configuracion() {
             <p className="text-xs text-slate-600">Estos datos aparecen en los tickets de cobro, facturas, comprobantes de cierre, el panel y el inicio de sesión.</p>
             <div className="flex justify-end">
               <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar cambios'}</button>
+            </div>
+          </div>
+        </div>
+      ) : tab === 'prefijos' ? (
+        <div className="max-w-2xl">
+          <div className="card space-y-4">
+            <p className="text-sm text-slate-600">
+              Prefijo de cada secuencia. Se muestra como <b>PREFIJO + 4 dígitos</b> (ej. <span className="font-mono">CJ0001</span>).
+              Si dejas un prefijo <b>vacío</b>, esa secuencia se muestra solo con el número (<span className="font-mono">0001</span>).
+              Las facturas conservan su propio prefijo por tipo (CO / CR).
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {([
+                ['prefijo_caja', 'Caja'],
+                ['prefijo_gasto', 'Gastos'],
+                ['prefijo_pago', 'Pagos a empleados'],
+                ['prefijo_cita', 'Citas'],
+                ['prefijo_compra', 'Compras'],
+                ['prefijo_cliente', 'Clientes'],
+                ['prefijo_proveedor', 'Proveedores'],
+                ['prefijo_articulo', 'Artículos'],
+              ] as const).map(([campo, etiqueta]) => (
+                <div key={campo}>
+                  <label className="label">{etiqueta}</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="input w-24 uppercase"
+                      value={formNeg[campo]}
+                      maxLength={6}
+                      onChange={(e) => setFormNeg({ ...formNeg, [campo]: e.target.value.toUpperCase() })}
+                    />
+                    <span className="font-mono text-sm text-slate-500">{conPrefijo(formNeg[campo], 1)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-600">El prefijo no cambia los números ya asignados, solo cómo se muestran.</p>
+            <div className="flex justify-end">
+              <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar prefijos'}</button>
             </div>
           </div>
         </div>

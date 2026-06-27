@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Search, X, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Compra, Articulo, Proveedor } from '../types'
-import { money, fechaCorta, fechaHora, hoyISO, codigoArticulo } from '../lib/format'
+import { money, fechaCorta, fechaHora, hoyISO, codigoArticulo, conPrefijo } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_COMPRA, ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
@@ -215,7 +215,7 @@ export default function Compras() {
           searchPlaceholder="Buscar por descripción, proveedor, categoría, # o fecha…"
           emptyText={items.length === 0 ? 'Aún no hay compras registradas.' : 'No hay compras que coincidan.'}
           columns={[
-            { header: 'No.', cell: (c) => <span className="font-mono font-semibold text-brand-700">{c.numero}</span>, sortValue: (c) => c.numero },
+            { header: 'No.', cell: (c) => <span className="font-mono font-semibold text-brand-700">{conPrefijo(negocio.prefijo_compra, c.numero)}</span>, sortValue: (c) => c.numero },
             { header: 'Fecha', cell: (c) => <span className="text-slate-600">{fechaCorta(c.fecha)}</span>, sortValue: (c) => c.fecha },
             { header: 'Descripción', cell: (c) => <span className="font-medium text-slate-800">{c.descripcion}</span>, sortValue: (c) => c.descripcion },
             { header: 'Proveedor', cell: (c) => <span className="text-slate-600">{c.proveedor || '—'}</span>, sortValue: (c) => c.proveedor ?? '' },

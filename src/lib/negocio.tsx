@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { supabase } from './supabase'
-import { NEGOCIO } from './constants'
+import { NEGOCIO, PREFIJOS_DEFAULT } from './constants'
 
 export interface Negocio {
   nombre: string
@@ -11,9 +11,18 @@ export interface Negocio {
   instagram: string
   rnc: string
   logo: string
+  // Prefijos configurables de las secuencias
+  prefijo_caja: string
+  prefijo_gasto: string
+  prefijo_pago: string
+  prefijo_cita: string
+  prefijo_compra: string
+  prefijo_cliente: string
+  prefijo_proveedor: string
+  prefijo_articulo: string
 }
 
-const DEFAULTS: Negocio = { ...NEGOCIO }
+const DEFAULTS: Negocio = { ...NEGOCIO, ...PREFIJOS_DEFAULT }
 
 interface NegocioContextValue {
   negocio: Negocio
@@ -40,6 +49,14 @@ export function NegocioProvider({ children }: { children: ReactNode }) {
         instagram: data.instagram ?? '',
         rnc: data.rnc ?? '',
         logo: DEFAULTS.logo,
+        prefijo_caja: data.prefijo_caja ?? DEFAULTS.prefijo_caja,
+        prefijo_gasto: data.prefijo_gasto ?? DEFAULTS.prefijo_gasto,
+        prefijo_pago: data.prefijo_pago ?? DEFAULTS.prefijo_pago,
+        prefijo_cita: data.prefijo_cita ?? DEFAULTS.prefijo_cita,
+        prefijo_compra: data.prefijo_compra ?? DEFAULTS.prefijo_compra,
+        prefijo_cliente: data.prefijo_cliente ?? DEFAULTS.prefijo_cliente,
+        prefijo_proveedor: data.prefijo_proveedor ?? DEFAULTS.prefijo_proveedor,
+        prefijo_articulo: data.prefijo_articulo ?? DEFAULTS.prefijo_articulo,
       })
     }
   }, [])

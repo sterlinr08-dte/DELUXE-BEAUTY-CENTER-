@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Articulo } from '../types'
-import { money, codigoArticulo } from '../lib/format'
+import { money, conPrefijo } from '../lib/format'
 import { useAuth } from '../lib/auth'
+import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
@@ -22,6 +23,7 @@ const vacio = {
 
 export default function Articulos() {
   const { puedeAccion } = useAuth()
+  const { negocio } = useNegocio()
   const puedeEliminar = puedeAccion('articulos.eliminar')
   const [items, setItems] = useState<Articulo[]>([])
   const [categorias, setCategorias] = useState<string[]>(['General'])
@@ -89,7 +91,7 @@ export default function Articulos() {
     setSaving(false)
     if (error) return alert('Error al guardar: ' + error.message)
     setOpen(false)
-    if (codigoCreado != null) alert(`Artículo creado con el código ${codigoArticulo(codigoCreado)}.`)
+    if (codigoCreado != null) alert(`Artículo creado con el código ${conPrefijo(negocio.prefijo_articulo, codigoCreado)}.`)
     cargar()
   }
 
@@ -118,11 +120,11 @@ export default function Articulos() {
         <DataTable
           rows={items}
           rowKey={(a) => a.id}
-          searchText={(a) => `${a.nombre} ${a.categoria} ${codigoArticulo(a.codigo)}`}
+          searchText={(a) => `${a.nombre} ${a.categoria} ${conPrefijo(negocio.prefijo_articulo, a.codigo)}`}
           searchPlaceholder="Buscar por nombre, categoría o código…"
           emptyText={items.length === 0 ? 'Aún no hay artículos.' : 'No hay artículos que coincidan.'}
           columns={[
-            { header: 'Código', cell: (a) => <span className="font-mono font-semibold text-brand-700">{codigoArticulo(a.codigo)}</span>, sortValue: (a) => a.codigo },
+            { header: 'Código', cell: (a) => <span className="font-mono font-semibold text-brand-700">{conPrefijo(negocio.prefijo_articulo, a.codigo)}</span>, sortValue: (a) => a.codigo },
             {
               header: 'Artículo', sortValue: (a) => a.nombre, cell: (a) => (
                 <>
@@ -171,7 +173,7 @@ export default function Articulos() {
             <label className="label">Código</label>
             <input
               className="input w-32 bg-slate-50 font-mono font-semibold text-brand-700"
-              value={codigoArticulo(editId ? editCodigo : proximoCodigo)}
+              value={conPrefijo(negocio.prefijo_articulo, editId ? editCodigo : proximoCodigo)}
               readOnly
             />
             <p className="mt-1 text-xs text-slate-500">
