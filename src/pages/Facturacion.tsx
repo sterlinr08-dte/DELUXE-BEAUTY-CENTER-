@@ -715,9 +715,6 @@ export default function Facturacion() {
               </div>
             )}
             <div className="mt-2 flex flex-wrap gap-2">
-              <button className="btn-ghost" onClick={() => { setBuscarCat(''); setCatTab('catalogo'); setCatalogoOpen(true) }}>
-                <Search size={14} /> Agregar artículo o servicio
-              </button>
               <button className="btn-ghost" onClick={agregarManual}>
                 <Plus size={14} /> Concepto manual
               </button>
