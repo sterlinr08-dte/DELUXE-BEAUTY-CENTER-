@@ -37,13 +37,13 @@ const grupos: { titulo: string; links: Link[] }[] = [
       { to: '/citas', label: 'Citas / Agenda', icon: CalendarDays, modulo: 'citas' },
       { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
       { to: '/servicios', label: 'Servicios y precios', icon: Scissors, modulo: 'servicios' },
+      { to: '/articulos', label: 'Artículos / Productos', icon: Package, modulo: 'articulos' },
     ],
   },
   {
     titulo: 'Configuración',
     links: [
       { to: '/configuracion', label: 'Configuración', icon: Settings, modulo: 'configuracion' },
-      { to: '/articulos', label: 'Artículos / Productos', icon: Package, modulo: 'articulos' },
       { to: '/empleados', label: 'Empleados', icon: UserCog, modulo: 'empleados' },
     ],
   },
