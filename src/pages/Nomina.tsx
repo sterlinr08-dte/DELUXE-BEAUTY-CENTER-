@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Users, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Empleado, PagoEmpleado, TipoPagoEmpleado } from '../types'
-import { money, fechaCorta, fechaHora, hoyISO, codigoFactura } from '../lib/format'
+import { money, fechaCorta, fechaHora, hoyISO, codigoFactura, codigo4 } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { pctComisionServicio, comisionLinea, rangosSeSolapan } from '../lib/comisiones'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
+import Paginacion, { usePaginacion } from '../components/Paginacion'
 
 interface ReciboPago { empleado: string; tipo: string; periodo: string; monto: number; metodo: string; fecha: string; hora: string }
 
@@ -119,6 +120,8 @@ export default function Nomina() {
     .filter((p) => p.fecha.slice(0, 7) === hoyISO().slice(0, 7))
     .reduce((s, p) => s + Number(p.monto), 0)
 
+  const pag = usePaginacion(items, 10)
+
   function abrirNuevo() {
     setEditId(null)
     setForm(vacio)
@@ -204,6 +207,7 @@ export default function Nomina() {
           <table className="min-w-full divide-y divide-slate-100 text-sm">
             <thead className="thead-3d">
               <tr>
+                <th className="px-5 py-3">No.</th>
                 <th className="px-5 py-3">Fecha</th>
                 <th className="px-5 py-3">Empleado</th>
                 <th className="px-5 py-3">Tipo</th>
@@ -213,8 +217,9 @@ export default function Nomina() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {items.map((p) => (
+              {pag.visibles.map((p) => (
                 <tr key={p.id}>
+                  <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{codigo4(p.numero)}</span></td>
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(p.fecha)}</td>
                   <td className="px-5 py-3 font-medium text-slate-800">{p.empleado_nombre || '—'}</td>
                   <td className="px-5 py-3"><span className={`badge ${tipoBadge[p.tipo]}`}>{p.tipo}</span></td>
@@ -230,6 +235,7 @@ export default function Nomina() {
               ))}
             </tbody>
           </table>
+          <Paginacion pagina={pag.pagina} totalPaginas={pag.totalPaginas} total={pag.total} desde={pag.desde} pageSize={pag.pageSize} onPagina={pag.setPagina} />
         </div>
       )}
 

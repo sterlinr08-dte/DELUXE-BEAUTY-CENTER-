@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Wallet, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Gasto } from '../types'
-import { money, fechaCorta, hoyISO } from '../lib/format'
+import { money, fechaCorta, hoyISO, codigo4 } from '../lib/format'
 import { METODOS_PAGO, CATEGORIAS_GASTO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
+import Paginacion, { usePaginacion } from '../components/Paginacion'
 
 const vacio = {
   fecha: hoyISO(),
@@ -34,6 +35,8 @@ export default function Gastos() {
   const filtrados = q
     ? items.filter((g) => g.concepto.toLowerCase().includes(q) || g.categoria.toLowerCase().includes(q) || g.fecha.includes(q))
     : items
+
+  const pag = usePaginacion(filtrados, 10)
 
   async function cargar() {
     setLoading(true)
@@ -127,6 +130,7 @@ export default function Gastos() {
           <table className="min-w-full divide-y divide-slate-100 text-sm">
             <thead className="thead-3d">
               <tr>
+                <th className="px-5 py-3">No.</th>
                 <th className="px-5 py-3">Fecha</th>
                 <th className="px-5 py-3">Concepto</th>
                 <th className="px-5 py-3">Categoría</th>
@@ -136,8 +140,9 @@ export default function Gastos() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtrados.map((g) => (
+              {pag.visibles.map((g) => (
                 <tr key={g.id}>
+                  <td className="px-5 py-3"><span className="font-mono font-semibold text-brand-700">{codigo4(g.numero)}</span></td>
                   <td className="px-5 py-3 text-slate-600">{fechaCorta(g.fecha)}</td>
                   <td className="px-5 py-3">
                     <p className="font-medium text-slate-800">{g.concepto}</p>
@@ -158,6 +163,7 @@ export default function Gastos() {
               ))}
             </tbody>
           </table>
+          <Paginacion pagina={pag.pagina} totalPaginas={pag.totalPaginas} total={pag.total} desde={pag.desde} pageSize={pag.pageSize} onPagina={pag.setPagina} />
         </div>
       )}
 

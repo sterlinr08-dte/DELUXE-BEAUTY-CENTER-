@@ -44,6 +44,7 @@ export interface Cliente {
 
 export interface Cita {
   id: string
+  numero: number
   cliente_id: string | null
   empleado_id: string | null
   servicio_id: string | null
@@ -110,6 +111,7 @@ export interface FacturaConItems extends Factura {
 
 export interface Gasto {
   id: string
+  numero: number
   fecha: string
   categoria: string
   concepto: string
@@ -163,6 +165,7 @@ export interface FacturaAbono {
 
 export interface Proveedor {
   id: string
+  codigo: number
   nombre: string
   telefono: string | null
   contacto: string | null
@@ -184,6 +187,7 @@ export interface Auditoria {
 
 export interface PagoEmpleado {
   id: string
+  numero: number
   empleado_id: string | null
   empleado_nombre: string | null
   fecha: string

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, CalendarDays, Clock, Receipt } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { CitaConRelaciones, Cliente, Empleado, EstadoCita, Servicio } from '../types'
-import { hora, money, fechaLarga, hoyISO, codigoFactura } from '../lib/format'
+import { hora, money, fechaLarga, hoyISO, codigoFactura, codigo4 } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
+import Paginacion, { usePaginacion } from '../components/Paginacion'
 
 const SELECT = `*,
   cliente:clientes(id,nombre,telefono),
@@ -60,6 +61,8 @@ export default function Citas() {
 
   const totalPrecio = servLineas.reduce((s, l) => s + Number(l.precio || 0), 0)
   const totalDuracion = servLineas.reduce((s, l) => s + (servicios.find((x) => x.id === l.servicio_id)?.duracion_min ?? 0), 0)
+
+  const pag = usePaginacion(items, 10)
 
   function agregarServicio() {
     setServLineas((prev) => [...prev, { servicio_id: '', empleado_id: '', precio: 0 }])
@@ -266,7 +269,7 @@ export default function Citas() {
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map((c) => (
+          {pag.visibles.map((c) => (
             <div key={c.id} className="card flex flex-wrap items-center gap-4">
               <div className="flex w-24 shrink-0 flex-col items-center rounded-lg bg-brand-50 py-2 text-brand-700">
                 <Clock size={16} />
@@ -275,7 +278,10 @@ export default function Citas() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-slate-800">{c.cliente?.nombre ?? 'Cliente eliminado'}</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold text-brand-700">{codigo4(c.numero)}</span>
+                  <p className="font-semibold text-slate-800">{c.cliente?.nombre ?? 'Cliente eliminado'}</p>
+                </div>
                 <p className="text-sm text-slate-500">
                   {((c as any).cita_servicios?.length ? (c as any).cita_servicios.map((s: any) => s.servicio?.nombre).filter(Boolean).join(', ') : c.servicio?.nombre) || 'Servicio'} · {money(c.precio)}
                 </p>
@@ -316,6 +322,7 @@ export default function Citas() {
               </div>
             </div>
           ))}
+          <Paginacion pagina={pag.pagina} totalPaginas={pag.totalPaginas} total={pag.total} desde={pag.desde} pageSize={pag.pageSize} onPagina={pag.setPagina} />
         </div>
       )}
 
