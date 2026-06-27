@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Users, Printer } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, Printer, ClipboardList, Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Empleado, PagoEmpleado, TipoPagoEmpleado } from '../types'
 import { money, fechaCorta, fechaHora, hoyISO, codigoFactura, conPrefijo } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { pctComisionServicio, comisionLinea, rangosSeSolapan } from '../lib/comisiones'
+import { imprimirTabla, descargarCSV } from '../lib/reportes'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
@@ -50,6 +51,14 @@ export default function Nomina() {
   const [comLoading, setComLoading] = useState(false)
   // Comisiones ya pagadas a este empleado (para avisar si el periodo se solapa)
   const [comPagadas, setComPagadas] = useState<PagoEmpleado[]>([])
+
+  // Ventana: historial de servicios realizados por empleado y rango (incentivos/comisiones)
+  const [histOpen, setHistOpen] = useState(false)
+  const [histEmpleado, setHistEmpleado] = useState('')
+  const [histDesde, setHistDesde] = useState(hoyISO().slice(0, 7) + '-01')
+  const [histHasta, setHistHasta] = useState(hoyISO())
+  const [histItems, setHistItems] = useState<any[]>([])
+  const [histLoading, setHistLoading] = useState(false)
 
   async function cargar() {
     setLoading(true)
@@ -107,6 +116,26 @@ export default function Nomina() {
     }
   }, [open, form.empleado_id, comDesde, comHasta])
 
+  // Historial de servicios realizados (ventana independiente)
+  useEffect(() => {
+    if (!histOpen || !histEmpleado) { setHistItems([]); return }
+    let cancel = false
+    ;(async () => {
+      setHistLoading(true)
+      const { data } = await supabase
+        .from('factura_items')
+        .select('descripcion,cantidad,importe,servicio_id, servicios(comision_pct), facturas!inner(numero,tipo_venta,serie,fecha,estado)')
+        .eq('empleado_id', histEmpleado)
+        .is('articulo_id', null)
+        .eq('facturas.estado', 'PAGADA')
+        .gte('facturas.fecha', histDesde)
+        .lte('facturas.fecha', histHasta)
+        .order('fecha', { foreignTable: 'facturas', ascending: true })
+      if (!cancel) { setHistItems(data ?? []); setHistLoading(false) }
+    })()
+    return () => { cancel = true }
+  }, [histOpen, histEmpleado, histDesde, histHasta])
+
   const empSel = empleados.find((e) => e.id === form.empleado_id)
   const empPct = Number(empSel?.comision_pct ?? 0)
   // % por línea: el del servicio si lo tiene, si no el del empleado
@@ -115,6 +144,40 @@ export default function Nomina() {
   const comMonto = comItems.reduce((s, it) => s + comisionLinea(it.importe, lineaPct(it)), 0)
   // Pagos de comisión cuyo periodo se solapa con el rango elegido (sin contar el que se está editando)
   const comSolapadas = comPagadas.filter((p) => p.id !== editId && rangosSeSolapan(comDesde, comHasta, p.comision_desde, p.comision_hasta))
+
+  // Derivados del historial de servicios
+  const histEmp = empleados.find((e) => e.id === histEmpleado)
+  const histPct = Number(histEmp?.comision_pct ?? 0)
+  const histLineaPct = (it: any) => pctComisionServicio(it.servicios?.comision_pct, histPct)
+  const histVendido = histItems.reduce((s, it) => s + Number(it.importe), 0)
+  const histComision = histItems.reduce((s, it) => s + comisionLinea(it.importe, histLineaPct(it)), 0)
+  function histFilas() {
+    return histItems.map((it) => [
+      fechaCorta(it.facturas?.fecha),
+      it.facturas ? codigoFactura(it.facturas) : '',
+      `${it.descripcion}${it.cantidad > 1 ? ` ×${it.cantidad}` : ''}`,
+      money(it.importe),
+      `${histLineaPct(it)}%`,
+      money(comisionLinea(it.importe, histLineaPct(it))),
+    ])
+  }
+  function imprimirHist() {
+    imprimirTabla({
+      negocio,
+      titulo: 'Servicios realizados',
+      subtitulo: `${histEmp?.nombre ?? ''} · ${fechaCorta(histDesde)} a ${fechaCorta(histHasta)} · % empleado: ${histPct}%`,
+      columnas: [
+        { label: 'Fecha' }, { label: 'Factura' }, { label: 'Servicio' },
+        { label: 'Importe', align: 'right' }, { label: '%', align: 'right' }, { label: 'Comisión', align: 'right' },
+      ],
+      filas: histFilas(),
+      pie: [`${histItems.length} servicio(s)`, '', '', money(histVendido), '', money(histComision)],
+    })
+  }
+  function exportarHist() {
+    descargarCSV(`servicios_${(histEmp?.nombre ?? 'empleado').replace(/\s+/g, '_')}_${histDesde}_a_${histHasta}`,
+      ['Fecha', 'Factura', 'Servicio', 'Importe', '%', 'Comisión'], histFilas())
+  }
 
   const totalMes = items
     .filter((p) => p.fecha.slice(0, 7) === hoyISO().slice(0, 7))
@@ -189,9 +252,14 @@ export default function Nomina() {
         title="Pagos a empleados"
         subtitle={`Pagado este mes: ${money(totalMes)}`}
         action={
-          <button className="btn-primary" onClick={abrirNuevo}>
-            <Plus size={16} /> Nuevo pago
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-ghost" onClick={() => setHistOpen(true)}>
+              <ClipboardList size={16} /> Servicios realizados
+            </button>
+            <button className="btn-primary" onClick={abrirNuevo}>
+              <Plus size={16} /> Nuevo pago
+            </button>
+          </div>
         }
       />
 
@@ -356,6 +424,75 @@ export default function Nomina() {
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
           </div>
+        </div>
+      </Modal>
+
+      {/* HISTORIAL DE SERVICIOS REALIZADOS POR EMPLEADO */}
+      <Modal open={histOpen} title="Servicios realizados por empleado" onClose={() => setHistOpen(false)}>
+        <div className="space-y-4">
+          <div>
+            <label className="label">Empleado</label>
+            <select className="input" value={histEmpleado} onChange={(e) => setHistEmpleado(e.target.value)}>
+              <option value="">— Selecciona —</option>
+              {empleados.map((e) => <option key={e.id} value={e.id}>{e.nombre} ({e.puesto})</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Desde</label>
+              <input type="date" className="input" value={histDesde} onChange={(e) => setHistDesde(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Hasta</label>
+              <input type="date" className="input" value={histHasta} onChange={(e) => setHistHasta(e.target.value)} />
+            </div>
+          </div>
+
+          {!histEmpleado ? (
+            <p className="py-6 text-center text-slate-500">Selecciona un empleado para ver sus servicios.</p>
+          ) : histLoading ? (
+            <p className="py-6 text-center text-slate-500">Cargando…</p>
+          ) : histItems.length === 0 ? (
+            <p className="py-6 text-center text-slate-500">No realizó servicios pagados en este rango.</p>
+          ) : (
+            <>
+              <p className="text-xs text-slate-600">% comisión del empleado: <b>{histPct}%</b> (cada renglón usa el % del servicio si lo tiene)</p>
+              <div className="max-h-72 overflow-x-auto overflow-y-auto panel-3d">
+                <table className="min-w-full text-sm">
+                  <thead className="thead-3d">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Fecha</th>
+                      <th className="px-3 py-2 text-left">Factura</th>
+                      <th className="px-3 py-2 text-left">Servicio</th>
+                      <th className="px-3 py-2 text-right">Importe</th>
+                      <th className="px-3 py-2 text-right">%</th>
+                      <th className="px-3 py-2 text-right">Comisión</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {histItems.map((it, idx) => (
+                      <tr key={idx}>
+                        <td className="px-3 py-2 text-slate-600">{fechaCorta(it.facturas?.fecha)}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-slate-600">{it.facturas ? codigoFactura(it.facturas) : ''}</td>
+                        <td className="px-3 py-2 text-slate-700">{it.descripcion}{it.cantidad > 1 ? ` ×${it.cantidad}` : ''}</td>
+                        <td className="px-3 py-2 text-right text-slate-700">{money(it.importe)}</td>
+                        <td className="px-3 py-2 text-right text-slate-500">{histLineaPct(it)}%</td>
+                        <td className="px-3 py-2 text-right font-medium text-emerald-700">{money(comisionLinea(it.importe, histLineaPct(it)))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="grid gap-2 rounded-xl bg-emerald-50/60 p-3 text-sm sm:grid-cols-2">
+                <div className="flex justify-between"><span className="text-slate-600">{histItems.length} servicio(s) · vendido</span><span className="font-semibold text-slate-800">{money(histVendido)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-600">Comisión total</span><span className="font-bold text-emerald-700">{money(histComision)}</span></div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-ghost" onClick={exportarHist}><Download size={16} /> Exportar (CSV)</button>
+                <button className="btn-primary" onClick={imprimirHist}><Printer size={16} /> Imprimir / PDF</button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 
