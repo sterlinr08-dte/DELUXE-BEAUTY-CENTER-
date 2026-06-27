@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus, Undo2 } from 'lucide-react'
+import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus, Undo2, Settings } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { conectarQZ } from '../lib/impresora'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
@@ -38,6 +40,7 @@ export default function Facturacion() {
   const puedeModificarLineas = puedeAccion('facturas.modificar_lineas')
 
   const [facturas, setFacturas] = useState<Factura[]>([])
+  const [qzListo, setQzListo] = useState(false)   // impresión directa (QZ Tray) conectada
   const [verEstado, setVerEstado] = useState<'ABIERTAS' | 'PAGADAS' | 'TODAS'>('ABIERTAS')
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
@@ -205,6 +208,15 @@ export default function Facturacion() {
   useEffect(() => {
     cargar()
     cargarCatalogos()
+  }, [])
+
+  // Estado de la impresora directa (QZ Tray): verde si está conectada
+  useEffect(() => {
+    let cancel = false
+    const revisar = () => conectarQZ().then((ok) => { if (!cancel) setQzListo(ok) }).catch(() => { if (!cancel) setQzListo(false) })
+    revisar()
+    const t = setInterval(revisar, 15000)
+    return () => { cancel = true; clearInterval(t) }
   }, [])
 
   const subtotal = lineas.reduce((s, l) => s + l.cantidad * l.precio_unit, 0)
@@ -518,9 +530,25 @@ export default function Facturacion() {
         title="Facturación"
         subtitle={`${facturas.length} factura(s)`}
         action={
-          <button className="btn-primary" onClick={nuevaFactura}>
-            <Plus size={16} /> Nueva factura
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`badge ${qzListo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
+              title={qzListo ? 'Impresión directa conectada (QZ Tray)' : 'Impresión directa no conectada — usará el diálogo normal. Configúrala con el engranaje.'}
+            >
+              <span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${qzListo ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              <Printer size={13} className="mr-1 inline -mt-0.5" /> Impresora {qzListo ? 'lista' : 'sin conectar'}
+            </span>
+            <Link
+              to="/configuracion?tab=impresora"
+              title="Configurar impresora (descargas y prueba)"
+              className="rounded-lg p-2 text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-brand-600"
+            >
+              <Settings size={18} />
+            </Link>
+            <button className="btn-primary" onClick={nuevaFactura}>
+              <Plus size={16} /> Nueva factura
+            </button>
+          </div>
         }
       />
 

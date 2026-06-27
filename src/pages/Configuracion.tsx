@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, UserPlus, ShieldCheck, Users as UsersIcon, Store, Tags, Truck, ScrollText, Percent, Hash, Printer, Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
@@ -34,7 +35,8 @@ interface UsuarioRow {
 export default function Configuracion() {
   const { perfil, recargarPerfil } = useAuth()
   const { negocio, recargarNegocio } = useNegocio()
-  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'prefijos' | 'impresora' | 'categorias' | 'comisiones' | 'auditoria'>('usuarios')
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'prefijos' | 'impresora' | 'categorias' | 'comisiones' | 'auditoria'>(params.get('tab') === 'impresora' ? 'impresora' : 'usuarios')
   const [pruebaOpen, setPruebaOpen] = useState(false)
   const [qzMsg, setQzMsg] = useState<{ ok: boolean; texto: string } | null>(null)
   const [qzProbando, setQzProbando] = useState(false)
