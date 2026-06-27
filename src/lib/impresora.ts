@@ -36,10 +36,13 @@ function configurarSeguridad() {
   seguridadLista = true
   qz.security.setCertificatePromise((resolve: (c: string) => void) => resolve(CERTIFICADO))
   qz.security.setSignatureAlgorithm('SHA512')
+  const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
   qz.security.setSignaturePromise((toSign: string) => (resolve: (s: string) => void, reject: (e: unknown) => void) => {
-    fetch(`${FIRMA_URL}?request=${encodeURIComponent(toSign)}`)
-      .then((r) => r.text())
-      .then(resolve)
+    fetch(`${FIRMA_URL}?request=${encodeURIComponent(toSign)}`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${ANON}` },
+    })
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error('Firma HTTP ' + r.status))))
+      .then((firma) => resolve(firma.trim()))
       .catch(reject)
   })
 }
