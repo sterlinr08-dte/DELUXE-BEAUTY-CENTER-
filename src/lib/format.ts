@@ -62,10 +62,13 @@ export function codigoCliente(n: number | null | undefined): string {
   return String(n ?? 0).padStart(4, '0')
 }
 
-// Código de factura: un solo correlativo (numero) y la letra cambia según el tipo
-// de venta -> contado = CO000001, crédito = CR000002, contado = CO000003, ...
+// Código de factura: secuencia INDEPENDIENTE por tipo de venta (serie), a 6 dígitos.
+//   contado -> CO000001, CO000002, ...   (cuenta aparte)
+//   crédito -> CR000001, CR000002, ...   (cuenta aparte)
+// Se usa `serie` (correlativo por tipo, lo asigna la base); `numero` queda como
+// respaldo por si alguna factura antigua no tuviera serie.
 export function codigoFactura(f: { tipo_venta?: string | null; serie?: number | null; numero?: number | null }): string {
   const prefijo = f.tipo_venta === 'CREDITO' ? 'CR' : 'CO'
-  const n = f.numero ?? f.serie ?? 0
+  const n = f.serie ?? f.numero ?? 0
   return `${prefijo}${String(n).padStart(6, '0')}`
 }

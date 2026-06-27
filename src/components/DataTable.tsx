@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, ReactNode } from 'react'
+import { useMemo, useState, useEffect, useRef, ReactNode } from 'react'
 import { Search, ArrowUp, ArrowDown, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export interface Columna<T> {
@@ -45,6 +45,7 @@ export default function DataTable<T>({
   const [busqueda, setBusqueda] = useState('')
   const [sort, setSort] = useState<{ index: number; dir: 'asc' | 'desc' } | null>(initialSort ?? null)
   const [pagina, setPagina] = useState(1)
+  const inputBusqueda = useRef<HTMLInputElement>(null)
 
   // Filtrado por búsqueda global
   const filtradas = useMemo(() => {
@@ -95,8 +96,15 @@ export default function DataTable<T>({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>{toolbar}</div>
         <div className="relative w-full max-w-xs">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-          <input className="input pl-9" placeholder={searchPlaceholder} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <button
+            type="button"
+            onClick={() => inputBusqueda.current?.focus()}
+            aria-label="Buscar"
+            className="absolute left-1 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-600 transition hover:text-brand-600"
+          >
+            <Search size={16} />
+          </button>
+          <input ref={inputBusqueda} className="input pl-9" placeholder={searchPlaceholder} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
       </div>
 
