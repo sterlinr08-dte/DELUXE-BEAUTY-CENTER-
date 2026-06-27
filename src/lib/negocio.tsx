@@ -11,6 +11,7 @@ export interface Negocio {
   instagram: string
   rnc: string
   logo: string
+  ancho_ticket: number          // mm del papel térmico (58 u 80)
   // Prefijos configurables de las secuencias
   prefijo_caja: string
   prefijo_gasto: string
@@ -49,6 +50,7 @@ export function NegocioProvider({ children }: { children: ReactNode }) {
         instagram: data.instagram ?? '',
         rnc: data.rnc ?? '',
         logo: DEFAULTS.logo,
+        ancho_ticket: Number(data.ancho_ticket ?? DEFAULTS.ancho_ticket),
         prefijo_caja: data.prefijo_caja ?? DEFAULTS.prefijo_caja,
         prefijo_gasto: data.prefijo_gasto ?? DEFAULTS.prefijo_gasto,
         prefijo_pago: data.prefijo_pago ?? DEFAULTS.prefijo_pago,
@@ -64,6 +66,19 @@ export function NegocioProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     recargarNegocio()
   }, [recargarNegocio])
+
+  // Ajusta el ticket térmico al ancho del papel (58mm u 80mm) inyectando CSS de @media print.
+  useEffect(() => {
+    const ancho = Number(negocio.ancho_ticket) >= 80 ? 72 : 54   // mm imprimibles
+    const fuente = Number(negocio.ancho_ticket) >= 80 ? 11 : 10
+    let el = document.getElementById('ticket-print-config') as HTMLStyleElement | null
+    if (!el) {
+      el = document.createElement('style')
+      el.id = 'ticket-print-config'
+      document.head.appendChild(el)
+    }
+    el.textContent = `@media print { @page { size: ${ancho}mm auto; margin: 2mm; } .print-area { width: ${ancho}mm !important; font-size: ${fuente}px !important; } }`
+  }, [negocio.ancho_ticket])
 
   return <NegocioContext.Provider value={{ negocio, recargarNegocio }}>{children}</NegocioContext.Provider>
 }

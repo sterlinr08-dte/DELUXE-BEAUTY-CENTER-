@@ -49,7 +49,7 @@ export default function Configuracion() {
   const pagProv = usePaginacion(proveedores, 10)
 
   // datos del negocio
-  const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '', ...PREFIJOS_DEFAULT })
+  const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '', ancho_ticket: 58, ...PREFIJOS_DEFAULT })
   const [savingNeg, setSavingNeg] = useState(false)
 
   // categorías
@@ -95,6 +95,7 @@ export default function Configuracion() {
     if (neg) setFormNeg({
       nombre: neg.nombre ?? '', direccion: neg.direccion ?? '', referencia: neg.referencia ?? '',
       telefono: neg.telefono ?? '', whatsapp: neg.whatsapp ?? '', instagram: neg.instagram ?? '', rnc: neg.rnc ?? '',
+      ancho_ticket: Number(neg.ancho_ticket ?? 58),
       prefijo_caja: neg.prefijo_caja ?? PREFIJOS_DEFAULT.prefijo_caja,
       prefijo_gasto: neg.prefijo_gasto ?? PREFIJOS_DEFAULT.prefijo_gasto,
       prefijo_pago: neg.prefijo_pago ?? PREFIJOS_DEFAULT.prefijo_pago,
@@ -494,6 +495,14 @@ export default function Configuracion() {
             <div>
               <label className="label">Referencia</label>
               <input className="input" value={formNeg.referencia} onChange={(e) => setFormNeg({ ...formNeg, referencia: e.target.value })} placeholder="Ej: Frente a Banco Popular" />
+            </div>
+            <div>
+              <label className="label">Ancho del ticket (impresora térmica)</label>
+              <select className="input w-48" value={formNeg.ancho_ticket} onChange={(e) => setFormNeg({ ...formNeg, ancho_ticket: Number(e.target.value) })}>
+                <option value={58}>58 mm (portátil, ej. 2 Connect)</option>
+                <option value={80}>80 mm (estándar de mostrador)</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-600">Ajusta el tamaño de los recibos y comprobantes para que impriman bien en tu impresora térmica.</p>
             </div>
             <p className="text-xs text-slate-600">Estos datos aparecen en los tickets de cobro, facturas, comprobantes de cierre, el panel y el inicio de sesión.</p>
             <div className="flex justify-end">
