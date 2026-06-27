@@ -28,8 +28,12 @@ export default function Articulos() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
+  const [editCodigo, setEditCodigo] = useState<number | null>(null)
   const [form, setForm] = useState(vacio)
   const [saving, setSaving] = useState(false)
+
+  // Próximo código de la secuencia (4 dígitos). En instalaciones nuevas empieza en 0000.
+  const proximoCodigo = items.length ? Math.max(...items.map((a) => a.codigo)) + 1 : 0
 
   async function cargar() {
     setLoading(true)
@@ -48,11 +52,13 @@ export default function Articulos() {
 
   function abrirNuevo() {
     setEditId(null)
+    setEditCodigo(null)
     setForm(vacio)
     setOpen(true)
   }
   function abrirEditar(a: Articulo) {
     setEditId(a.id)
+    setEditCodigo(a.codigo)
     setForm({
       nombre: a.nombre,
       categoria: a.categoria,
@@ -70,12 +76,20 @@ export default function Articulos() {
     if (!form.nombre.trim()) return alert('El nombre es obligatorio')
     setSaving(true)
     const payload = { ...form, descripcion: form.descripcion || null }
-    const { error } = editId
-      ? await supabase.from('articulos').update(payload).eq('id', editId)
-      : await supabase.from('articulos').insert(payload)
+    let error
+    let codigoCreado: number | null = null
+    if (editId) {
+      ;({ error } = await supabase.from('articulos').update(payload).eq('id', editId))
+    } else {
+      // Insertar y recuperar el código (4 dígitos) que asignó la secuencia.
+      const res = await supabase.from('articulos').insert(payload).select('codigo').single()
+      error = res.error
+      codigoCreado = res.data?.codigo ?? null
+    }
     setSaving(false)
     if (error) return alert('Error al guardar: ' + error.message)
     setOpen(false)
+    if (codigoCreado != null) alert(`Artículo creado con el código ${codigoArticulo(codigoCreado)}.`)
     cargar()
   }
 
@@ -153,6 +167,17 @@ export default function Articulos() {
         }
       >
         <div className="space-y-4">
+          <div>
+            <label className="label">Código</label>
+            <input
+              className="input w-32 bg-slate-50 font-mono font-semibold text-brand-700"
+              value={codigoArticulo(editId ? editCodigo : proximoCodigo)}
+              readOnly
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              {editId ? 'Código del artículo.' : 'Se asigna automáticamente en secuencia de 4 dígitos.'}
+            </p>
+          </div>
           <div>
             <label className="label">Nombre</label>
             <input className="input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Shampoo profesional" />
