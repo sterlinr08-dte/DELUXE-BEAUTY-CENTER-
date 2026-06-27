@@ -109,6 +109,17 @@ export interface FacturaConItems extends Factura {
   items: FacturaItem[]
 }
 
+// Línea de pago de una factura (pago dividido / mixto: efectivo + tarjeta, etc.)
+export interface FacturaPago {
+  id: string
+  factura_id: string
+  metodo: string
+  monto: number
+  caja_id: string | null
+  registrado_por: string | null
+  created_at: string
+}
+
 export interface Gasto {
   id: string
   numero: number
