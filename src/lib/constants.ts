@@ -21,6 +21,7 @@ export const NEGOCIO = {
   instagram: '@centerdeluxebeauty',
   rnc: '', // Coloca aquí el RNC si aplica (aparece en los tickets)
   logo: 'deluxe-logo.png',
+  ancho_ticket: 58, // mm del papel térmico (58 u 80)
 }
 
 

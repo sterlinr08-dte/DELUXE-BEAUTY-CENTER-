@@ -120,6 +120,29 @@ export interface FacturaPago {
   created_at: string
 }
 
+// Devolución / nota de crédito sobre una factura (total o parcial)
+export interface Devolucion {
+  id: string
+  factura_id: string
+  fecha: string
+  monto: number
+  metodo_pago: string
+  motivo: string | null
+  caja_id: string | null
+  registrado_por: string | null
+  created_at: string
+}
+
+export interface DevolucionItem {
+  id: string
+  devolucion_id: string
+  factura_item_id: string | null
+  articulo_id: string | null
+  descripcion: string | null
+  cantidad: number
+  importe: number
+}
+
 export interface Gasto {
   id: string
   numero: number

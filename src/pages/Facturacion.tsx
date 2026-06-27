@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus } from 'lucide-react'
+import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus, Undo2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
@@ -29,7 +29,7 @@ const estadoBadge: Record<EstadoFactura, string> = {
 }
 
 export default function Facturacion() {
-  const { puedeAccion } = useAuth()
+  const { perfil, puedeAccion } = useAuth()
   const { negocio } = useNegocio()
   const puedeAnular = puedeAccion('facturas.anular')
   const puedeEliminar = puedeAccion('facturas.eliminar')
@@ -48,6 +48,17 @@ export default function Facturacion() {
   const [saving, setSaving] = useState(false)
   const [verId, setVerId] = useState<string | null>(null)
   const [verItems, setVerItems] = useState<FacturaItem[]>([])
+
+  // Devoluciones / notas de crédito
+  const [devueltoPorFactura, setDevueltoPorFactura] = useState<Record<string, number>>({})
+  const [devolverFactura, setDevolverFactura] = useState<Factura | null>(null)
+  const [devolverItems, setDevolverItems] = useState<FacturaItem[]>([])
+  const [yaDevuelto, setYaDevuelto] = useState<Record<string, number>>({})  // factura_item_id -> cant ya devuelta
+  const [devCant, setDevCant] = useState<Record<string, number>>({})        // factura_item_id -> cant a devolver ahora
+  const [devMetodo, setDevMetodo] = useState('Efectivo')
+  const [devMotivo, setDevMotivo] = useState('')
+  const [savingDev, setSavingDev] = useState(false)
+  const [devOk, setDevOk] = useState<{ codigo: string; monto: number } | null>(null)
 
   // formulario de nueva factura
   const [clienteId, setClienteId] = useState('')
@@ -166,8 +177,15 @@ export default function Facturacion() {
 
   async function cargar() {
     setLoading(true)
-    const { data } = await supabase.from('facturas').select('*').order('numero', { ascending: false })
+    const [{ data }, { data: dev }] = await Promise.all([
+      supabase.from('facturas').select('*').order('numero', { ascending: false }),
+      supabase.from('devoluciones').select('factura_id, monto'),
+    ])
     setFacturas(data ?? [])
+    // Total devuelto por factura (para el indicador "Devuelta")
+    const acc: Record<string, number> = {}
+    for (const d of dev ?? []) acc[(d as any).factura_id] = (acc[(d as any).factura_id] ?? 0) + Number((d as any).monto)
+    setDevueltoPorFactura(acc)
     setLoading(false)
   }
 
@@ -397,7 +415,91 @@ export default function Facturacion() {
     setVerItems((data as FacturaItem[]) ?? [])
   }
 
+  // === DEVOLUCIONES ===
+  async function abrirDevolucion(f: Factura) {
+    const { data: items } = await supabase.from('factura_items').select('*').eq('factura_id', f.id)
+    // Cantidades ya devueltas por renglón (de devoluciones previas)
+    const { data: devs } = await supabase.from('devoluciones').select('id').eq('factura_id', f.id)
+    const devIds = (devs ?? []).map((d: any) => d.id)
+    const ya: Record<string, number> = {}
+    if (devIds.length) {
+      const { data: di } = await supabase.from('devolucion_items').select('factura_item_id, cantidad').in('devolucion_id', devIds)
+      for (const d of di ?? []) {
+        const k = (d as any).factura_item_id
+        if (k) ya[k] = (ya[k] ?? 0) + Number((d as any).cantidad)
+      }
+    }
+    setVerId(null)
+    setDevolverFactura(f)
+    setDevolverItems((items as FacturaItem[]) ?? [])
+    setYaDevuelto(ya)
+    setDevCant({})
+    setDevMetodo(f.metodo_pago && f.metodo_pago !== 'Mixto' ? f.metodo_pago : 'Efectivo')
+    setDevMotivo('')
+    setDevOk(null)
+  }
+
+  async function confirmarDevolucion() {
+    if (!devolverFactura) return
+    const lineas = devolverItems
+      .map((it) => ({ it, cant: Number(devCant[it.id] || 0) }))
+      .filter((x) => x.cant > 0)
+    if (lineas.length === 0) return alert('Indica al menos una cantidad a devolver.')
+    for (const { it, cant } of lineas) {
+      const disp = Number(it.cantidad) - Number(yaDevuelto[it.id] || 0)
+      if (cant > disp + 0.001) return alert(`No puedes devolver más de ${disp} de "${it.descripcion}".`)
+    }
+    const monto = lineas.reduce((s, { it, cant }) => s + Number(it.precio_unit) * cant, 0)
+    setSavingDev(true)
+    // Caja abierta (para registrar la salida si la devolución es en efectivo)
+    let cajaId: string | null = null
+    if (devMetodo === 'Efectivo') {
+      const { data: caja } = await supabase.from('caja_sesiones').select('id').eq('estado', 'ABIERTA').order('abierta_at', { ascending: false }).limit(1).maybeSingle()
+      cajaId = (caja as any)?.id ?? null
+    }
+    const { data: dev, error: ed } = await supabase.from('devoluciones').insert({
+      factura_id: devolverFactura.id,
+      monto,
+      metodo_pago: devMetodo,
+      motivo: devMotivo || null,
+      caja_id: cajaId,
+      registrado_por: perfil?.nombre || perfil?.username || null,
+    }).select('id').single()
+    if (ed || !dev) { setSavingDev(false); return alert('Error al registrar la devolución: ' + ed?.message) }
+    const { error: ei } = await supabase.from('devolucion_items').insert(
+      lineas.map(({ it, cant }) => ({
+        devolucion_id: (dev as any).id,
+        factura_item_id: it.id,
+        articulo_id: (it as any).articulo_id ?? null,
+        descripcion: it.descripcion,
+        cantidad: cant,
+        importe: Number(it.precio_unit) * cant,
+      })),
+    )
+    if (ei) { setSavingDev(false); return alert('Error al guardar el detalle: ' + ei.message) }
+    // Reponer stock de los productos devueltos
+    for (const { it, cant } of lineas) {
+      if ((it as any).articulo_id) {
+        await supabase.rpc('ajustar_stock', { p_articulo: (it as any).articulo_id, p_delta: cant })
+      }
+    }
+    // Salida de caja si fue en efectivo y hay caja abierta
+    if (devMetodo === 'Efectivo' && cajaId) {
+      await supabase.from('caja_movimientos').insert({
+        caja_id: cajaId,
+        tipo: 'SALIDA',
+        concepto: `Devolución factura ${codigoFactura(devolverFactura)}`,
+        monto,
+        factura_id: devolverFactura.id,
+      })
+    }
+    setSavingDev(false)
+    setDevOk({ codigo: codigoFactura(devolverFactura), monto })
+    cargar()
+  }
+
   const facturaVista = facturas.find((f) => f.id === verId)
+  const devTotal = devolverItems.reduce((s, it) => s + Number(it.precio_unit) * Number(devCant[it.id] || 0), 0)
 
   // Cliente seleccionado en la factura en curso y su historial (para "ver cómo se arregló la última vez")
   const clienteSel = clienteId ? clientes.find((c) => c.id === clienteId) ?? null : null
@@ -884,10 +986,104 @@ export default function Facturacion() {
               {facturaVista.descuento > 0 && <div className="flex justify-between text-slate-600"><span>Descuento</span><span>- {money(facturaVista.descuento)}</span></div>}
               {facturaVista.itbis > 0 && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(facturaVista.itbis)}</span></div>}
               <div className="flex justify-between border-t pt-1 text-base font-bold text-slate-800"><span>Total</span><span>{money(facturaVista.total)}</span></div>
+              {(devueltoPorFactura[facturaVista.id] ?? 0) > 0 && (
+                <div className="flex justify-between font-semibold text-rose-600"><span>Devuelto</span><span>- {money(devueltoPorFactura[facturaVista.id])}</span></div>
+              )}
             </div>
-            <button className="btn-primary no-print w-full" onClick={() => window.print()}>
-              <Printer size={16} /> Imprimir
+            <div className="no-print flex gap-2">
+              {facturaVista.estado === 'PAGADA' && puedeAnular && (
+                <button className="btn-ghost flex-1" onClick={() => abrirDevolucion(facturaVista)}>
+                  <Undo2 size={16} /> Devolver
+                </button>
+              )}
+              <button className="btn-primary flex-1" onClick={() => window.print()}>
+                <Printer size={16} /> Imprimir
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* DEVOLUCIÓN / NOTA DE CRÉDITO */}
+      <Modal
+        open={!!devolverFactura}
+        title={devOk ? 'Devolución registrada' : `Devolver — Factura ${devolverFactura ? codigoFactura(devolverFactura) : ''}`}
+        onClose={() => setDevolverFactura(null)}
+        footer={devOk ? null : (
+          <>
+            <button className="btn-ghost" onClick={() => setDevolverFactura(null)}>Cancelar</button>
+            <button className="btn-primary" onClick={confirmarDevolucion} disabled={savingDev || devTotal <= 0}>
+              {savingDev ? 'Procesando…' : `Devolver ${money(devTotal)}`}
             </button>
+          </>
+        )}
+      >
+        {devOk ? (
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-1 text-center">
+              <Undo2 className="text-emerald-500" size={56} />
+              <p className="text-lg font-bold text-slate-800">Devolución registrada</p>
+              <p className="text-sm text-slate-600">Factura {devOk.codigo} · {money(devOk.monto)}</p>
+            </div>
+            <div className="print-area space-y-2 rounded-xl border border-slate-100 p-3 text-sm">
+              <div className="text-center">
+                <img src={`${import.meta.env.BASE_URL}${negocio.logo}`} alt={negocio.nombre} className="mx-auto mb-1 h-14 rounded-lg bg-black object-contain" />
+                <p className="font-display text-base font-bold text-brand-800">{negocio.nombre}</p>
+                {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
+                <p className="mt-1 text-xs font-semibold text-slate-600">NOTA DE CRÉDITO / DEVOLUCIÓN</p>
+                <p className="text-xs text-slate-600">Factura {devOk.codigo} · {fechaCorta(hoyISO())}</p>
+              </div>
+              <div className="flex justify-between border-t pt-1 text-base font-bold text-slate-800"><span>Total devuelto</span><span>{money(devOk.monto)}</span></div>
+              <div className="flex justify-between text-slate-600"><span>Método</span><span>{devMetodo}</span></div>
+              {devMotivo && <p className="text-slate-600"><span className="font-medium">Motivo:</span> {devMotivo}</p>}
+              <p className="text-xs text-slate-600">Atendió: {perfil?.nombre || perfil?.username || ''}</p>
+              <div className="border-t pt-1 text-center text-xs text-slate-500"><p>{negocio.direccion} · {negocio.referencia}</p></div>
+            </div>
+            <div className="no-print flex gap-2">
+              <button className="btn-ghost flex-1" onClick={() => setDevolverFactura(null)}>Cerrar</button>
+              <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir nota</button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Indica cuánto devolver de cada renglón. El stock de los productos se repone automáticamente.</p>
+            <div className="space-y-2">
+              {devolverItems.map((it) => {
+                const disp = Number(it.cantidad) - Number(yaDevuelto[it.id] || 0)
+                return (
+                  <div key={it.id} className="flex items-center gap-2 rounded-lg border border-slate-200 p-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800">{it.descripcion}</p>
+                      <p className="text-xs text-slate-600">Vendido {it.cantidad} · disponible {disp} · {money(it.precio_unit)} c/u</p>
+                    </div>
+                    <input
+                      type="number" min={0} max={disp} step={1}
+                      className="input w-20"
+                      value={devCant[it.id] || ''}
+                      disabled={disp <= 0}
+                      onChange={(e) => setDevCant((prev) => ({ ...prev, [it.id]: Math.min(disp, Math.max(0, Number(e.target.value))) }))}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <div>
+              <label className="label">Devolver el dinero en</label>
+              <div className="flex gap-2">
+                {['Efectivo', 'Tarjeta', 'Transferencia'].map((m) => (
+                  <button key={m} type="button" onClick={() => setDevMetodo(m)} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${devMetodo === m ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500'}`}>{m}</button>
+                ))}
+              </div>
+              {devMetodo === 'Efectivo' && <p className="mt-1 text-xs text-slate-600">Si hay una caja abierta, se registra la salida de efectivo automáticamente.</p>}
+            </div>
+            <div>
+              <label className="label">Motivo (opcional)</label>
+              <textarea className="input" rows={2} value={devMotivo} onChange={(e) => setDevMotivo(e.target.value)} placeholder="Producto defectuoso, cambio de opinión…" />
+            </div>
+            <div className="rounded-xl bg-rose-50 px-4 py-3 text-center">
+              <p className="text-xs uppercase tracking-widest text-rose-500">Total a devolver</p>
+              <p className="text-2xl font-extrabold text-rose-700">{money(devTotal)}</p>
+            </div>
           </div>
         )}
       </Modal>
