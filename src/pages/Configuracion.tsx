@@ -5,6 +5,7 @@ import { MODULOS, ACCIONES, etiquetaPermiso, Rol } from '../lib/permisos'
 import { Empleado, Proveedor, Auditoria } from '../types'
 import { fechaHora, conPrefijo } from '../lib/format'
 import { PREFIJOS_DEFAULT } from '../lib/constants'
+import { imprimirHTML } from '../lib/impresora'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
@@ -35,6 +36,28 @@ export default function Configuracion() {
   const { negocio, recargarNegocio } = useNegocio()
   const [tab, setTab] = useState<'usuarios' | 'roles' | 'proveedores' | 'negocio' | 'prefijos' | 'impresora' | 'categorias' | 'comisiones' | 'auditoria'>('usuarios')
   const [pruebaOpen, setPruebaOpen] = useState(false)
+  const [qzMsg, setQzMsg] = useState<{ ok: boolean; texto: string } | null>(null)
+  const [qzProbando, setQzProbando] = useState(false)
+
+  async function probarQZ() {
+    setQzProbando(true)
+    setQzMsg(null)
+    const ancho = Number(formNeg.ancho_ticket) || 58
+    const html = `<div style="width:${ancho}mm;margin:0 auto;text-align:center;font-family:Arial,sans-serif;font-size:12px;color:#000">`
+      + `<div style="font-size:15px;font-weight:bold">${negocio.nombre}</div>`
+      + `<div style="margin-top:4px;font-weight:bold">PRUEBA DE IMPRESIÓN DIRECTA</div>`
+      + `<div>QZ Tray · ${ancho} mm</div>`
+      + `<div style="margin:6px 0">Si esto salió SIN ningún cuadro,<br/>¡la impresión directa quedó lista! ✅</div>`
+      + `<div style="font-size:10px">${negocio.direccion || ''}</div></div>`
+    try {
+      await imprimirHTML(html, ancho)
+      setQzMsg({ ok: true, texto: 'Enviado a la impresora vía QZ Tray. Revisa que haya salido el ticket.' })
+    } catch (e) {
+      setQzMsg({ ok: false, texto: 'No se pudo imprimir por QZ Tray: ' + (e instanceof Error ? e.message : String(e)) + '. ¿Está instalado, abierto y con el certificado puesto?' })
+    } finally {
+      setQzProbando(false)
+    }
+  }
   const [auditoria, setAuditoria] = useState<Auditoria[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioRow[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
@@ -570,29 +593,41 @@ export default function Configuracion() {
             </div>
           </div>
 
-          {/* Impresión directa (sin cuadros de Windows) */}
+          {/* Impresión directa (sin cuadros) — QZ Tray */}
           <div className="card space-y-3">
             <h3 className="font-display text-lg font-bold text-slate-800">Impresión directa (sin cuadros)</h3>
             <p className="text-sm text-slate-600">
-              Para que los recibos salgan <b>solos</b> en la impresora térmica, <b>sin el cuadro de Windows</b>,
-              se usa el modo de impresión directa de Google Chrome. Es <b>gratis</b> y no se instala ningún programa.
+              Para que los recibos salgan <b>solos</b> en la impresora térmica, <b>sin ningún cuadro</b> y
+              <b> abras la app como la abras</b>, se usa <b>QZ Tray</b> (gratis). Se instala una vez por PC.
             </p>
             <ol className="ml-5 list-decimal space-y-1.5 text-sm text-slate-700">
               <li>Pon tu impresora térmica como <b>predeterminada</b> en Windows.</li>
-              <li>Descarga y abre (doble clic) el <b>instalador</b> de abajo: crea un ícono <b>“DeluXe Caja”</b> en el escritorio.</li>
-              <li>Abre la app <b>siempre desde ese ícono</b>. Listo: al imprimir, sale directo, sin cuadros.</li>
+              <li>Instala <b>QZ Tray</b> (asistente normal: Siguiente → Siguiente → Finalizar).</li>
+              <li>Abre (doble clic) el <b>configurador</b> de abajo: deja el certificado puesto y todo listo, <b>automático</b>.</li>
+              <li>Pulsa <b>“Probar impresión directa”</b>. Si sale el ticket sin cuadros, ¡quedó! 🎉</li>
             </ol>
             <div className="flex flex-wrap gap-2">
-              <a href={`${import.meta.env.BASE_URL}impresion-directa/crear-acceso-directo.bat`} download className="btn-primary">
-                <Download size={16} /> Descargar instalador
+              <a href="https://qz.io/download/" target="_blank" rel="noreferrer" className="btn-primary">
+                <Download size={16} /> Descargar QZ Tray
+              </a>
+              <a href={`${import.meta.env.BASE_URL}impresion-directa/configurar-impresion-directa.bat`} download className="btn-ghost">
+                <Download size={16} /> Configurador (certificado)
               </a>
               <a href={`${import.meta.env.BASE_URL}impresion-directa/LEEME-impresion-directa.txt`} download className="btn-ghost">
-                <Download size={16} /> Descargar guía
+                <Download size={16} /> Guía
               </a>
             </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+              <button className="btn-ghost" onClick={probarQZ} disabled={qzProbando}>
+                <Printer size={16} /> {qzProbando ? 'Probando…' : 'Probar impresión directa'}
+              </button>
+              {qzMsg && (
+                <span className={`text-xs font-medium ${qzMsg.ok ? 'text-emerald-700' : 'text-rose-600'}`}>{qzMsg.texto}</span>
+              )}
+            </div>
             <p className="text-xs text-slate-500">
-              Al abrir el instalador, Windows puede avisar que es un archivo descargado → “Más información” →
-              “Ejecutar de todas formas”. Es seguro: solo crea un acceso directo de Chrome.
+              El configurador necesita permiso de administrador (para dejar el certificado en QZ Tray). El cliente
+              no toca certificados: solo instalar QZ Tray y abrir el configurador.
             </p>
           </div>
         </div>
