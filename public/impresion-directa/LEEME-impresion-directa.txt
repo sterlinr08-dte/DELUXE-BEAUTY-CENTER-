@@ -1,45 +1,43 @@
 ============================================================
   DELUXE BEAUTY CENTER — IMPRESIÓN DIRECTA (sin cuadros)
+  Método: QZ Tray (gratis)
 ============================================================
 
-Objetivo: que al imprimir un recibo salga SOLO en la impresora
-térmica (2 Connect), SIN el cuadro de Windows ni avisos molestos.
-Usa el modo "kiosko de impresión" de Google Chrome (gratis, sin
-instalar nada extra).
+Objetivo: que al cobrar, el recibo salga SOLO en la impresora
+térmica, SIN ningún cuadro, y funcione abras la app como la abras.
+El cliente NO toca certificados: solo instala y abre 1 archivo.
 
 ------------------------------------------------------------
-PASOS (una sola vez, en la PC del salón)
+PASOS (una sola vez, por PC)
 ------------------------------------------------------------
 
-1) PONER LA IMPRESORA COMO PREDETERMINADA
-   - Abre:  Configuración > Bluetooth y dispositivos > Impresoras y escáneres
-   - Entra a la impresora "2 Connect" (o como aparezca tu térmica).
-   - Pulsa "Establecer como predeterminada".
-   (Si Windows tiene activado "Permitir que Windows administre mi
-    impresora predeterminada", desactívalo primero.)
+1) IMPRESORA PREDETERMINADA
+   - Configuración > Bluetooth y dispositivos > Impresoras y escáneres
+   - Entra a tu impresora térmica > "Establecer como predeterminada".
 
-2) CREAR EL ACCESO DIRECTO
-   - Doble clic en el archivo:  crear-acceso-directo.bat
-   - Aparecerá en el Escritorio un ícono llamado "DeluXe Caja".
-   (Windows puede avisar que es un archivo descargado: pulsa
-    "Más información" > "Ejecutar de todas formas". Es seguro: solo
-    crea un acceso directo de Chrome.)
+2) INSTALAR QZ TRAY (gratis)
+   - En la app: Configuración > Impresora > botón "Descargar QZ Tray".
+   - Instálalo (asistente normal: Siguiente > Siguiente > Finalizar).
+   - Queda corriendo de fondo (aparece su ícono junto al reloj).
 
-3) USAR LA APP DESDE ESE ÍCONO
-   - Abre SIEMPRE la app con el ícono "DeluXe Caja" del Escritorio.
-   - Inicia sesión normal.
-   - Al imprimir un recibo, sale directo a la térmica, SIN cuadros.
+3) CONFIGURAR EL CERTIFICADO (1 clic, automático)
+   - En la app: Configuración > Impresora > "Configurador (certificado)".
+   - Doble clic al archivo descargado. Pedirá permiso de administrador:
+     pulsa "Sí". Deja todo listo solo y reinicia QZ Tray.
+
+4) PROBAR
+   - En la app: Configuración > Impresora > "Probar impresión directa".
+   - Si sale el ticket SIN cuadros, ¡quedó! Ya imprime directo siempre.
 
 ------------------------------------------------------------
 NOTAS
 ------------------------------------------------------------
-- El ancho del papel (58mm) ya está configurado en la app:
-  Configuración > Negocio > "Ancho del ticket". Si tu papel fuera
-  80mm, cámbialo ahí.
-- Imprime siempre a la impresora PREDETERMINADA. Como la térmica es
-  la principal del salón, déjala predeterminada.
-- Si abres la app desde el Chrome normal (no desde el ícono),
-  volverá a salir el cuadro. Usa siempre el ícono "DeluXe Caja".
-- ¿Sigue saliendo el cuadro o algo no funciona? Avísanos y lo
-  ajustamos (hay un modo a pantalla completa que lo garantiza).
+- Después de esto, abres la app desde DONDE SEA (Chrome normal,
+  marcador, etc.) y al cobrar el recibo sale solo, sin cuadros.
+- QZ Tray debe quedar abierto/corriendo (se puede poner para que
+  arranque solo con Windows; su ícono está junto al reloj).
+- El ancho del papel (58/80mm) se elige en Configuración > Impresora.
+- Si "Probar" da error: revisa que QZ Tray esté instalado y abierto,
+  y que hayas corrido el "Configurador (certificado)".
+- ¿Algo no funciona? Avísanos y lo ajustamos.
 ============================================================
