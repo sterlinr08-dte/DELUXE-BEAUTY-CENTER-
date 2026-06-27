@@ -50,7 +50,7 @@ export default function Configuracion() {
   const pagProv = usePaginacion(proveedores, 10)
 
   // datos del negocio
-  const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '', ancho_ticket: 58, ...PREFIJOS_DEFAULT })
+  const [formNeg, setFormNeg] = useState({ nombre: '', direccion: '', referencia: '', telefono: '', whatsapp: '', instagram: '', rnc: '', ancho_ticket: 58, auto_imprimir: true, ...PREFIJOS_DEFAULT })
   const [savingNeg, setSavingNeg] = useState(false)
 
   // categorías
@@ -97,6 +97,7 @@ export default function Configuracion() {
       nombre: neg.nombre ?? '', direccion: neg.direccion ?? '', referencia: neg.referencia ?? '',
       telefono: neg.telefono ?? '', whatsapp: neg.whatsapp ?? '', instagram: neg.instagram ?? '', rnc: neg.rnc ?? '',
       ancho_ticket: Number(neg.ancho_ticket ?? 58),
+      auto_imprimir: neg.auto_imprimir ?? true,
       prefijo_caja: neg.prefijo_caja ?? PREFIJOS_DEFAULT.prefijo_caja,
       prefijo_gasto: neg.prefijo_gasto ?? PREFIJOS_DEFAULT.prefijo_gasto,
       prefijo_pago: neg.prefijo_pago ?? PREFIJOS_DEFAULT.prefijo_pago,
@@ -558,6 +559,11 @@ export default function Configuracion() {
               </select>
               <p className="mt-1 text-xs text-slate-600">Ajusta el tamaño de recibos y comprobantes para tu impresora térmica. Guarda y luego usa “Imprimir prueba”.</p>
             </div>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={formNeg.auto_imprimir} onChange={(e) => setFormNeg({ ...formNeg, auto_imprimir: e.target.checked })} />
+              Imprimir el recibo <b>automáticamente</b> al cobrar
+            </label>
+            <p className="-mt-1 text-xs text-slate-500">Con la impresión directa activada, el recibo sale solo al registrar el cobro (sin tocar “Imprimir”).</p>
             <div className="flex flex-wrap gap-2">
               <button className="btn-ghost" onClick={() => setPruebaOpen(true)}><Printer size={16} /> Imprimir prueba</button>
               <button className="btn-primary" onClick={guardarNegocio} disabled={savingNeg}>{savingNeg ? 'Guardando…' : 'Guardar'}</button>

@@ -128,6 +128,15 @@ export default function Caja() {
     cargar()
   }, [])
 
+  // Auto-impresión del recibo al cobrar (Configuración → Impresora). Con el modo
+  // de impresión directa de Chrome, sale solo; si no, abre el diálogo de impresión.
+  useEffect(() => {
+    if (cobroOk && negocio.auto_imprimir) {
+      const t = setTimeout(() => window.print(), 400)
+      return () => clearTimeout(t)
+    }
+  }, [cobroOk, negocio.auto_imprimir])
+
   const entradas = movs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
   const salidas = movs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
   // Cobros del día agrupados por método de pago: pagos de contado + abonos de crédito
