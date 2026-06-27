@@ -429,6 +429,13 @@ export default function Facturacion() {
             {label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
+          className="btn-ghost"
+        >
+          Ver historial
+        </button>
       </div>
 
       {loading ? (
@@ -731,16 +738,6 @@ export default function Facturacion() {
             <label className="label">Notas</label>
             <textarea className="input" rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
           </div>
-          </div>
-
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
-              className="text-xs font-semibold text-brand-600 hover:underline"
-            >
-              {clienteSel ? `Ver historial de ${clienteSel.nombre}` : 'Ver historial de facturas'}
-            </button>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
