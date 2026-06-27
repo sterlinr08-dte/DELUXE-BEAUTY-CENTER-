@@ -12,6 +12,7 @@ export interface Negocio {
   rnc: string
   logo: string
   ancho_ticket: number          // mm del papel térmico (58 u 80)
+  auto_imprimir: boolean        // imprimir el recibo automáticamente al cobrar
   // Prefijos configurables de las secuencias
   prefijo_caja: string
   prefijo_gasto: string
@@ -51,6 +52,7 @@ export function NegocioProvider({ children }: { children: ReactNode }) {
         rnc: data.rnc ?? '',
         logo: DEFAULTS.logo,
         ancho_ticket: Number(data.ancho_ticket ?? DEFAULTS.ancho_ticket),
+        auto_imprimir: data.auto_imprimir ?? DEFAULTS.auto_imprimir,
         prefijo_caja: data.prefijo_caja ?? DEFAULTS.prefijo_caja,
         prefijo_gasto: data.prefijo_gasto ?? DEFAULTS.prefijo_gasto,
         prefijo_pago: data.prefijo_pago ?? DEFAULTS.prefijo_pago,
