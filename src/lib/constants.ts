@@ -36,7 +36,24 @@ export const PREFIJOS_DEFAULT = {
   prefijo_cliente: 'CL',
   prefijo_proveedor: 'PR',
   prefijo_articulo: 'AR',
+  prefijo_mobiliario: 'MB',
 }
+
+// Categorías y estados del mobiliario / equipos del salón
+export const CATEGORIAS_MOBILIARIO = [
+  'Mobiliario',
+  'Equipos',
+  'Electrónica',
+  'Decoración',
+  'Herramientas',
+  'Otros',
+]
+
+export const ESTADOS_MOBILIARIO: { value: 'BUENO' | 'REGULAR' | 'DANADO'; label: string }[] = [
+  { value: 'BUENO', label: 'Bueno' },
+  { value: 'REGULAR', label: 'Regular' },
+  { value: 'DANADO', label: 'Dañado' },
+]
 
 export const METODOS_PAGO = ['Efectivo', 'Tarjeta', 'Transferencia', 'PayPal', 'Otro']
 

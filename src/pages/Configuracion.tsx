@@ -131,6 +131,7 @@ export default function Configuracion() {
       prefijo_cliente: neg.prefijo_cliente ?? PREFIJOS_DEFAULT.prefijo_cliente,
       prefijo_proveedor: neg.prefijo_proveedor ?? PREFIJOS_DEFAULT.prefijo_proveedor,
       prefijo_articulo: neg.prefijo_articulo ?? PREFIJOS_DEFAULT.prefijo_articulo,
+      prefijo_mobiliario: neg.prefijo_mobiliario ?? PREFIJOS_DEFAULT.prefijo_mobiliario,
     })
     const { data: cats } = await supabase.from('categorias').select('id,nombre,tipo').order('tipo').order('nombre')
     setCategorias((cats as any) ?? [])
@@ -550,6 +551,7 @@ export default function Configuracion() {
                 ['prefijo_cliente', 'Clientes'],
                 ['prefijo_proveedor', 'Proveedores'],
                 ['prefijo_articulo', 'Artículos'],
+                ['prefijo_mobiliario', 'Mobiliario y equipos'],
               ] as const).map(([campo, etiqueta]) => (
                 <div key={campo}>
                   <label className="label">{etiqueta}</label>

@@ -22,6 +22,7 @@ export interface Negocio {
   prefijo_cliente: string
   prefijo_proveedor: string
   prefijo_articulo: string
+  prefijo_mobiliario: string
 }
 
 const DEFAULTS: Negocio = { ...NEGOCIO, ...PREFIJOS_DEFAULT }
@@ -61,6 +62,7 @@ export function NegocioProvider({ children }: { children: ReactNode }) {
         prefijo_cliente: data.prefijo_cliente ?? DEFAULTS.prefijo_cliente,
         prefijo_proveedor: data.prefijo_proveedor ?? DEFAULTS.prefijo_proveedor,
         prefijo_articulo: data.prefijo_articulo ?? DEFAULTS.prefijo_articulo,
+        prefijo_mobiliario: data.prefijo_mobiliario ?? DEFAULTS.prefijo_mobiliario,
       })
     }
   }, [])

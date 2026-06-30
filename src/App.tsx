@@ -7,6 +7,7 @@ import Citas from './pages/Citas'
 import Clientes from './pages/Clientes'
 import Servicios from './pages/Servicios'
 import Articulos from './pages/Articulos'
+import Mobiliario from './pages/Mobiliario'
 import Empleados from './pages/Empleados'
 import Facturacion from './pages/Facturacion'
 import Caja from './pages/Caja'
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="/clientes" element={<Protegido modulo="clientes"><Clientes /></Protegido>} />
               <Route path="/servicios" element={<Protegido modulo="servicios"><Servicios /></Protegido>} />
               <Route path="/articulos" element={<Protegido modulo="articulos"><Articulos /></Protegido>} />
+              <Route path="/mobiliario" element={<Protegido modulo="mobiliario"><Mobiliario /></Protegido>} />
               <Route path="/empleados" element={<Protegido modulo="empleados"><Empleados /></Protegido>} />
               <Route path="/facturacion" element={<Protegido modulo="facturacion"><Facturacion /></Protegido>} />
               <Route path="/caja" element={<Protegido modulo="caja"><Caja /></Protegido>} />
