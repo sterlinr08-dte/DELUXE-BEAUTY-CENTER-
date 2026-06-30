@@ -529,24 +529,6 @@ export default function Facturacion() {
       <PageHeader
         title="Facturación"
         subtitle={`${facturas.length} factura(s)`}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`badge ${qzListo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
-              title={qzListo ? 'Impresora conectada' : 'Impresora no conectada'}
-            >
-              <Printer size={16} className="inline" />
-              <span className={`ml-1.5 inline-block h-2.5 w-2.5 rounded-full ${qzListo ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-            </span>
-            <Link
-              to="/configuracion?tab=impresora"
-              title="Configurar impresora (descargas y prueba)"
-              className="rounded-lg p-2 text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-brand-600"
-            >
-              <Settings size={18} />
-            </Link>
-          </div>
-        }
       />
 
       {/* Resumen de cuentas abiertas (compacto) */}
@@ -574,6 +556,24 @@ export default function Facturacion() {
         >
           Ver historial
         </button>
+      </div>
+
+      {/* Impresora + configuración, encima del buscador */}
+      <div className="mb-2 flex items-center justify-end gap-2">
+        <span
+          className={`badge ${qzListo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
+          title={qzListo ? 'Impresora conectada' : 'Impresora no conectada'}
+        >
+          <Printer size={16} className="inline" />
+          <span className={`ml-1.5 inline-block h-2.5 w-2.5 rounded-full ${qzListo ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+        </span>
+        <Link
+          to="/configuracion?tab=impresora"
+          title="Configurar impresora (descargas y prueba)"
+          className="rounded-lg p-2 text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-brand-600"
+        >
+          <Settings size={18} />
+        </Link>
       </div>
 
       {loading ? (
