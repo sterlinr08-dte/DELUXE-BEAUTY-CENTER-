@@ -46,6 +46,16 @@ export function fechaHora(ts: string | null): string {
   })
 }
 
+// Solo la hora (ej. "2:27 p. m."), a partir de un timestamp (created_at).
+export function horaCorta(ts: string | null | undefined): string {
+  if (!ts) return ''
+  return new Date(ts).toLocaleTimeString('es-DO', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 export function hoyISO(): string {
   const d = new Date()
   const off = d.getTimezoneOffset()
