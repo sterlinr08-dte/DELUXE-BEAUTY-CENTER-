@@ -448,19 +448,19 @@ export default function Facturacion() {
         <td style="text-align:right;padding:1px 0;vertical-align:top">${esc(money(it.importe))}</td>
       </tr>`).join('')
     const row = (a: string, b: string, bold = false) =>
-      `<div class="row"${bold ? ' style="font-weight:700;font-size:15px;border-top:1px solid #000;padding-top:4px;margin-top:3px"' : ''}><span>${a}</span><span>${b}</span></div>`
+      `<div class="row"${bold ? ' style="font-weight:700;font-size:12.5px;border-top:1px solid #000;padding-top:4px;margin-top:3px"' : ''}><span>${a}</span><span>${b}</span></div>`
     return `<!doctype html><html><head><meta charset="utf-8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap');
       *{margin:0;padding:0;box-sizing:border-box;color:#000;text-transform:uppercase}
-      body{font-family:'Inter',Arial,sans-serif;font-size:13px;line-height:1.5;padding:3mm 4mm}
-      .marca{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:800;font-size:21px;text-align:center;line-height:1.12;letter-spacing:.3px}
-      .c{text-align:center}.muted{font-size:11px}.b{font-weight:700}
+      body{font-family:'Inter',Arial,sans-serif;font-size:10px;line-height:1.4;padding:3mm 4mm;font-variant-numeric:tabular-nums}
+      .marca{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:800;font-size:17px;text-align:center;line-height:1.1;letter-spacing:.6px}
+      .c{text-align:center}.muted{font-size:9px;letter-spacing:.2px}.b{font-weight:700}
       table{width:100%;border-collapse:collapse;table-layout:fixed}
-      th,td{font-size:12px;padding:2px 0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
-      .row{display:flex;justify-content:space-between;font-size:12px;margin:1px 0}
-      .sep{border-bottom:1px dotted #000;margin:5px 0}
+      th,td{font-size:9.5px;padding:2px 0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
+      .row{display:flex;justify-content:space-between;font-size:10px;margin:1.5px 0}
+      .sep{border-bottom:1px dotted #000;margin:4px 0}
     </style></head><body>
       <div class="marca">${esc(negocio.nombre)}</div>
       ${negocio.rnc ? `<div class="c muted">RNC: ${esc(negocio.rnc)}</div>` : ''}
@@ -475,7 +475,7 @@ export default function Facturacion() {
       ${f.metodo_pago ? `<div class="muted">Pago: ${esc(f.metodo_pago)}</div>` : ''}
       <div class="sep"></div>
       <table>
-        <colgroup><col style="width:50%"><col style="width:16%"><col style="width:34%"></colgroup>
+        <colgroup><col style="width:56%"><col style="width:14%"><col style="width:30%"></colgroup>
         <thead><tr>
           <th class="b" style="text-align:left;border-bottom:1px dotted #000;padding-bottom:3px">Descripción</th>
           <th class="b" style="text-align:center;border-bottom:1px dotted #000;padding-bottom:3px">Cant.</th>
