@@ -101,6 +101,8 @@ export interface Factura {
   metodo_pago: string | null
   caja_id: string | null
   notas: string | null
+  efectivo_recibido: number | null   // con cuánto pagó el cliente (efectivo)
+  devuelta: number | null            // vuelto entregado
   created_at: string
   updated_at: string
 }

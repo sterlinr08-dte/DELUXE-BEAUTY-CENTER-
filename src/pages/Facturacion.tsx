@@ -3,6 +3,7 @@ import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus, Undo2, Settin
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { conectarQZ, imprimirHTML } from '../lib/impresora'
+import { construirTicketFactura } from '../lib/ticket'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
 import { money, fechaCorta, horaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
@@ -435,70 +436,15 @@ export default function Facturacion() {
     setVerItems((data as FacturaItem[]) ?? [])
   }
 
-  // Recibo térmico autónomo (estilos en línea) para imprimir directo por QZ Tray.
-  function construirTicketHTML(f: Factura, its: FacturaItem[]): string {
-    const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string))
-    const cl = clientes.find((c) => c.id === f.cliente_id)
-    const cliente = cl ? `${codigoCliente(cl.codigo)} · ${f.cliente_nombre}` : (f.cliente_nombre ?? '')
-    const devuelto = devueltoPorFactura[f.id] ?? 0
-    const filas = its.map((it) => `
-      <tr>
-        <td style="text-align:left;padding:1px 0;vertical-align:top">${esc(it.descripcion)}${(it as any).empleado?.nombre ? `<div style="font-size:10px">por ${esc((it as any).empleado.nombre)}</div>` : ''}</td>
-        <td style="text-align:center;padding:1px 2px;vertical-align:top">${esc(it.cantidad)}</td>
-        <td style="text-align:right;padding:1px 0;vertical-align:top">${esc(money(it.importe))}</td>
-      </tr>`).join('')
-    const row = (a: string, b: string, bold = false) =>
-      `<div class="row"${bold ? ' style="font-weight:700;font-size:12.5px;border-top:1px solid #000;padding-top:4px;margin-top:3px"' : ''}><span>${a}</span><span>${b}</span></div>`
-    return `<!doctype html><html><head><meta charset="utf-8">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap');
-      *{margin:0;padding:0;box-sizing:border-box;color:#000;text-transform:uppercase}
-      body{font-family:'Inter',Arial,sans-serif;font-size:10px;line-height:1.4;padding:3mm 4mm;font-variant-numeric:tabular-nums}
-      .marca{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:800;font-size:17px;text-align:center;line-height:1.1;letter-spacing:.6px}
-      .c{text-align:center}.muted{font-size:9px;letter-spacing:.2px}.b{font-weight:700}
-      table{width:100%;border-collapse:collapse;table-layout:fixed}
-      th,td{font-size:9.5px;padding:2px 0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
-      .row{display:flex;justify-content:space-between;font-size:10px;margin:1.5px 0}
-      .sep{border-bottom:1px dotted #000;margin:4px 0}
-    </style></head><body>
-      <div class="marca">${esc(negocio.nombre)}</div>
-      ${negocio.rnc ? `<div class="c muted">RNC: ${esc(negocio.rnc)}</div>` : ''}
-      <div class="c muted">${esc(negocio.direccion)}${negocio.referencia ? ' · ' + esc(negocio.referencia) : ''}</div>
-      <div class="c muted">Tel ${esc(negocio.telefono)}${negocio.whatsapp ? ' · WhatsApp ' + esc(negocio.whatsapp) : ''}</div>
-      ${negocio.instagram ? `<div class="c muted">${esc(negocio.instagram)}</div>` : ''}
-      <div class="c muted" style="margin-top:4px">Factura ${esc(codigoFactura(f))} · ${f.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'}</div>
-      <div class="c muted">${esc(fechaCorta(f.fecha))}${f.created_at ? ' · ' + esc(horaCorta(f.created_at)) : ''}</div>
-      <div class="sep"></div>
-      <div class="muted">Cliente: ${esc(cliente)}</div>
-      <div class="muted">Estado: ${esc(f.estado)}</div>
-      ${f.metodo_pago ? `<div class="muted">Pago: ${esc(f.metodo_pago)}</div>` : ''}
-      <div class="sep"></div>
-      <table>
-        <colgroup><col style="width:56%"><col style="width:14%"><col style="width:30%"></colgroup>
-        <thead><tr>
-          <th class="b" style="text-align:left;border-bottom:1px dotted #000;padding-bottom:3px">Descripción</th>
-          <th class="b" style="text-align:center;border-bottom:1px dotted #000;padding-bottom:3px">Cant.</th>
-          <th class="b" style="text-align:right;border-bottom:1px dotted #000;padding-bottom:3px">Importe</th>
-        </tr></thead>
-        <tbody>${filas}</tbody>
-      </table>
-      <div class="sep"></div>
-      ${row('Subtotal', money(f.subtotal))}
-      ${f.descuento > 0 ? row('Descuento', '- ' + money(f.descuento)) : ''}
-      ${f.itbis > 0 ? row('ITBIS', money(f.itbis)) : ''}
-      ${row('Total', money(f.total), true)}
-      ${devuelto > 0 ? row('Devuelto', '- ' + money(devuelto)) : ''}
-      <div class="c muted" style="margin-top:10px">¡Gracias por su compra!</div>
-    </body></html>`
-  }
-
   // Imprime el recibo: directo por QZ Tray (sin cuadros). Si QZ no está, usa el navegador.
   async function imprimirRecibo(f: Factura | undefined | null, its: FacturaItem[], copiasN = 1) {
     if (!f) { window.print(); return }
     const ancho = Number(negocio.ancho_ticket) >= 80 ? 72 : 54
+    const cl = clientes.find((c) => c.id === f.cliente_id)
+    const cliente = cl ? `${codigoCliente(cl.codigo)} · ${f.cliente_nombre}` : (f.cliente_nombre ?? '')
+    const html = construirTicketFactura({ negocio, factura: f, items: its, cliente, devuelto: devueltoPorFactura[f.id] ?? 0 })
     try {
-      await imprimirHTML(construirTicketHTML(f, its), ancho, copiasN)
+      await imprimirHTML(html, ancho, copiasN)
     } catch {
       window.print()   // respaldo: si QZ Tray no está disponible
     }
@@ -1099,6 +1045,12 @@ export default function Facturacion() {
               {facturaVista.descuento > 0 && <div className="flex justify-between text-slate-600"><span>Descuento</span><span>- {money(facturaVista.descuento)}</span></div>}
               {facturaVista.itbis > 0 && <div className="flex justify-between text-slate-600"><span>ITBIS</span><span>{money(facturaVista.itbis)}</span></div>}
               <div className="flex justify-between border-t pt-1 text-base font-bold text-slate-800"><span>Total</span><span>{money(facturaVista.total)}</span></div>
+              {facturaVista.efectivo_recibido != null && (
+                <>
+                  <div className="flex justify-between text-slate-600"><span>Paga con</span><span>{money(facturaVista.efectivo_recibido)}</span></div>
+                  <div className="flex justify-between font-semibold text-amber-700"><span>Devuelta</span><span>{money(facturaVista.devuelta ?? 0)}</span></div>
+                </>
+              )}
               {(devueltoPorFactura[facturaVista.id] ?? 0) > 0 && (
                 <div className="flex justify-between font-semibold text-rose-600"><span>Devuelto</span><span>- {money(devueltoPorFactura[facturaVista.id])}</span></div>
               )}

@@ -6,6 +6,8 @@ import { money, fechaHora, codigoFactura, conPrefijo } from '../lib/format'
 import { METODOS_PAGO } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
+import { imprimirHTML } from '../lib/impresora'
+import { construirTicketFactura } from '../lib/ticket'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
 import Modal from '../components/Modal'
@@ -128,14 +130,8 @@ export default function Caja() {
     cargar()
   }, [])
 
-  // Auto-impresión del recibo al cobrar (Configuración → Impresora). Con el modo
-  // de impresión directa de Chrome, sale solo; si no, abre el diálogo de impresión.
-  useEffect(() => {
-    if (cobroOk && negocio.auto_imprimir) {
-      const t = setTimeout(() => window.print(), 400)
-      return () => clearTimeout(t)
-    }
-  }, [cobroOk, negocio.auto_imprimir])
+  // (La impresión del recibo al cobrar se hace directo por QZ Tray dentro de
+  // confirmarCobro; ver imprimirReciboCaja.)
 
   const entradas = movs.filter((m) => m.tipo === 'ENTRADA').reduce((s, m) => s + Number(m.monto), 0)
   const salidas = movs.filter((m) => m.tipo === 'SALIDA').reduce((s, m) => s + Number(m.monto), 0)
@@ -244,9 +240,29 @@ export default function Caja() {
     }
   }
 
-  async function confirmarCobro() {
+  // Imprime el recibo de cobro DIRECTO por QZ Tray (con cuánto pagó y la devuelta).
+  // Si QZ no está disponible, usa el cuadro del navegador como respaldo.
+  async function imprimirReciboCaja() {
+    if (!cobrarFactura) { window.print(); return }
+    const efRec = cobroEsEfectivo ? efectivoRecibido : null
+    const dev = cobroEsEfectivo ? Math.max(0, cobroCambio) : null
+    const lineas = pagos.filter((p) => Number(p.monto) > 0)
+    const metodoFactura = esCredito ? metodoCobro : (lineas.length === 1 ? lineas[0].metodo : 'Mixto')
+    const fac: Factura = { ...cobrarFactura, estado: 'PAGADA', metodo_pago: metodoFactura, efectivo_recibido: efRec, devuelta: dev }
+    const ancho = Number(negocio.ancho_ticket) >= 80 ? 72 : 54
+    try {
+      await imprimirHTML(construirTicketFactura({ negocio, factura: fac, items: cobroItems, cliente: cobrarFactura.cliente_nombre ?? '' }), ancho, 1)
+    } catch {
+      window.print()
+    }
+  }
+
+  async function confirmarCobro(imprimir = false) {
     if (!cobrarFactura || !sesion) return
     setSaving(true)
+    // Con cuánto pagó (efectivo) y la devuelta, para guardarlos en la factura.
+    const efRec = cobroEsEfectivo ? efectivoRecibido : null
+    const dev = cobroEsEfectivo ? Math.max(0, cobroCambio) : null
 
     if (esCredito) {
       // VENTA A CRÉDITO: registrar un abono (parcial o total)
@@ -264,7 +280,7 @@ export default function Caja() {
       }
       // Si el abono salda la deuda, marcar la factura como PAGADA
       if (cobroSaldoPrevio - monto <= 0.01) {
-        await supabase.from('facturas').update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id }).eq('id', cobrarFactura.id)
+        await supabase.from('facturas').update({ estado: 'PAGADA', metodo_pago: metodoCobro, caja_id: sesion.id, efectivo_recibido: efRec, devuelta: dev }).eq('id', cobrarFactura.id)
       }
       if (metodoCobro === 'Efectivo') {
         const { error: em } = await supabase.from('caja_movimientos').insert({
@@ -282,7 +298,7 @@ export default function Caja() {
       const metodoFactura = lineas.length === 1 ? lineas[0].metodo : 'Mixto'
       const { error: e1 } = await supabase
         .from('facturas')
-        .update({ estado: 'PAGADA', metodo_pago: metodoFactura, caja_id: sesion.id })
+        .update({ estado: 'PAGADA', metodo_pago: metodoFactura, caja_id: sesion.id, efectivo_recibido: efRec, devuelta: dev })
         .eq('id', cobrarFactura.id)
       if (e1) {
         setSaving(false)
@@ -314,6 +330,9 @@ export default function Caja() {
     setSaving(false)
     setCobroHora(new Date().toISOString())
     setCobroOk(true) // muestra confirmación animada + recibo imprimible
+    // Imprimir directo por QZ Tray: si se pulsó "Cobrar e imprimir" o si está
+    // activada la impresión automática (Configuración → Impresora).
+    if (imprimir || negocio.auto_imprimir) imprimirReciboCaja()
     cargar()
   }
 
@@ -584,8 +603,11 @@ export default function Caja() {
           cobroOk ? null : (
             <>
               <button className="btn-ghost" onClick={() => setCobrarFactura(null)}>Cancelar</button>
-              <button className="btn-primary" onClick={confirmarCobro} disabled={saving || !cobroPuede}>
-                {saving ? 'Guardando…' : `${esCredito ? 'Abonar' : 'Cobrar'} ${money(cobroTotal)}`}
+              <button className="btn-ghost" onClick={() => confirmarCobro(false)} disabled={saving || !cobroPuede}>
+                {saving ? 'Guardando…' : `${esCredito ? 'Abonar' : 'Cobrar'}`}
+              </button>
+              <button className="btn-primary" onClick={() => confirmarCobro(true)} disabled={saving || !cobroPuede}>
+                <Printer size={16} /> {saving ? 'Guardando…' : `${esCredito ? 'Abonar' : 'Cobrar'} e imprimir`}
               </button>
             </>
           )
@@ -648,7 +670,7 @@ export default function Caja() {
 
             <div className="flex gap-2 no-print">
               <button className="btn-ghost flex-1" onClick={() => setCobrarFactura(null)}>Cerrar</button>
-              <button className="btn-primary flex-1" onClick={() => window.print()}>
+              <button className="btn-primary flex-1" onClick={() => imprimirReciboCaja()}>
                 <Printer size={16} /> Imprimir recibo
               </button>
             </div>
