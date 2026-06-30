@@ -448,31 +448,37 @@ export default function Facturacion() {
         <td style="text-align:right;padding:1px 0;vertical-align:top">${esc(money(it.importe))}</td>
       </tr>`).join('')
     const row = (a: string, b: string, bold = false) =>
-      `<div style="display:flex;justify-content:space-between;${bold ? 'font-weight:bold;font-size:14px;border-top:1px solid #000;padding-top:3px;margin-top:2px' : ''}"><span>${a}</span><span>${b}</span></div>`
-    return `<!doctype html><html><head><meta charset="utf-8"><style>
-      *{font-family:'Courier New',monospace;color:#000;box-sizing:border-box}
-      body{margin:0;font-size:12px;line-height:1.35}
-      .c{text-align:center}.b{font-weight:bold}
-      table{width:100%;border-collapse:collapse;font-size:12px}
-      .sep{border-top:1px dashed #000;margin:4px 0}
+      `<div class="row"${bold ? ' style="font-weight:700;font-size:15px;border-top:1px solid #000;padding-top:4px;margin-top:3px"' : ''}><span>${a}</span><span>${b}</span></div>`
+    return `<!doctype html><html><head><meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap');
+      *{margin:0;padding:0;box-sizing:border-box;color:#000;text-transform:uppercase}
+      body{font-family:'Inter',Arial,sans-serif;font-size:13px;line-height:1.5;padding:3mm 5mm}
+      .marca{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:800;font-size:21px;text-align:center;line-height:1.12;letter-spacing:.3px}
+      .c{text-align:center}.muted{font-size:11px}.b{font-weight:700}
+      table{width:100%;border-collapse:collapse}
+      th,td{font-size:12px;padding:2px 0;vertical-align:top}
+      .row{display:flex;justify-content:space-between;font-size:12px;margin:1px 0}
+      .sep{border-bottom:1px dotted #000;margin:5px 0}
     </style></head><body>
-      <div class="c b" style="font-size:16px">${esc(negocio.nombre)}</div>
-      ${negocio.rnc ? `<div class="c" style="font-size:11px">RNC: ${esc(negocio.rnc)}</div>` : ''}
-      <div class="c" style="font-size:11px">${esc(negocio.direccion)}${negocio.referencia ? ' · ' + esc(negocio.referencia) : ''}</div>
-      <div class="c" style="font-size:11px">Tel ${esc(negocio.telefono)}${negocio.whatsapp ? ' · WhatsApp ' + esc(negocio.whatsapp) : ''}</div>
-      ${negocio.instagram ? `<div class="c" style="font-size:11px">${esc(negocio.instagram)}</div>` : ''}
-      <div class="c" style="font-size:11px;margin-top:3px">Factura ${esc(codigoFactura(f))} · ${f.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'}</div>
-      <div class="c" style="font-size:11px">${esc(fechaCorta(f.fecha))}${f.created_at ? ' · ' + esc(horaCorta(f.created_at)) : ''}</div>
+      <div class="marca">${esc(negocio.nombre)}</div>
+      ${negocio.rnc ? `<div class="c muted">RNC: ${esc(negocio.rnc)}</div>` : ''}
+      <div class="c muted">${esc(negocio.direccion)}${negocio.referencia ? ' · ' + esc(negocio.referencia) : ''}</div>
+      <div class="c muted">Tel ${esc(negocio.telefono)}${negocio.whatsapp ? ' · WhatsApp ' + esc(negocio.whatsapp) : ''}</div>
+      ${negocio.instagram ? `<div class="c muted">${esc(negocio.instagram)}</div>` : ''}
+      <div class="c muted" style="margin-top:4px">Factura ${esc(codigoFactura(f))} · ${f.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'}</div>
+      <div class="c muted">${esc(fechaCorta(f.fecha))}${f.created_at ? ' · ' + esc(horaCorta(f.created_at)) : ''}</div>
       <div class="sep"></div>
-      <div style="font-size:11px">Cliente: ${esc(cliente)}</div>
-      <div style="font-size:11px">Estado: ${esc(f.estado)}</div>
-      ${f.metodo_pago ? `<div style="font-size:11px">Pago: ${esc(f.metodo_pago)}</div>` : ''}
+      <div class="muted">Cliente: ${esc(cliente)}</div>
+      <div class="muted">Estado: ${esc(f.estado)}</div>
+      ${f.metodo_pago ? `<div class="muted">Pago: ${esc(f.metodo_pago)}</div>` : ''}
       <div class="sep"></div>
       <table>
         <thead><tr>
-          <th style="text-align:left;border-bottom:1px solid #000;padding-bottom:2px">Descripción</th>
-          <th style="text-align:center;border-bottom:1px solid #000;padding-bottom:2px">Cant</th>
-          <th style="text-align:right;border-bottom:1px solid #000;padding-bottom:2px">Importe</th>
+          <th class="b" style="text-align:left;border-bottom:1px dotted #000;padding-bottom:3px">Descripción</th>
+          <th class="b" style="text-align:center;border-bottom:1px dotted #000;padding-bottom:3px">Cant.</th>
+          <th class="b" style="text-align:right;border-bottom:1px dotted #000;padding-bottom:3px">Importe</th>
         </tr></thead>
         <tbody>${filas}</tbody>
       </table>
@@ -482,7 +488,7 @@ export default function Facturacion() {
       ${f.itbis > 0 ? row('ITBIS', money(f.itbis)) : ''}
       ${row('Total', money(f.total), true)}
       ${devuelto > 0 ? row('Devuelto', '- ' + money(devuelto)) : ''}
-      <div class="c" style="font-size:11px;margin-top:8px">¡Gracias por su compra!</div>
+      <div class="c muted" style="margin-top:10px">¡Gracias por su compra!</div>
     </body></html>`
   }
 
