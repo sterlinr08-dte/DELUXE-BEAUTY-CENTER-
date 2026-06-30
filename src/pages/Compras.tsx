@@ -31,6 +31,7 @@ export default function Compras() {
   const { puedeAccion } = useAuth()
   const { negocio } = useNegocio()
   const puedeEliminar = puedeAccion('compras.eliminar')
+  const puedeCambiarFecha = puedeAccion('compras.cambiar_fecha')
   const [editCompra, setEditCompra] = useState<Compra | null>(null)
   const [recibo, setRecibo] = useState<ReciboCompra | null>(null)
   const [items, setItems] = useState<Compra[]>([])
@@ -139,7 +140,8 @@ export default function Compras() {
     const itb = form.aplicaItbis ? subt * ITBIS_RATE : 0
     const desc = form.descripcion.trim() || (its.length === 1 ? its[0].descripcion : `${its[0].descripcion} y ${its.length - 1} más`)
     const payload = {
-      fecha: form.fecha,
+      // Sin permiso de administración una compra nueva siempre lleva la fecha de hoy.
+      fecha: !puedeCambiarFecha && !editId ? hoyISO() : form.fecha,
       proveedor: form.proveedor || null,
       descripcion: desc,
       categoria: form.categoria,
@@ -252,7 +254,15 @@ export default function Compras() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Fecha</label>
-              <input type="date" className="input" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
+              <input
+                type="date"
+                className={`input ${!puedeCambiarFecha ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''}`}
+                value={form.fecha}
+                onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                disabled={!puedeCambiarFecha}
+                title={!puedeCambiarFecha ? 'La fecha es la de hoy. Solo administración puede cambiarla.' : undefined}
+              />
+              {!puedeCambiarFecha && <p className="mt-1 text-xs text-slate-500">Fecha de hoy. Solo administración puede cambiarla.</p>}
             </div>
             <div>
               <label className="label">Categoría</label>
