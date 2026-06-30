@@ -540,23 +540,6 @@ export default function Facturacion() {
       </div>
 
       {/* Filtro de estado */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button className="btn-primary" onClick={nuevaFactura}>
-          <Plus size={16} /> Nueva factura
-        </button>
-        {([['ABIERTAS', `Abiertas (${abiertas.length})`], ['PAGADAS', 'Pagadas'], ['TODAS', 'Todas']] as const).map(([key, label]) => (
-          <button key={key} onClick={() => setVerEstado(key)} className={verEstado === key ? 'btn-primary' : 'btn-ghost'}>
-            {label}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }}
-          className="btn-ghost"
-        >
-          Ver historial
-        </button>
-      </div>
 
       {/* Impresora + configuración, encima del buscador */}
       <div className="mb-2 flex items-center justify-end gap-2">
@@ -582,6 +565,21 @@ export default function Facturacion() {
         <DataTable
           rows={facturasFiltradas}
           rowKey={(f) => f.id}
+          toolbar={
+            <div className="flex flex-wrap items-center gap-2">
+              <button className="btn-primary" onClick={nuevaFactura}>
+                <Plus size={16} /> Nueva factura
+              </button>
+              {([['ABIERTAS', `Abiertas (${abiertas.length})`], ['PAGADAS', 'Pagadas'], ['TODAS', 'Todas']] as const).map(([key, label]) => (
+                <button key={key} onClick={() => setVerEstado(key)} className={verEstado === key ? 'btn-primary' : 'btn-ghost'}>
+                  {label}
+                </button>
+              ))}
+              <button type="button" onClick={() => { setBuscarCat(''); setCatTab('historial'); setCatalogoOpen(true) }} className="btn-ghost">
+                Ver historial
+              </button>
+            </div>
+          }
           searchText={(f) => `${codigoFactura(f)} ${f.cliente_nombre ?? ''} ${f.estado} ${f.fecha}`}
           searchPlaceholder="Buscar por código, cliente, estado o fecha…"
           emptyText={verEstado === 'ABIERTAS' ? 'No hay cuentas abiertas.' : 'No hay facturas que coincidan.'}
