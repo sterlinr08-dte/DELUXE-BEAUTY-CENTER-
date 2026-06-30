@@ -25,6 +25,8 @@ if not exist "%QZ%\" (
 
 echo.
 echo   Configurando el certificado de confianza...
+
+:: 1) Dejar el certificado publico en la carpeta de QZ Tray
 (
 echo -----BEGIN CERTIFICATE-----
 echo MIIDdzCCAl+gAwIBAgIUMNCbe8MyfqGe7TUKN1NDW4XFQeMwDQYJKoZIhvcNAQEN
@@ -48,8 +50,20 @@ echo Y4P+ZHfFms9wsReD1tgKRD/+KpH/gS5/ZHEvXntlxyQeZI6Be+sRkk1apdi+Kxgv
 echo mRE8AaX1E4PXADswB/oTpBm1YofoJoroKQ9H
 echo -----END CERTIFICATE-----
 ) > "%QZ%\override.crt"
-
 echo   Certificado puesto en: "%QZ%\override.crt"
+
+:: 2) Registrar el certificado en la configuracion de QZ Tray (authcert.override).
+::    Esto es lo que hace que QZ confie y NO muestre el cuadro.
+set "CRT=%QZ%\override.crt"
+powershell -NoProfile -Command ^
+  "$prop = Join-Path $env:ProgramFiles 'QZ Tray\qz-tray.properties';" ^
+  "if (-not (Test-Path $prop)) { $prop = Join-Path ${env:ProgramFiles(x86)} 'QZ Tray\qz-tray.properties' }" ^
+  "$crt = '%CRT%' -replace '\\','/';" ^
+  "$lines = @(); if (Test-Path $prop) { $lines = Get-Content $prop | Where-Object { $_ -notmatch '^\s*authcert\.override' } }" ^
+  "$lines += 'authcert.override=' + $crt;" ^
+  "Set-Content -Path $prop -Value $lines -Encoding ASCII;" ^
+  "Write-Host ('   Configuracion actualizada: ' + $prop)"
+
 echo   Reiniciando QZ Tray...
 taskkill /im "QZ Tray.exe" /f >nul 2>&1
 timeout /t 2 >nul
@@ -62,5 +76,6 @@ echo   ============================================
 echo.
 echo   Vuelve a la app: Configuracion ^> Impresora ^>
 echo   "Probar impresion directa".
+echo   (Si quedaba un cuadro abierto, cierralo antes.)
 echo.
 pause
