@@ -39,6 +39,7 @@ export interface Accion {
 export const ACCIONES: Accion[] = [
   { key: 'facturas.cobrar', label: 'Cobrar / registrar pago de facturas', modulo: 'facturacion' },
   { key: 'facturas.editar', label: 'Editar facturas ya guardadas', modulo: 'facturacion' },
+  { key: 'facturas.cambiar_fecha', label: 'Cambiar la fecha de la factura (por defecto es la de hoy)', modulo: 'facturacion' },
   { key: 'facturas.anular', label: 'Anular facturas', modulo: 'facturacion' },
   { key: 'facturas.eliminar', label: 'Eliminar facturas', modulo: 'facturacion' },
   { key: 'facturas.vender_sin_existencia', label: 'Facturar artículos sin existencia (dejar en negativo)', modulo: 'facturacion' },

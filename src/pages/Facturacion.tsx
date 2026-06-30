@@ -38,6 +38,7 @@ export default function Facturacion() {
   const puedeEditar = puedeAccion('facturas.editar')
   const puedeVenderSinExistencia = puedeAccion('facturas.vender_sin_existencia')
   const puedeModificarLineas = puedeAccion('facturas.modificar_lineas')
+  const puedeCambiarFecha = puedeAccion('facturas.cambiar_fecha')
 
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [qzListo, setQzListo] = useState(false)   // impresión directa (QZ Tray) conectada
@@ -323,7 +324,8 @@ export default function Facturacion() {
     const datos = {
       cliente_id: clienteId || null,
       cliente_nombre: clienteId ? clientes.find((c) => c.id === clienteId)?.nombre : clienteNombre || 'Cliente de contado',
-      fecha,
+      // Sin permiso de administración la venta nueva siempre lleva la fecha de hoy.
+      fecha: !puedeCambiarFecha && !editId ? hoyISO() : fecha,
       tipo_venta: tipoVenta,
       subtotal,
       descuento: descuentoMonto,
@@ -690,7 +692,17 @@ export default function Facturacion() {
             </div>
             <div>
               <label className="label">Fecha</label>
-              <input type="date" className="input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              <input
+                type="date"
+                className={`input ${!puedeCambiarFecha ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''}`}
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                disabled={!puedeCambiarFecha}
+                title={!puedeCambiarFecha ? 'La fecha es la de hoy. Solo administración puede cambiarla.' : undefined}
+              />
+              {!puedeCambiarFecha && (
+                <p className="mt-1 text-xs text-slate-500">Fecha de hoy. Solo administración puede cambiarla.</p>
+              )}
             </div>
           </div>
           {!clienteId && (
