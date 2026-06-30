@@ -25,6 +25,7 @@ export default function Gastos() {
   const { puedeAccion } = useAuth()
   const { negocio } = useNegocio()
   const puedeEliminar = puedeAccion('gastos.eliminar')
+  const puedeCambiarFecha = puedeAccion('gastos.cambiar_fecha')
   const [items, setItems] = useState<Gasto[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [loading, setLoading] = useState(true)
@@ -79,7 +80,13 @@ export default function Gastos() {
     if (!form.concepto.trim()) return alert('El concepto es obligatorio')
     if (form.monto <= 0) return alert('El monto debe ser mayor que 0')
     setSaving(true)
-    const payload = { ...form, beneficiario: form.beneficiario || null, notas: form.notas || null }
+    const payload = {
+      ...form,
+      // Sin permiso de administración un gasto nuevo siempre lleva la fecha de hoy.
+      fecha: !puedeCambiarFecha && !editId ? hoyISO() : form.fecha,
+      beneficiario: form.beneficiario || null,
+      notas: form.notas || null,
+    }
     const { error } = editId
       ? await supabase.from('gastos').update(payload).eq('id', editId)
       : await supabase.from('gastos').insert(payload)
@@ -184,7 +191,15 @@ export default function Gastos() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Fecha</label>
-              <input type="date" className="input" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
+              <input
+                type="date"
+                className={`input ${!puedeCambiarFecha ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''}`}
+                value={form.fecha}
+                onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                disabled={!puedeCambiarFecha}
+                title={!puedeCambiarFecha ? 'La fecha es la de hoy. Solo administración puede cambiarla.' : undefined}
+              />
+              {!puedeCambiarFecha && <p className="mt-1 text-xs text-slate-500">Fecha de hoy. Solo administración puede cambiarla.</p>}
             </div>
             <div>
               <label className="label">Categoría</label>

@@ -6,6 +6,7 @@ import { money, fechaCorta, fechaHora, hoyISO, codigoFactura, conPrefijo } from 
 import { METODOS_PAGO } from '../lib/constants'
 import { pctComisionServicio, comisionLinea, rangosSeSolapan } from '../lib/comisiones'
 import { imprimirTabla, descargarCSV } from '../lib/reportes'
+import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
 import PageHeader from '../components/PageHeader'
 import Cargando from '../components/Cargando'
@@ -35,6 +36,8 @@ const vacio = {
 
 export default function Nomina() {
   const { negocio } = useNegocio()
+  const { puedeAccion } = useAuth()
+  const puedeCambiarFecha = puedeAccion('nomina.cambiar_fecha')
   const [recibo, setRecibo] = useState<ReciboPago | null>(null)
   const [items, setItems] = useState<PagoEmpleado[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
@@ -216,7 +219,8 @@ export default function Nomina() {
     const payload = {
       empleado_id: form.empleado_id,
       empleado_nombre: emp?.nombre ?? null,
-      fecha: form.fecha,
+      // Sin permiso de administración un pago nuevo siempre lleva la fecha de hoy.
+      fecha: !puedeCambiarFecha && !editId ? hoyISO() : form.fecha,
       periodo: form.periodo || null,
       tipo: form.tipo,
       monto: form.monto,
@@ -342,7 +346,15 @@ export default function Nomina() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Fecha</label>
-              <input type="date" className="input" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} />
+              <input
+                type="date"
+                className={`input ${!puedeCambiarFecha ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''}`}
+                value={form.fecha}
+                onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                disabled={!puedeCambiarFecha}
+                title={!puedeCambiarFecha ? 'La fecha es la de hoy. Solo administración puede cambiarla.' : undefined}
+              />
+              {!puedeCambiarFecha && <p className="mt-1 text-xs text-slate-500">Fecha de hoy. Solo administración puede cambiarla.</p>}
             </div>
             <div>
               <label className="label">Periodo</label>
