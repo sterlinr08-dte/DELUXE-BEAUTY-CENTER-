@@ -25,7 +25,7 @@ export function construirTicketFactura(p: {
     .map(
       (it) => `
       <tr>
-        <td style="text-align:left;padding:1px 0;vertical-align:top">${esc(it.descripcion)}${(it as any).empleado?.nombre ? `<div style="font-size:9px">por ${esc((it as any).empleado.nombre)}</div>` : ''}</td>
+        <td class="desc" style="text-align:left;padding:1px 0;vertical-align:top">${esc(it.descripcion)}${(it as any).empleado?.nombre ? `<div style="font-size:9px">por ${esc((it as any).empleado.nombre)}</div>` : ''}</td>
         <td style="text-align:center;padding:1px 2px;vertical-align:top">${esc(it.cantidad)}</td>
         <td style="text-align:right;padding:1px 0;vertical-align:top">${esc(money(it.importe))}</td>
       </tr>`,
@@ -36,11 +36,12 @@ export function construirTicketFactura(p: {
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap');
       *{margin:0;padding:0;box-sizing:border-box;color:#000;text-transform:uppercase}
-      body{font-family:'Inter',Arial,sans-serif;font-size:10px;line-height:1.4;padding:3mm 4mm;font-variant-numeric:tabular-nums}
+      body{font-family:'Inter',Arial,sans-serif;font-size:10px;line-height:1.4;padding:3mm 3mm;font-variant-numeric:tabular-nums}
       .marca{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:800;font-size:17px;text-align:center;line-height:1.1;letter-spacing:.6px}
       .c{text-align:center}.muted{font-size:9px;letter-spacing:.2px}.b{font-weight:700}
       table{width:100%;border-collapse:collapse;table-layout:fixed}
-      th,td{font-size:9.5px;padding:2px 0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
+      th,td{font-size:9.5px;padding:2px 0;vertical-align:top;white-space:nowrap}
+      .desc{white-space:normal;word-break:break-word;overflow-wrap:anywhere}
       .row{display:flex;justify-content:space-between;font-size:10px;margin:1.5px 0}
       .sep{border-bottom:1px dotted #000;margin:4px 0}
     </style></head><body>
@@ -57,9 +58,9 @@ export function construirTicketFactura(p: {
       ${f.metodo_pago ? `<div class="muted">Pago: ${esc(f.metodo_pago)}</div>` : ''}
       <div class="sep"></div>
       <table>
-        <colgroup><col style="width:56%"><col style="width:14%"><col style="width:30%"></colgroup>
+        <colgroup><col style="width:54%"><col style="width:14%"><col style="width:32%"></colgroup>
         <thead><tr>
-          <th class="b" style="text-align:left;border-bottom:1px dotted #000;padding-bottom:3px">Descripción</th>
+          <th class="b desc" style="text-align:left;border-bottom:1px dotted #000;padding-bottom:3px">Descripción</th>
           <th class="b" style="text-align:center;border-bottom:1px dotted #000;padding-bottom:3px">Cant.</th>
           <th class="b" style="text-align:right;border-bottom:1px dotted #000;padding-bottom:3px">Importe</th>
         </tr></thead>
