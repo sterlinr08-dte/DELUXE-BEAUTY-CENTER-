@@ -12,6 +12,7 @@ import {
   Calculator,
   Settings,
   Package,
+  Armchair,
   HandCoins,
   FileBarChart,
   X,
@@ -38,6 +39,7 @@ const grupos: { titulo: string; links: Link[] }[] = [
       { to: '/clientes', label: 'Clientes', icon: Users, modulo: 'clientes' },
       { to: '/servicios', label: 'Servicios y precios', icon: Scissors, modulo: 'servicios' },
       { to: '/articulos', label: 'Artículos / Productos', icon: Package, modulo: 'articulos' },
+      { to: '/mobiliario', label: 'Mobiliario y equipos', icon: Armchair, modulo: 'mobiliario' },
     ],
   },
   {

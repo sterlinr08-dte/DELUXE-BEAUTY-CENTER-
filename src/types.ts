@@ -278,3 +278,25 @@ export interface Articulo {
   created_at: string
   updated_at: string
 }
+
+export type EstadoMobiliario = 'BUENO' | 'REGULAR' | 'DANADO'
+
+// Mobiliario y equipos (activos físicos del salón; no es inventario de venta).
+export interface Mobiliario {
+  id: string
+  codigo: number
+  nombre: string
+  categoria: string
+  cantidad: number
+  estado: EstadoMobiliario
+  ubicacion: string | null
+  costo: number
+  fecha_compra: string | null
+  proveedor: string | null
+  serie: string | null
+  foto_url: string | null
+  notas: string | null
+  activo: boolean
+  created_at: string
+  updated_at: string
+}
