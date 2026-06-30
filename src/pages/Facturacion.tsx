@@ -545,9 +545,6 @@ export default function Facturacion() {
             >
               <Settings size={18} />
             </Link>
-            <button className="btn-primary" onClick={nuevaFactura}>
-              <Plus size={16} /> Nueva factura
-            </button>
           </div>
         }
       />
@@ -562,6 +559,9 @@ export default function Facturacion() {
 
       {/* Filtro de estado */}
       <div className="mb-4 flex flex-wrap gap-2">
+        <button className="btn-primary" onClick={nuevaFactura}>
+          <Plus size={16} /> Nueva factura
+        </button>
         {([['ABIERTAS', `Abiertas (${abiertas.length})`], ['PAGADAS', 'Pagadas'], ['TODAS', 'Todas']] as const).map(([key, label]) => (
           <button key={key} onClick={() => setVerEstado(key)} className={verEstado === key ? 'btn-primary' : 'btn-ghost'}>
             {label}
