@@ -10,6 +10,11 @@ body,
   height: 100%;
 }
 
+/* Todo el texto del sistema en MAYÚSCULAS (solo visual; no cambia los datos) */
+#root {
+  text-transform: uppercase;
+}
+
 body {
   @apply text-slate-800 antialiased;
   background-color: #fdf5f9;
