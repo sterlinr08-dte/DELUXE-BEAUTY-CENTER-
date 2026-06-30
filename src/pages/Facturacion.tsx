@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { conectarQZ, imprimirHTML } from '../lib/impresora'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
-import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
+import { money, fechaCorta, horaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
 import { useAuth } from '../lib/auth'
 import { useNegocio } from '../lib/negocio'
@@ -461,7 +461,8 @@ export default function Facturacion() {
       <div class="c" style="font-size:11px">${esc(negocio.direccion)}${negocio.referencia ? ' · ' + esc(negocio.referencia) : ''}</div>
       <div class="c" style="font-size:11px">Tel ${esc(negocio.telefono)}${negocio.whatsapp ? ' · WhatsApp ' + esc(negocio.whatsapp) : ''}</div>
       ${negocio.instagram ? `<div class="c" style="font-size:11px">${esc(negocio.instagram)}</div>` : ''}
-      <div class="c" style="font-size:11px;margin-top:3px">Factura ${esc(codigoFactura(f))} · ${f.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · ${esc(fechaCorta(f.fecha))}</div>
+      <div class="c" style="font-size:11px;margin-top:3px">Factura ${esc(codigoFactura(f))} · ${f.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'}</div>
+      <div class="c" style="font-size:11px">${esc(fechaCorta(f.fecha))}${f.created_at ? ' · ' + esc(horaCorta(f.created_at)) : ''}</div>
       <div class="sep"></div>
       <div style="font-size:11px">Cliente: ${esc(cliente)}</div>
       <div style="font-size:11px">Estado: ${esc(f.estado)}</div>
@@ -1062,7 +1063,7 @@ export default function Facturacion() {
               {negocio.rnc && <p className="text-xs text-slate-500">RNC: {negocio.rnc}</p>}
               <p className="text-xs text-slate-500">{negocio.direccion} · {negocio.referencia}</p>
               <p className="text-xs text-slate-500">Tel {negocio.telefono} · WhatsApp {negocio.whatsapp} · {negocio.instagram}</p>
-              <p className="mt-1 text-xs font-medium text-slate-600">Factura {codigoFactura(facturaVista)} · {facturaVista.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · {fechaCorta(facturaVista.fecha)}</p>
+              <p className="mt-1 text-xs font-medium text-slate-600">Factura {codigoFactura(facturaVista)} · {facturaVista.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · {fechaCorta(facturaVista.fecha)}{facturaVista.created_at ? ` · ${horaCorta(facturaVista.created_at)}` : ''}</p>
             </div>
             <div className="text-sm text-slate-600">
               <p><span className="font-medium">Cliente:</span> {(() => { const cl = clientes.find((c) => c.id === facturaVista.cliente_id); return cl ? `${codigoCliente(cl.codigo)} · ${facturaVista.cliente_nombre}` : facturaVista.cliente_nombre })()}</p>
