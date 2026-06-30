@@ -68,7 +68,8 @@ export function qzActivo(): boolean {
 }
 
 // Imprime un HTML en la impresora predeterminada vía QZ Tray (ancho del papel en mm).
-export async function imprimirHTML(html: string, anchoMm: number): Promise<void> {
+// `copias` = cuántas veces sale el mismo recibo (1 por defecto).
+export async function imprimirHTML(html: string, anchoMm: number, copias = 1): Promise<void> {
   const ok = await conectarQZ()
   if (!ok) throw new Error('QZ Tray no está disponible (¿instalado y abierto?)')
   const printer = await qz.printers.getDefault()
@@ -77,6 +78,7 @@ export async function imprimirHTML(html: string, anchoMm: number): Promise<void>
     units: 'mm',
     size: { width: anchoMm, height: null },
     margins: { top: 0, right: 0, bottom: 0, left: 0 },
+    copies: Math.max(1, Math.floor(copias) || 1),
   })
   await qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }])
 }

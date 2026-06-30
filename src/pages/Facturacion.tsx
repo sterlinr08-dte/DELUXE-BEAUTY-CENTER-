@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Printer, Ban, X, Search, Receipt, UserPlus, Undo2, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { conectarQZ } from '../lib/impresora'
+import { conectarQZ, imprimirHTML } from '../lib/impresora'
 import { Cliente, Factura, FacturaItem, Servicio, Articulo, Empleado, EstadoFactura, TipoVenta } from '../types'
 import { money, fechaCorta, hoyISO, codigoArticulo, codigoFactura, codigoCliente } from '../lib/format'
 import { ITBIS_RATE } from '../lib/constants'
@@ -52,6 +52,7 @@ export default function Facturacion() {
   const [saving, setSaving] = useState(false)
   const [verId, setVerId] = useState<string | null>(null)
   const [verItems, setVerItems] = useState<FacturaItem[]>([])
+  const [copias, setCopias] = useState(1)   // cuántas copias del recibo imprimir
 
   // Devoluciones / notas de crédito
   const [devueltoPorFactura, setDevueltoPorFactura] = useState<Record<string, number>>({})
@@ -385,10 +386,15 @@ export default function Facturacion() {
     setSaving(false)
     setOpen(false)
     await cargar()
-    // Guardar e imprimir: abre el recibo de la factura recién guardada y lo manda a imprimir
+    // Guardar e imprimir: abre el recibo y lo manda DIRECTO a la impresora (QZ Tray).
     if (imprimir && facturaId) {
       await verDetalle({ id: facturaId } as Factura)
-      setTimeout(() => window.print(), 400)
+      // Datos frescos (no dependemos del estado de React que aún no se actualiza)
+      const [{ data: fac }, { data: its }] = await Promise.all([
+        supabase.from('facturas').select('*').eq('id', facturaId).single(),
+        supabase.from('factura_items').select('*, empleado:empleados(nombre)').eq('factura_id', facturaId),
+      ])
+      imprimirRecibo(fac as Factura, (its as FacturaItem[]) ?? [], copias)
     }
   }
 
@@ -427,6 +433,67 @@ export default function Facturacion() {
     setVerId(f.id)
     const { data } = await supabase.from('factura_items').select('*, empleado:empleados(nombre)').eq('factura_id', f.id)
     setVerItems((data as FacturaItem[]) ?? [])
+  }
+
+  // Recibo térmico autónomo (estilos en línea) para imprimir directo por QZ Tray.
+  function construirTicketHTML(f: Factura, its: FacturaItem[]): string {
+    const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string))
+    const cl = clientes.find((c) => c.id === f.cliente_id)
+    const cliente = cl ? `${codigoCliente(cl.codigo)} · ${f.cliente_nombre}` : (f.cliente_nombre ?? '')
+    const devuelto = devueltoPorFactura[f.id] ?? 0
+    const filas = its.map((it) => `
+      <tr>
+        <td style="text-align:left;padding:1px 0;vertical-align:top">${esc(it.descripcion)}${(it as any).empleado?.nombre ? `<div style="font-size:10px">por ${esc((it as any).empleado.nombre)}</div>` : ''}</td>
+        <td style="text-align:center;padding:1px 2px;vertical-align:top">${esc(it.cantidad)}</td>
+        <td style="text-align:right;padding:1px 0;vertical-align:top">${esc(money(it.importe))}</td>
+      </tr>`).join('')
+    const row = (a: string, b: string, bold = false) =>
+      `<div style="display:flex;justify-content:space-between;${bold ? 'font-weight:bold;font-size:14px;border-top:1px solid #000;padding-top:3px;margin-top:2px' : ''}"><span>${a}</span><span>${b}</span></div>`
+    return `<!doctype html><html><head><meta charset="utf-8"><style>
+      *{font-family:'Courier New',monospace;color:#000;box-sizing:border-box}
+      body{margin:0;font-size:12px;line-height:1.35}
+      .c{text-align:center}.b{font-weight:bold}
+      table{width:100%;border-collapse:collapse;font-size:12px}
+      .sep{border-top:1px dashed #000;margin:4px 0}
+    </style></head><body>
+      <div class="c b" style="font-size:16px">${esc(negocio.nombre)}</div>
+      ${negocio.rnc ? `<div class="c" style="font-size:11px">RNC: ${esc(negocio.rnc)}</div>` : ''}
+      <div class="c" style="font-size:11px">${esc(negocio.direccion)}${negocio.referencia ? ' · ' + esc(negocio.referencia) : ''}</div>
+      <div class="c" style="font-size:11px">Tel ${esc(negocio.telefono)}${negocio.whatsapp ? ' · WhatsApp ' + esc(negocio.whatsapp) : ''}</div>
+      ${negocio.instagram ? `<div class="c" style="font-size:11px">${esc(negocio.instagram)}</div>` : ''}
+      <div class="c" style="font-size:11px;margin-top:3px">Factura ${esc(codigoFactura(f))} · ${f.tipo_venta === 'CREDITO' ? 'Crédito' : 'Contado'} · ${esc(fechaCorta(f.fecha))}</div>
+      <div class="sep"></div>
+      <div style="font-size:11px">Cliente: ${esc(cliente)}</div>
+      <div style="font-size:11px">Estado: ${esc(f.estado)}</div>
+      ${f.metodo_pago ? `<div style="font-size:11px">Pago: ${esc(f.metodo_pago)}</div>` : ''}
+      <div class="sep"></div>
+      <table>
+        <thead><tr>
+          <th style="text-align:left;border-bottom:1px solid #000;padding-bottom:2px">Descripción</th>
+          <th style="text-align:center;border-bottom:1px solid #000;padding-bottom:2px">Cant</th>
+          <th style="text-align:right;border-bottom:1px solid #000;padding-bottom:2px">Importe</th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <div class="sep"></div>
+      ${row('Subtotal', money(f.subtotal))}
+      ${f.descuento > 0 ? row('Descuento', '- ' + money(f.descuento)) : ''}
+      ${f.itbis > 0 ? row('ITBIS', money(f.itbis)) : ''}
+      ${row('Total', money(f.total), true)}
+      ${devuelto > 0 ? row('Devuelto', '- ' + money(devuelto)) : ''}
+      <div class="c" style="font-size:11px;margin-top:8px">¡Gracias por su compra!</div>
+    </body></html>`
+  }
+
+  // Imprime el recibo: directo por QZ Tray (sin cuadros). Si QZ no está, usa el navegador.
+  async function imprimirRecibo(f: Factura | undefined | null, its: FacturaItem[], copiasN = 1) {
+    if (!f) { window.print(); return }
+    const ancho = Number(negocio.ancho_ticket) >= 80 ? 72 : 54
+    try {
+      await imprimirHTML(construirTicketHTML(f, its), ancho, copiasN)
+    } catch {
+      window.print()   // respaldo: si QZ Tray no está disponible
+    }
   }
 
   // === DEVOLUCIONES ===
@@ -1028,13 +1095,24 @@ export default function Facturacion() {
                 <div className="flex justify-between font-semibold text-rose-600"><span>Devuelto</span><span>- {money(devueltoPorFactura[facturaVista.id])}</span></div>
               )}
             </div>
-            <div className="no-print flex gap-2">
+            <div className="no-print flex flex-wrap items-center gap-2">
               {facturaVista.estado === 'PAGADA' && puedeAnular && (
                 <button className="btn-ghost flex-1" onClick={() => abrirDevolucion(facturaVista)}>
                   <Undo2 size={16} /> Devolver
                 </button>
               )}
-              <button className="btn-primary flex-1" onClick={() => window.print()}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-slate-500">Copias</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={9}
+                  value={copias}
+                  onChange={(e) => setCopias(Math.max(1, Math.min(9, Number(e.target.value) || 1)))}
+                  className="input w-14 text-center"
+                />
+              </div>
+              <button className="btn-primary flex-1" onClick={() => imprimirRecibo(facturaVista, verItems, copias)}>
                 <Printer size={16} /> Imprimir
               </button>
             </div>
