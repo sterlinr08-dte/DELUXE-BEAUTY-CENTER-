@@ -454,11 +454,11 @@ export default function Facturacion() {
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap');
       *{margin:0;padding:0;box-sizing:border-box;color:#000;text-transform:uppercase}
-      body{font-family:'Inter',Arial,sans-serif;font-size:13px;line-height:1.5;padding:3mm 5mm}
+      body{font-family:'Inter',Arial,sans-serif;font-size:13px;line-height:1.5;padding:3mm 4mm}
       .marca{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:800;font-size:21px;text-align:center;line-height:1.12;letter-spacing:.3px}
       .c{text-align:center}.muted{font-size:11px}.b{font-weight:700}
-      table{width:100%;border-collapse:collapse}
-      th,td{font-size:12px;padding:2px 0;vertical-align:top}
+      table{width:100%;border-collapse:collapse;table-layout:fixed}
+      th,td{font-size:12px;padding:2px 0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
       .row{display:flex;justify-content:space-between;font-size:12px;margin:1px 0}
       .sep{border-bottom:1px dotted #000;margin:5px 0}
     </style></head><body>
@@ -475,6 +475,7 @@ export default function Facturacion() {
       ${f.metodo_pago ? `<div class="muted">Pago: ${esc(f.metodo_pago)}</div>` : ''}
       <div class="sep"></div>
       <table>
+        <colgroup><col style="width:50%"><col style="width:16%"><col style="width:34%"></colgroup>
         <thead><tr>
           <th class="b" style="text-align:left;border-bottom:1px dotted #000;padding-bottom:3px">Descripción</th>
           <th class="b" style="text-align:center;border-bottom:1px dotted #000;padding-bottom:3px">Cant.</th>
