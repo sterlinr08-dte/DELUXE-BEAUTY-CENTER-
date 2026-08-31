@@ -65,13 +65,9 @@ El SQL completo del esquema está en [`supabase/migrations/`](./supabase/migrati
 
 ### Acceso inicial
 
-Se creó una cuenta de administrador. **Cambia la contraseña** tras el primer ingreso
-(Supabase → Authentication → Users).
-
-- **Correo:** `sterlinr08@gmail.com`
-- **Contraseña temporal:** `Deluxe2026!`
-
-Para crear más usuarios: Supabase → Authentication → **Add user**.
+La cuenta de administrador se gestiona desde Supabase → Authentication → Users
+(no se documentan credenciales aquí — este repo es público). Para restablecer el
+acceso o crear más usuarios, usa esa misma pantalla → **Add user** / **Reset password**.
 
 ## 📁 Estructura
 
