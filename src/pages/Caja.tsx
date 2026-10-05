@@ -669,7 +669,6 @@ export default function Caja() {
             </div>
 
             <div className="flex gap-2 no-print">
-              <button className="btn-ghost flex-1" onClick={() => setCobrarFactura(null)}>Cerrar</button>
               <button className="btn-primary flex-1" onClick={() => imprimirReciboCaja()}>
                 <Printer size={16} /> Imprimir recibo
               </button>
