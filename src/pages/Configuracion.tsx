@@ -919,7 +919,6 @@ export default function Configuracion() {
           </div>
           <p className="text-xs text-slate-500 no-print">Si cambiaste el ancho, pulsa <b>Guardar</b> antes de imprimir la prueba.</p>
           <div className="no-print flex gap-2">
-            <button className="btn-ghost flex-1" onClick={() => setPruebaOpen(false)}>Cerrar</button>
             <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir</button>
           </div>
         </div>

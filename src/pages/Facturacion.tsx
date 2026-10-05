@@ -1116,7 +1116,6 @@ export default function Facturacion() {
               <div className="border-t pt-1 text-center text-xs text-slate-500"><p>{negocio.direccion} · {negocio.referencia}</p></div>
             </div>
             <div className="no-print flex gap-2">
-              <button className="btn-ghost flex-1" onClick={() => setDevolverFactura(null)}>Cerrar</button>
               <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir nota</button>
             </div>
           </div>

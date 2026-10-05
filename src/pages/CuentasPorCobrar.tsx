@@ -267,7 +267,6 @@ export default function CuentasPorCobrar() {
               <p className="text-center text-xs font-medium text-brand-600">¡Gracias por su pago! 💕</p>
             </div>
             <div className="flex gap-2 no-print">
-              <button className="btn-ghost flex-1" onClick={() => setRecibo(null)}>Cerrar</button>
               <button className="btn-primary flex-1" onClick={() => window.print()}><Printer size={16} /> Imprimir</button>
             </div>
           </div>
