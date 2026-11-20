@@ -52,7 +52,7 @@ src/
                 Mobiliario, Reportes, Configuracion, Login
   types.ts      Tipos del dominio
 supabase/
-  migrations/   Migraciones SQL numeradas (0001..0036). Añade nuevas en orden.
+  migrations/   Migraciones SQL numeradas (0001..0037). Añade nuevas en orden.
   functions/    Edge functions (gestionar-usuarios, qz-firmar — esta NO está en el
                 repo: solo desplegada en Supabase, ver "Impresión directa")
 public/
@@ -152,6 +152,8 @@ Los tickets de Facturación y Caja se imprimen **directo a la impresora térmica
 - **Mobiliario y equipos**: módulo de activos del salón (foto en Storage bucket
   `mobiliario`, código con prefijo `MB`).
 - **Prefijos configurables** de todas las secuencias en Configuración → Prefijos.
+- **Auditoría solo de empleados**: `fn_auditoria` (migración 0037) NO registra
+  lo que hacen los administradores (`es_admin()`); los demás usuarios sí.
 - **UI en MAYÚSCULAS**: `#root { text-transform: uppercase }` en `index.css`
   (solo visual; los datos se guardan tal cual).
 
